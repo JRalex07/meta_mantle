@@ -1,0 +1,71 @@
+{
+  "baseUrl": "https://metamantle.alex.runs-on.dev",
+  "siteName": "MetaMantle",
+  "titleTemplate": "%s | MetaMantle",
+  "defaultImage": "https://metamantle.alex.runs-on.dev/assets/social-card.png",
+  "trailingSlash": true,
+  "sitemap": true,
+  "robotsTxt": true,
+  "defaults": {
+    "robots": "index, follow",
+    "language": "en",
+    "themeColor": "#0066cc",
+    "icons": [
+      {
+        "href": "/favicon.png",
+        "rel": "icon",
+        "type": "image/png"
+      }
+    ]
+  },
+  "routes": [
+    {
+      "path": "/",
+      "metadata": {
+        "title": "MetaMantle",
+        "description": "Typed metadata management and static SEO framework for Flutter Web.",
+        "openGraph": {
+          "type": "website"
+        },
+        "jsonLd": [
+          {
+            "@context": "https://schema.org",
+            "name": "MetaMantle",
+            "operatingSystem": "Web",
+            "applicationCategory": "DeveloperApplication",
+            "url": "https://metamantle.alex.runs-on.dev/"
+          }
+        ]
+      }
+    },
+    {
+      "path": "/about",
+      "metadata": {
+        "description": "Learn more about MetaMantle and its dual-engine SEO architecture."
+      }
+    }
+  ],
+  "patterns": [
+    {
+      "pathPattern": "/products/:slug",
+      "dataFile": "products.json",
+      "slugField": "slug",
+      "metadataTemplate": {
+        "title": "{{name}}",
+        "description": "{{description}}",
+        "openGraph": {
+          "type": "product",
+          "image": "{{image}}"
+        },
+        "jsonLd": [
+          {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": "{{name}}",
+            "image": "{{image}}"
+          }
+        ]
+      }
+    }
+  ]
+}

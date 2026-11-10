@@ -1,0 +1,22 @@
+name: meta_mantle_example
+description: Example app demonstrating MetaMantle metadata management and static SEO.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+  flutter: '>=3.27.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  meta_mantle:
+    path: ../
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

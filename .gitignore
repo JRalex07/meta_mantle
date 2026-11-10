@@ -1,0 +1,10 @@
+.dart_tool/
+.packages
+.pub-cache/
+build/
+coverage/
+.flutter-plugins
+.flutter-plugins-dependencies
+.idea/
+.vscode/
+*.iml

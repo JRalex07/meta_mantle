@@ -1,0 +1,26 @@
+name: meta_mantle
+description: Typed metadata management and static SEO framework for Flutter Web, with runtime DOM updates and static HTML generation.
+version: 0.1.0
+homepage: https://metamantle.alex.runs-on.dev
+documentation: https://metamantle.alex.runs-on.dev
+repository: https://github.com/JRalex07/meta_mantle
+issue_tracker: https://github.com/JRalex07/meta_mantle/issues
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+  flutter: '>=3.27.0'
+
+dependencies:
+  args: ^2.7.0
+  flutter:
+    sdk: flutter
+  html: ^0.15.7
+  web: ^1.1.1
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+  flutter_test:
+    sdk: flutter
+
+executables:
+  meta_mantle: meta_mantle
