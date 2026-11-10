@@ -59,11 +59,23 @@ class CacheEntry {
     return age <= (ttl + staleWhileRevalidate!);
   }
 
+  /// Returns true if the entry is past TTL (and SWR) but still within the Stale-If-Error window.
+  bool isStaleIfError([DateTime? now]) {
+    final current = (now ?? DateTime.now().toUtc());
+    final age = current.difference(createdAt);
+    if (staleIfError == null) return false;
+    final maxAllowedAge =
+        ttl + (staleWhileRevalidate ?? Duration.zero) + staleIfError!;
+    return age <= maxAllowedAge;
+  }
+
   /// Returns true if the entry is completely expired and must not be served under normal conditions.
   bool isExpired([DateTime? now]) {
     final current = (now ?? DateTime.now().toUtc());
     final age = current.difference(createdAt);
-    final maxAge = ttl + (staleWhileRevalidate ?? Duration.zero);
+    final maxAge = ttl +
+        (staleWhileRevalidate ?? Duration.zero) +
+        (staleIfError ?? Duration.zero);
     return age > maxAge;
   }
 }
@@ -103,8 +115,9 @@ class CachePolicy {
 
 /// Abstract cache store contract for MetaMantle SSR.
 abstract interface class MetaMantleCacheStore {
-  /// Retrieves a cache entry by key.
-  Future<CacheEntry?> get(String key);
+  /// Retrieves a cache entry by key. If [allowStale] is true, returns entries within
+  /// the Stale-While-Revalidate or Stale-If-Error windows.
+  Future<CacheEntry?> get(String key, {bool allowStale = false});
 
   /// Stores or updates an entry by key.
   Future<void> put(String key, CacheEntry entry);

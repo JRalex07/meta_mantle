@@ -1,5 +1,14 @@
 import 'dart:async';
 
+/// Exception thrown when a distributed lock could not be acquired within timeout.
+class DistributedLockException implements Exception {
+  const DistributedLockException(this.message);
+  final String message;
+
+  @override
+  String toString() => 'DistributedLockException: $message';
+}
+
 /// Abstract contract for distributed locking across multi-instance production clusters.
 abstract interface class DistributedLockProvider {
   /// Attempts to acquire a distributed lock for [resource] with a lease [ttl].
@@ -27,6 +36,7 @@ class SingleFlightCoordinator {
     }
 
     final completer = Completer<T>();
+    completer.future.ignore();
     _inFlight[key] = completer.future;
 
     try {
@@ -54,12 +64,16 @@ class SingleFlightCoordinator {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
 
+    if (token == null) {
+      throw DistributedLockException(
+        'Failed to acquire distributed lock for resource: $lockResource',
+      );
+    }
+
     try {
       return await action();
     } finally {
-      if (token != null) {
-        await distributedLock!.release(lockResource, token);
-      }
+      await distributedLock!.release(lockResource, token);
     }
   }
 }

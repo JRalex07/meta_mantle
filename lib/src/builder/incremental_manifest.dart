@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:crypto/crypto.dart';
 
 /// Records content hashes and output file paths for incremental static builds.
 class IncrementalManifest {
@@ -60,13 +61,8 @@ class IncrementalManifest {
     return ownedFiles.keys.toSet().difference(activeRoutes);
   }
 
-  /// Computes a fast deterministic hash of content strings.
+  /// Computes a deterministic SHA-256 fingerprint of content strings.
   static String computeFingerprint(String content) {
-    var hash = 0xcbf29ce484222325;
-    for (var i = 0; i < content.length; i++) {
-      hash ^= content.codeUnitAt(i);
-      hash = (hash * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF;
-    }
-    return hash.toRadixString(16);
+    return sha256.convert(utf8.encode(content)).toString();
   }
 }

@@ -11,6 +11,9 @@ class MemoryCacheStore implements MetaMantleCacheStore {
 
   int _hits = 0;
   int _misses = 0;
+  int _evictions = 0;
+  int _invalidations = 0;
+  int _expiredCount = 0;
 
   /// Total successful cache hits.
   int get hits => _hits;
@@ -18,33 +21,58 @@ class MemoryCacheStore implements MetaMantleCacheStore {
   /// Total cache misses.
   int get misses => _misses;
 
+  /// Total capacity-triggered LRU evictions.
+  int get evictions => _evictions;
+
+  /// Total entries purged via tag or key invalidation.
+  int get invalidations => _invalidations;
+
+  /// Total entries dropped due to expiration.
+  int get expiredCount => _expiredCount;
+
   /// Current number of stored cache entries.
   int get count => _entries.length;
 
+  /// Cache hit ratio (0.0 to 1.0).
+  double get hitRatio =>
+      (_hits + _misses == 0) ? 0.0 : _hits / (_hits + _misses);
+
   @override
-  Future<CacheEntry?> get(String key) async {
+  Future<CacheEntry?> get(String key, {bool allowStale = false}) async {
     final entry = _entries[key];
     if (entry == null) {
       _misses++;
       return null;
     }
 
+    // Check expiration
     if (entry.isExpired()) {
+      _expiredCount++;
       _misses++;
       await delete(key);
       return null;
     }
 
+    // If not fresh and not allowing stale:
+    if (!entry.isFresh() && !allowStale && !entry.isStaleWhileRevalidate()) {
+      _misses++;
+      return null;
+    }
+
     _hits++;
+    // True LRU: Move accessed entry to the tail of the linked hash map (most recently used)
+    _entries.remove(key);
+    _entries[key] = entry;
     return entry;
   }
 
   @override
   Future<void> put(String key, CacheEntry entry) async {
-    // Evict oldest entry if at capacity
+    // Evict least-recently-used entry if at capacity
     if (_entries.length >= maxEntries && !_entries.containsKey(key)) {
-      final oldestKey = _entries.keys.first;
-      await delete(oldestKey);
+      final lruKey = _entries.keys.first;
+      _evictions++;
+      await delete(lruKey);
     }
 
     // Clean up previous tags if overwriting an existing key
@@ -63,6 +91,7 @@ class MemoryCacheStore implements MetaMantleCacheStore {
   Future<void> delete(String key) async {
     final entry = _entries.remove(key);
     if (entry != null) {
+      _invalidations++;
       _unindexTags(key, entry.tags);
     }
   }
@@ -74,6 +103,7 @@ class MemoryCacheStore implements MetaMantleCacheStore {
       for (final key in List<String>.from(keys)) {
         final entry = _entries.remove(key);
         if (entry != null) {
+          _invalidations++;
           _unindexTags(key, entry.tags);
         }
       }
@@ -93,6 +123,9 @@ class MemoryCacheStore implements MetaMantleCacheStore {
     _tagIndex.clear();
     _hits = 0;
     _misses = 0;
+    _evictions = 0;
+    _invalidations = 0;
+    _expiredCount = 0;
   }
 
   void _unindexTags(String key, Set<String> tags) {

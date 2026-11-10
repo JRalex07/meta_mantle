@@ -1,8 +1,45 @@
 # Changelog
 
-## 0.1.0 - 2026-11-10
+## 0.1.0 - 2026-11-11
 
-Official initial release of **MetaMantle** (`meta_mantle`), the typed metadata management and static SEO framework for Flutter Web.
+Official release of **MetaMantle** (`meta_mantle`), the typed metadata management, native server rendering, and universal SEO infrastructure framework for Flutter Web and Dart applications.
+
+### Product Evolution & Architectural Hardening
+- **True Access-Order LRU Cache Eviction:** Overhauled `MemoryCacheStore` to re-insert keys on access, guaranteeing genuine LRU eviction order under memory pressure. Added granular cache performance metrics: `evictions`, `invalidations`, `expiredCount`, and `hitRatio`.
+- **Fail-Closed Distributed Locking:** Hardened `SingleFlightCoordinator` to raise `DistributedLockException` upon lock acquisition timeout, preventing unbounded concurrent executions during cluster outages. Added `completer.future.ignore()` to neutralize unhandled asynchronous zone exception leaks.
+- **Cryptographic SHA-256 ETags:** Standardized cryptographically robust SHA-256 HTTP ETags (`w/"${sha256.convert(...)}"`) replacing weak hashing.
+- **Genuine RFC 5861 `stale-if-error` Fallback:** Implemented origin failure recovery in `MetaMantleServerEngine`, returning cached stale content with `X-MetaMantle-Cache: STALE-IF-ERROR` when origin re-rendering fails.
+- **7-Tier SEO Policy Engine:** Built a hierarchical policy resolution engine across Global, Application, Tenant, Locale, Section, Route, and Page tiers. Introduced `PolicyProvenance` to track attribute inheritance origins and alert on ancestral `forceNoindex` conflicts.
+- **Enterprise E-Commerce SEO Subsystem:**
+  - `ProductItem`, `ProductVariant`, `ProductRating`, `ShippingDetails`, and `ReturnPolicy` domain models generating Google Search Central compliant `Product` and `AggregateOffer` JSON-LD schemas.
+  - `InventoryEventDispatcher` processing `PriceChanged`, `InventoryChanged`, `StockDepleted`, and `ProductSlugChanged` events with targeted cache tag invalidation.
+  - `FacetedNavPolicy` guarding crawl budgets by enforcing `noindex, follow` on sorted views, excessive combined filters, and deep pagination (> 5 pages).
+  - `MerchantFeedGenerator` producing Google Merchant Center RSS 2.0 XML feeds with the `xmlns:g="http://base.google.com/ns/1.0"` namespace.
+- **Documentation & Publishing Engine:**
+  - `FrontmatterExtractor` parsing YAML frontmatter with zero external native dependencies.
+  - `DocVersionPolicy` managing versioned documentation portals (`/docs/v1/` -> `/docs/latest/`) with canonical redirects and automated `noindex, follow` directives for archived versions.
+  - `DocSearchIndexer` extracting markdown heading hierarchies into structured in-memory `search.json` indexes.
+  - `LlmsTxtGenerator` emitting structured `/llms.txt` documents for AI coding agent discovery.
+  - `FeedGenerator` generating standard RSS 2.0 and Atom 1.0 syndication feeds.
+  - `NewsSitemapGenerator` emitting Google News XML sitemaps with the `<news:news>` namespace.
+- **SaaS Multi-Tenancy & Host Security:**
+  - `TenantHostValidator` enforcing strict allowlists on incoming HTTP `Host` headers across registered custom domains and wildcard subdomains, completely neutralizing Host Header Injection attacks.
+  - `TenantCachePartitioner` deterministically isolating cache keys by `tenant:host:locale:currency` and enabling atomic, single-tenant cache invalidation without flushing global entries.
+- **Jaspr Web Framework Adapters:**
+  - `MetaMantleDocument`, `MetaMantleHead`, `MetaMantleRouteAdapter`, `MetaMantleDataComponent`, and `MetaMantleContentAdapter`.
+  - Support for Jaspr + Flutter Web hybrid embedding: server-rendered HTML shells with pre-rendered crawler content and Flutter Web canvas initialization.
+- **Industry Schema Profiles:**
+  - Added dedicated schema generation profiles for `LocalBusinessProfile`, `JobPostingProfile`, `RecipeProfile`, and `CourseProfile`.
+- **Vertical Example Applications:** Added 7 runnable production-grade reference applications in `example/bin/`:
+  - `example/lib/main.dart` — Flutter Web client application with reactive `MetaHead`.
+  - `example/bin/static_marketing_example.dart` — Static marketing landing page generator.
+  - `example/bin/ecommerce_server_example.dart` — E-commerce SSR with inventory webhooks and Google Merchant feeds.
+  - `example/bin/jaspr_docs_example.dart` — Jaspr documentation portal with version switching and search indexing.
+  - `example/bin/jaspr_flutter_embed_example.dart` — Hybrid Jaspr HTML shell embedding Flutter Web canvases.
+  - `example/bin/blog_publishing_example.dart` — Markdown publishing engine with RSS, Atom, and Google News sitemaps.
+  - `example/bin/saas_multitenant_example.dart` — Multi-tenant host validation and isolated cache key partitioning.
+- **Comprehensive Documentation Suite:** 32 technical reference guides in `docs/` covering all architectural facets, security guarantees, performance metrics, and vertical integrations.
+- **Acceptance Test Suite:** Expanded from 83 to **104 passing tests** with 100% pass rate.
 
 ### Bug Fixes & Refinements
 - **Strict Static SEO Preflight Validation:** Added explicit description to `/about` in `example/meta_mantle.config.json` and `example/web_head.config.json` satisfying strict mode requirements without disabling `--strict`.

@@ -10,3 +10,6 @@ export 'src/html/html_document.dart';
 export 'src/html/html_node.dart';
 export 'src/html/html_sanitizer.dart';
 export 'src/models/metadata.dart';
+export 'src/policy/policy_provenance.dart';
+export 'src/policy/seo_policy.dart';
+export 'src/policy/seo_policy_resolver.dart';

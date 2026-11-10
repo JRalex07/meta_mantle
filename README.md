@@ -15,9 +15,17 @@ MetaMantle brings Next.js Metadata and React Helmet capabilities to Flutter Web.
 
 ## Key Features
 
-- **Dual Engine Architecture:**
+- **Tripartite Architecture:**
   - **Engine A (Runtime DOM Injection):** High-performance DOM reconciliation using modern `package:web` (zero legacy `dart:html`). Updates `<title>`, `<meta>`, `<link>`, and `<script type="application/ld+json">` during client-side navigation.
   - **Engine B (Static Route Generator):** Injects route-specific metadata into Flutter's `build/web` output before deployment so search engine crawlers (Googlebot, Bingbot) and social bots (Twitterbot, Facebook, Slack, Discord) receive rich SEO metadata in the initial HTML response.
+  - **Engine C (Native Server-Side Rendering):** Real-time dynamic document rendering on the server in pure Dart without browser dependencies, delivering full semantic HTML bodies to crawlers before client JavaScript executes.
+- **Universal Vertical Engines:**
+  - **E-Commerce SEO:** Product models, Google-compliant `Product` and `AggregateOffer` JSON-LD, `InventoryEventDispatcher` cache tag invalidation, `FacetedNavPolicy` crawl budget protection, and Google Merchant Center RSS 2.0 XML feeds.
+  - **Documentation & Publishing:** YAML frontmatter extraction, documentation version switcher with automated `noindex` for older versions, hierarchical `search.json` indexing, `/llms.txt` generation for AI agents, RSS 2.0 / Atom 1.0 syndication, and Google News sitemaps.
+  - **SaaS Multi-Tenancy & Host Security:** `TenantHostValidator` blocking host header injection attacks across custom domains and wildcard subdomains; `TenantCachePartitioner` for tenant-isolated caching and targeted tenant tag purging.
+  - **Jaspr Web Framework Integration:** `MetaMantleDocument` shells, `MetaMantleRouteAdapter`, and hybrid Jaspr+Flutter embedding for sub-50ms TTFB and crawler fallback tables.
+  - **Industry Schema Profiles:** Dedicated schema generators for `LocalBusiness`, `JobPosting`, `Recipe`, and `Course`.
+  - **7-Tier Policy Engine:** Hierarchical metadata inheritance from global to page level with conflict provenance tracking.
 - **Unified Metadata Models:**
   - Full Open Graph (title, type, image with dimensions, video, audio, multiple locale alternates).
   - Twitter / X Cards (summary, summary large image, app, player).
@@ -25,11 +33,13 @@ MetaMantle brings Next.js Metadata and React Helmet capabilities to Flutter Web.
   - Basic SEO: canonical URLs, robots directives, keywords, authors, publishers, theme color, color scheme, search verification tags.
   - Icons and Manifests: Favicons (PNG, SVG, ICO), Apple Touch Icons, Web App Manifests.
   - Resource Hints: `dns-prefetch`, `preconnect`, `prefetch`, `preload`, and `prerender`.
-  - Custom Meta & Link tags.
+- **Hardened Caching & Distributed Locking:**
+  - True access-order LRU eviction with cache metrics (`hitRatio`, `evictions`).
+  - Cryptographic SHA-256 ETags and genuine RFC 5861 `stale-if-error` origin recovery.
+  - Fail-closed distributed locking via `SingleFlightCoordinator` to eliminate cache stampedes.
 - **Deterministic Runtime Lifecycle:**
   - Nested scope stacking and automatic parent scope restoration on page pop/dispose.
   - Safe against asynchronous route transitions via monotonic generation tokens.
-  - Zero DOM mutations inside widget `build()` methods.
   - Safe non-web compilation: safe no-op stubs on Android, iOS, Windows, macOS, and Linux.
 - **Production CLI Tooling:**
   - Complete CLI suite: `build`, `validate`, `inspect`, and `doctor`.
@@ -286,14 +296,43 @@ The official documentation and interactive live showcase are available at:
 
 Explore the interactive showcase to see real-time DOM updates, dynamic title templates, and inspect the pre-rendered HTML payloads for social crawlers and search engines.
 
+### Runnable Vertical Example Applications:
+Located in [`example/bin/`](example/bin/):
+- **`example/lib/main.dart`**: Complete Flutter Web application with reactive `MetaHead` and Navigator observers.
+- **`example/bin/static_marketing_example.dart`**: High-converting static marketing landing page generator.
+- **`example/bin/ecommerce_server_example.dart`**: E-commerce SSR with product variants, inventory cache invalidation, and Google Merchant feeds.
+- **`example/bin/jaspr_docs_example.dart`**: Documentation portal with version switcher, search indexer, and `/llms.txt`.
+- **`example/bin/jaspr_flutter_embed_example.dart`**: Hybrid Jaspr HTML shell embedding a Flutter Web canvas.
+- **`example/bin/blog_publishing_example.dart`**: Markdown article publishing with RSS 2.0, Atom 1.0, and Google News sitemaps.
+- **`example/bin/saas_multitenant_example.dart`**: SaaS multi-tenant isolation, host header verification, and isolated caching.
+
 ### In-Depth Documentation Guides:
-- **[API Reference](docs/API.md)** — Comprehensive widget, model, builder, and CLI parameters.
-- **[Architecture Guide](docs/ARCHITECTURE.md)** — Deep dive into the dual-engine architecture.
+- **[Architecture Guide](docs/ARCHITECTURE.md)** — Deep dive into the tripartite architecture.
+- **[E-Commerce SEO](docs/ECOMMERCE_SEO.md)** — Product models, inventory invalidation, and Google Merchant feeds.
+- **[Landing Page SEO](docs/LANDING_PAGE_SEO.md)** — Social unfurling, FAQ schemas, and conversion optimization.
+- **[Documentation Portals](docs/DOCUMENTATION_SITES.md)** — Version canonicalization, search indexing, and /llms.txt.
+- **[Blogging & Publishing](docs/BLOGGING_AND_PUBLISHING.md)** — YAML frontmatter, syndication feeds, and Google News.
+- **[SaaS & Multi-Tenancy](docs/SAAS_AND_MULTITENANT.md)** — Host injection defense, custom domains, and cache isolation.
+- **[Jaspr Web Integration](docs/JASPR_INTEGRATION.md)** — Jaspr document shells and hybrid Flutter embedding.
+- **[Flutter Web Integration](docs/FLUTTER_INTEGRATION.md)** — Declarative widget lifecycle and WebAssembly compilation.
+- **[Structured Data Schemas](docs/STRUCTURED_DATA.md)** — 13 Schema.org JSON-LD builders with Unicode escaping.
+- **[Caching Architecture](docs/CACHING.md)** — True LRU eviction, metrics, and tag-based invalidation.
+- **[HTTP Caching & ETags](docs/HTTP_CACHING.md)** — SHA-256 ETags, stale-while-revalidate, and stale-if-error.
+- **[Universal Database Providers](docs/DATABASE_PROVIDERS.md)** — SQL, NoSQL, and REST/GraphQL data contracts.
+- **[Server Rendering (SSR)](docs/SERVER_RENDERING.md)** — Native Dart SSR engine and zero-JS crawler responses.
 - **[Static Generation Guide](docs/STATIC_GENERATION.md)** — Pre-rendering, dynamic pattern expansion, and crawler optimization.
-- **[Routing and Hosting Guide](docs/ROUTING_AND_HOSTING.md)** — Production deployment recipes (GitHub Pages, Vercel, Netlify, Firebase, Nginx).
-- **[Security Architecture](docs/SECURITY.md)** — Attribute escaping, JSON-LD sanitization, and origin boundaries.
+- **[API Reference](docs/API.md)** — Comprehensive widget, model, builder, and CLI parameters.
+- **[Security Architecture](docs/SECURITY.md)** — Host validation, SSRF prevention, and HTML sanitization.
+- **[Social Image Generation](docs/SOCIAL_IMAGE_GENERATION.md)** — Open Graph dimensions and multi-tier image cascades.
+- **[Multilingual SEO & Hreflang](docs/MULTILINGUAL_SEO.md)** — Reciprocal hreflang validation and alternate tags.
+- **[Sitemaps & Chunking](docs/SITEMAPS.md)** — Large catalog sitemap indexes and Google image extensions.
+- **[Performance & Concurrency](docs/PERFORMANCE.md)** — Single-flight coalescing and memory bounds.
+- **[Routing and Hosting Guide](docs/ROUTING_AND_HOSTING.md)** — Production deployment recipes (GitHub Pages, Vercel, Firebase, Docker).
+- **[Testing & Contract Suites](docs/TESTING.md)** — Test architecture, contract suites, and benchmarks.
+- **[CLI Tooling](docs/CLI.md)** — Command-line workflows: build, validate, inspect, doctor.
 - **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** — Common pitfalls, tab switching, and strict validation resolution.
-- **[SEO Limitations](docs/SEO_LIMITATIONS.md)** — Web crawler capabilities and JavaScript rendering realities.
+- **[Migration Guide](docs/MIGRATION.md)** — Transitioning from React Helmet, Next.js Metadata, or legacy packages.
+- **[Product Evolution Audit](docs/PRODUCT_EVOLUTION_AUDIT.md)** — Architectural discrepancy audit and verification report.
 - **[Build & Verification Status](BUILD_STATUS.md)** — Tested environments, Wasm verification, and regression matrices.
 
 ---

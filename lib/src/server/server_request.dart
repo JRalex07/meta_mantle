@@ -26,6 +26,22 @@ class ServerRequest {
   /// Parsed query parameters.
   Map<String, String> get queryParameters => uri.queryParameters;
 
+  /// Retrieves the Host header.
+  String? get host => header('host') ?? uri.host;
+
+  /// Retrieves the tenant identifier from `x-tenant-id` header or subdomains.
+  String? get tenantId => header('x-tenant-id');
+
+  /// Retrieves client locale from `accept-language` header.
+  String? get locale {
+    final raw = header('accept-language');
+    if (raw == null || raw.isEmpty) return null;
+    return raw.split(',').first.split(';').first.trim();
+  }
+
+  /// Retrieves client requested currency from `x-currency` header.
+  String? get currency => header('x-currency');
+
   /// Retrieves an incoming header by name (case-insensitive).
   String? header(String name) => headers[name.toLowerCase()];
 

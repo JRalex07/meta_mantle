@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 import '../cache/cache_store.dart';
 import '../cache/memory_cache_store.dart';
@@ -95,6 +97,7 @@ class MetaMantleServerEngine {
           etag: cached.etag,
           lastModified: cached.lastModified,
           policy: route.cachePolicy,
+          cacheStatus: cached.isStaleWhileRevalidate() ? 'STALE' : 'HIT',
         );
       }
     }
@@ -124,8 +127,22 @@ class MetaMantleServerEngine {
         etag: rendered.etag,
         lastModified: rendered.lastModified,
         policy: route.cachePolicy,
+        cacheStatus: 'MISS',
       );
     } catch (e) {
+      if (route.cachePolicy.staleIfError != null) {
+        final stale = await cache.get(cacheKey, allowStale: true);
+        if (stale != null && stale.isStaleIfError()) {
+          return _buildResponse(
+            request,
+            html: stale.html,
+            etag: stale.etag,
+            lastModified: stale.lastModified,
+            policy: route.cachePolicy,
+            cacheStatus: 'STALE-IF-ERROR',
+          );
+        }
+      }
       return ServerResponse.serverError(message: 'SSR Rendering failed: $e');
     }
   }
@@ -244,6 +261,7 @@ class MetaMantleServerEngine {
     required String? etag,
     required DateTime? lastModified,
     required CachePolicy policy,
+    String cacheStatus = 'MISS',
   }) {
     // If request was HEAD, body should be empty but headers intact
     final body = request.method == 'HEAD' ? '' : html;
@@ -252,6 +270,9 @@ class MetaMantleServerEngine {
       etag: etag,
       lastModified: lastModified,
       cacheControl: _buildCacheControl(policy),
+      headers: {
+        'X-MetaMantle-Cache': cacheStatus,
+      },
     );
   }
 
@@ -274,16 +295,22 @@ class MetaMantleServerEngine {
   String _computeCacheKey(ServerRequest req, MetaRoute<dynamic> route) {
     final queryStr =
         req.queryParameters.entries.map((e) => '${e.key}=${e.value}').join('&');
-    return '${route.pattern}:${req.path}?$queryStr';
+    final tenant = req.tenantId ?? '';
+    final host = req.host ?? '';
+    final locale = req.locale ?? '';
+    final currency = req.currency ?? '';
+    final prefix = (tenant.isNotEmpty ||
+            host.isNotEmpty ||
+            locale.isNotEmpty ||
+            currency.isNotEmpty)
+        ? '[$tenant|$host|$locale|$currency]:'
+        : '';
+    return '$prefix${route.pattern}:${req.path}?$queryStr';
   }
 
   String _generateEtag(String content) {
-    var hash = 0xcbf29ce484222325;
-    for (var i = 0; i < content.length; i++) {
-      hash ^= content.codeUnitAt(i);
-      hash = (hash * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF;
-    }
-    return 'w/"${hash.toRadixString(16)}"';
+    final digest = sha256.convert(utf8.encode(content));
+    return 'w/"${digest.toString().substring(0, 32)}"';
   }
 }
 

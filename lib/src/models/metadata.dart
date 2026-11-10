@@ -554,6 +554,42 @@ class OpenGraphMetadata {
         determiner: json['determiner'] as String?,
       );
 
+  OpenGraphMetadata copyWith({
+    String? title,
+    String? description,
+    String? url,
+    String? image,
+    String? type,
+    String? siteName,
+    String? locale,
+    String? imageAlt,
+    int? imageWidth,
+    int? imageHeight,
+    String? imageType,
+    List<String>? alternateLocales,
+    String? video,
+    String? audio,
+    String? determiner,
+  }) {
+    return OpenGraphMetadata(
+      title: title ?? this.title,
+      description: description ?? this.description,
+      url: url ?? this.url,
+      image: image ?? this.image,
+      type: type ?? this.type,
+      siteName: siteName ?? this.siteName,
+      locale: locale ?? this.locale,
+      imageAlt: imageAlt ?? this.imageAlt,
+      imageWidth: imageWidth ?? this.imageWidth,
+      imageHeight: imageHeight ?? this.imageHeight,
+      imageType: imageType ?? this.imageType,
+      alternateLocales: alternateLocales ?? this.alternateLocales,
+      video: video ?? this.video,
+      audio: audio ?? this.audio,
+      determiner: determiner ?? this.determiner,
+    );
+  }
+
   Map<String, Object?> toJson() => {
         if (title != null) 'title': title,
         if (description != null) 'description': description,
@@ -673,6 +709,26 @@ class TwitterCardMetadata {
         site: json['site'] as String?,
         creator: json['creator'] as String?,
       );
+
+  TwitterCardMetadata copyWith({
+    String? card,
+    String? title,
+    String? description,
+    String? image,
+    String? imageAlt,
+    String? site,
+    String? creator,
+  }) {
+    return TwitterCardMetadata(
+      card: card ?? this.card,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      image: image ?? this.image,
+      imageAlt: imageAlt ?? this.imageAlt,
+      site: site ?? this.site,
+      creator: creator ?? this.creator,
+    );
+  }
 
   Map<String, Object?> toJson() => {
         'card': card,
