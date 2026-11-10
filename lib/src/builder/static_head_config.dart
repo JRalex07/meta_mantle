@@ -35,6 +35,38 @@ class StaticHeadConfig {
   final bool sitemap;
   final bool robotsTxt;
 
+  StaticHeadConfig copyWith({
+    String? baseUrl,
+    List<StaticRoute>? routes,
+    WebMetadata? defaults,
+    String? siteName,
+    String? titleTemplate,
+    String? defaultImage,
+    String? defaultRobots,
+    String? themeColor,
+    String? language,
+    bool? trailingSlash,
+    List<StaticRoutePattern>? patterns,
+    bool? sitemap,
+    bool? robotsTxt,
+  }) {
+    return StaticHeadConfig(
+      baseUrl: baseUrl ?? this.baseUrl,
+      routes: routes ?? this.routes,
+      defaults: defaults ?? this.defaults,
+      siteName: siteName ?? this.siteName,
+      titleTemplate: titleTemplate ?? this.titleTemplate,
+      defaultImage: defaultImage ?? this.defaultImage,
+      defaultRobots: defaultRobots ?? this.defaultRobots,
+      themeColor: themeColor ?? this.themeColor,
+      language: language ?? this.language,
+      trailingSlash: trailingSlash ?? this.trailingSlash,
+      patterns: patterns ?? this.patterns,
+      sitemap: sitemap ?? this.sitemap,
+      robotsTxt: robotsTxt ?? this.robotsTxt,
+    );
+  }
+
   factory StaticHeadConfig.fromJson(Map<String, Object?> json) {
     final rawRoutes = json['routes'] ?? const <Object?>[];
     if (rawRoutes is! List) {

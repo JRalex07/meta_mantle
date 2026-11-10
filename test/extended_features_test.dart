@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meta_mantle/meta_mantle.dart';
 import 'package:meta_mantle/meta_mantle_builder.dart';
-import 'package:meta_mantle/src/core/metadata_renderer.dart';
 import 'package:meta_mantle/src/runtime/runtime_coordinator.dart';
 
 void main() {

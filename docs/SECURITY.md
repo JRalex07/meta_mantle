@@ -1,6 +1,6 @@
 # Security Architecture
 
-This document details the security principles, data sanitization, URL validation, and filesystem protections implemented in `meta_mantle`.
+This document details the security principles, data sanitization, URL validation, SSRF mitigation, and filesystem protections implemented in `meta_mantle`.
 
 ---
 
@@ -58,3 +58,34 @@ In runtime mode, `meta_mantle` uses an explicit DOM ownership model:
 The static builder writes HTML files to disk based on configured route paths and data files. To prevent directory traversal attacks:
 - Route paths are checked before writing to ensure they start with `/` and do not contain `..` or leading root escapes.
 - Data files referenced in dynamic patterns (`dataFile`) must reside within the project directory; relative directory traversal above the configuration root is rejected.
+
+---
+
+## 6. Server-Side Request Forgery (SSRF) Guard
+
+In SSR and Crawler environments, resolving untrusted external URLs risks exposing internal private networks and cloud metadata services.
+
+`SsrfGuard` (`lib/src/security/ssrf_guard.dart`) intercepts outbound requests and enforces:
+- **Cloud Metadata Defense**: Blocks requests to `169.254.169.254` (AWS, GCP, Azure, DigitalOcean instance metadata endpoints).
+- **Private Subnet Blocking**: Blocks RFC 1918 addresses (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`).
+- **Loopback Blocking**: Blocks `127.0.0.0/8`, `localhost`, and `::1`.
+- **Link-Local Blocking**: Blocks `169.254.0.0/16` and `fe80::/10`.
+- **Scheme Enforcement**: Disallows non-HTTP/HTTPS protocols (`gopher://`, `file://`, `dict://`).
+
+---
+
+## 7. Strict HTML Sanitization (`HtmlSanitizer`)
+
+When SSR routes render rich text articles or user-generated descriptions, `HtmlSanitizer` runs an allowlist filter:
+- Drops active execution elements: `<script>`, `<iframe>`, `<object>`, `<embed>`, `<form>`, `<input>`, `<link>`, `<style>`.
+- Drops all `on*` event handlers (`onload`, `onclick`, `onerror`).
+- Drops `style` attributes to prevent CSS expression attacks.
+- Strips dangerous URL schemes (`javascript:`, `vbscript:`, `data:`) from `href` and `src` attributes.
+
+---
+
+## 8. Open Redirect Defense (`RedirectManager`)
+
+To prevent phishing and open-redirect vulnerabilities:
+- Internal redirects must begin with `/` and not contain backslashes (`\`) or double slashes (`//`) that fool parser normalization.
+- External redirects to third-party domains are blocked unless the destination domain is explicitly registered in the allowed domains list.

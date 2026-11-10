@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meta_mantle/meta_mantle.dart';
-import 'package:meta_mantle/src/core/head_tag.dart';
 import 'package:meta_mantle/src/runtime/head_adapter_contract.dart';
 import 'package:meta_mantle/src/runtime/head_adapter_stub.dart';
 import 'package:meta_mantle/src/runtime/runtime_coordinator.dart';

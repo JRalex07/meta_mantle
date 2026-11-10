@@ -787,7 +787,7 @@ class JsonLd {
     String? sku,
     String? brand,
     String? url,
-    Map<String, Object?>? offers,
+    Object? offers,
   }) =>
       JsonLd({
         '@context': 'https://schema.org',
@@ -798,7 +798,7 @@ class JsonLd {
         if (sku != null) 'sku': sku,
         if (brand != null) 'brand': {'@type': 'Brand', 'name': brand},
         if (url != null) 'url': url,
-        if (offers != null) 'offers': offers,
+        if (offers != null) 'offers': offers is JsonLd ? offers.data : offers,
       });
 
   factory JsonLd.article({
@@ -946,6 +946,98 @@ class JsonLd {
         'priceCurrency': priceCurrency,
         if (availability != null) 'availability': availability,
         if (url != null) 'url': url,
+      });
+
+  factory JsonLd.aggregateOffer({
+    required String lowPrice,
+    String? highPrice,
+    required String priceCurrency,
+    int? offerCount,
+  }) =>
+      JsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'AggregateOffer',
+        'lowPrice': lowPrice,
+        if (highPrice != null) 'highPrice': highPrice,
+        'priceCurrency': priceCurrency,
+        if (offerCount != null) 'offerCount': offerCount,
+      });
+
+  factory JsonLd.blogPosting({
+    required String headline,
+    String? image,
+    required String datePublished,
+    String? dateModified,
+    String? author,
+    String? publisher,
+    String? description,
+  }) =>
+      JsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        'headline': headline,
+        if (image != null) 'image': image,
+        'datePublished': datePublished,
+        if (dateModified != null) 'dateModified': dateModified,
+        if (author != null) 'author': {'@type': 'Person', 'name': author},
+        if (publisher != null)
+          'publisher': {'@type': 'Organization', 'name': publisher},
+        if (description != null) 'description': description,
+      });
+
+  factory JsonLd.newsArticle({
+    required String headline,
+    required String image,
+    required String datePublished,
+    String? dateModified,
+    required String author,
+    required String publisher,
+  }) =>
+      JsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'NewsArticle',
+        'headline': headline,
+        'image': image,
+        'datePublished': datePublished,
+        if (dateModified != null) 'dateModified': dateModified,
+        'author': {'@type': 'Person', 'name': author},
+        'publisher': {'@type': 'Organization', 'name': publisher},
+      });
+
+  factory JsonLd.videoObject({
+    required String name,
+    required String description,
+    required String thumbnailUrl,
+    required String uploadDate,
+    String? contentUrl,
+    String? embedUrl,
+    String? duration,
+  }) =>
+      JsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'VideoObject',
+        'name': name,
+        'description': description,
+        'thumbnailUrl': thumbnailUrl,
+        'uploadDate': uploadDate,
+        if (contentUrl != null) 'contentUrl': contentUrl,
+        if (embedUrl != null) 'embedUrl': embedUrl,
+        if (duration != null) 'duration': duration,
+      });
+
+  factory JsonLd.imageObject({
+    required String contentUrl,
+    String? caption,
+    int? width,
+    int? height,
+  }) =>
+      JsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'ImageObject',
+        'contentUrl': contentUrl,
+        if (caption != null) 'caption': caption,
+        if (width != null) 'width': width,
+        if (height != null) 'height': height,
       });
 
   /// Escapes JSON for embedding safely within an HTML <script> tag.

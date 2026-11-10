@@ -4,7 +4,7 @@
 /// DOM access is conditionally compiled and becomes a no-op on non-web targets.
 library;
 
+export 'meta_mantle_core.dart';
 export 'src/integrations/meta_mantle_navigator_observer.dart';
-export 'src/models/metadata.dart';
 export 'src/runtime/meta_head.dart';
 export 'src/runtime/meta_mantle.dart';

@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:meta_mantle/meta_mantle_builder.dart';
+import 'package:meta_mantle/meta_mantle_server.dart';
 
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
@@ -10,6 +12,10 @@ Future<void> main(List<String> arguments) async {
     ..addCommand('validate')
     ..addCommand('inspect')
     ..addCommand('doctor')
+    ..addCommand('inspect-url')
+    ..addCommand('crawl')
+    ..addCommand('preview')
+    ..addCommand('report')
     ..addFlag('help', abbr: 'h', negatable: false);
 
   parser.commands['build']!
@@ -36,6 +42,31 @@ Future<void> main(List<String> arguments) async {
     ..addOption('config', defaultsTo: 'meta_mantle.config.json')
     ..addOption('input', defaultsTo: 'build/web');
 
+  parser.commands['inspect-url']!
+    ..addFlag('help', abbr: 'h', negatable: false)
+    ..addOption('url',
+        mandatory: true,
+        help: 'Target URL to inspect without running JavaScript.')
+    ..addFlag('json', defaultsTo: false, help: 'Output report as JSON.')
+    ..addFlag('allow-localhost',
+        defaultsTo: true,
+        help: 'Allow loopback/localhost requests for local development.');
+
+  parser.commands['crawl']!
+    ..addFlag('help', abbr: 'h', negatable: false)
+    ..addOption('config', defaultsTo: 'meta_mantle.config.json')
+    ..addOption('base-url', help: 'Base URL of running server to crawl.');
+
+  parser.commands['preview']!
+    ..addFlag('help', abbr: 'h', negatable: false)
+    ..addOption('config', defaultsTo: 'meta_mantle.config.json')
+    ..addOption('route', defaultsTo: '/', help: 'Route path to preview.');
+
+  parser.commands['report']!
+    ..addFlag('help', abbr: 'h', negatable: false)
+    ..addOption('config', defaultsTo: 'meta_mantle.config.json')
+    ..addFlag('json', defaultsTo: false);
+
   try {
     final result = parser.parse(arguments);
     if (result['help'] == true ||
@@ -46,10 +77,34 @@ Future<void> main(List<String> arguments) async {
     }
 
     final command = result.command!;
-    var configPath = command['config'] as String;
-    var configFile = File(configPath);
 
-    // If default was used and meta_mantle.config.json does not exist, check fallback web_head.config.json
+    // 1. inspect-url command
+    if (command.name == 'inspect-url') {
+      final targetUrl = command['url'] as String;
+      final asJson = command['json'] as bool;
+      final allowLocal = command['allow-localhost'] as bool;
+
+      final inspector = CrawlerInspector(
+        ssrfGuard: SsrfGuard(allowLocalhostInDev: allowLocal),
+      );
+
+      stdout.writeln('Inspecting raw HTTP endpoint: $targetUrl ...\n');
+      final report = await inspector.inspectUrl(targetUrl);
+
+      if (asJson) {
+        stdout.writeln(
+            const JsonEncoder.withIndent('  ').convert(report.toJson()));
+      } else {
+        stdout.writeln(report.toTerminalSummary());
+      }
+      return;
+    }
+
+    // Config file resolution
+    var configPath = command.options.contains('config')
+        ? command['config'] as String
+        : 'meta_mantle.config.json';
+    var configFile = File(configPath);
     if (!await configFile.exists() &&
         configPath == 'meta_mantle.config.json' &&
         await File('web_head.config.json').exists()) {
@@ -57,6 +112,7 @@ Future<void> main(List<String> arguments) async {
       configFile = File(configPath);
     }
 
+    // 2. doctor command
     if (command.name == 'doctor') {
       final input = Directory(command['input'] as String);
       stdout.writeln('Running MetaMantle Doctor...\n');
@@ -84,68 +140,166 @@ Future<void> main(List<String> arguments) async {
     }
 
     if (!await configFile.exists()) {
-      throw FileSystemException('Config file does not exist', configPath);
+      throw FileSystemException(
+        'Configuration file not found. Create a meta_mantle.config.json file.',
+        configFile.path,
+      );
     }
-    final config = await StaticHeadConfig.load(configFile);
 
+    final parsedConfig = await StaticHeadConfig.load(configFile);
+
+    // 3. validate command
     if (command.name == 'validate') {
       final warnings = await const StaticHeadBuilder().validateConfiguration(
-        config: config,
+        config: parsedConfig,
         configFile: configFile,
       );
       stdout.writeln('Configuration is structurally valid.');
-      stdout.writeln('Explicit routes: ${config.routes.length}');
-      stdout.writeln('Dynamic patterns: ${config.patterns.length}');
-      for (final warning in warnings) {
-        stderr.writeln('WARNING: $warning');
-      }
-      return;
-    }
-
-    if (command.name == 'inspect') {
-      final inspection = await const StaticHeadBuilder().inspectConfiguration(
-        config: config,
-        configFile: configFile,
-      );
-      stdout.writeln('=== MetaMantle Route Inspector ===');
-      stdout.writeln('Base URL: ${config.baseUrl}');
-      stdout.writeln('Total resolved routes: ${inspection.routes.length}');
-      stdout.writeln(
-          'Dynamic patterns expanded: ${inspection.dynamicPatternCount}');
-      stdout.writeln('Sitemap URL count: ${inspection.sitemapUrls.length}\n');
-      stdout.writeln('Resolved routes:');
-      for (final route in inspection.routes) {
-        stdout.writeln('  $route');
-      }
-      if (inspection.warnings.isNotEmpty) {
+      stdout.writeln('Explicit routes: ${parsedConfig.routes.length}');
+      stdout.writeln('Dynamic patterns: ${parsedConfig.patterns.length}');
+      if (warnings.isNotEmpty) {
         stdout.writeln('\nWarnings:');
-        for (final warning in inspection.warnings) {
-          stderr.writeln('  WARNING: $warning');
+        for (final w in warnings) {
+          stdout.writeln('  - $w');
         }
       }
       return;
     }
 
-    // Build command
+    // 4. inspect command
+    if (command.name == 'inspect') {
+      for (final pattern in parsedConfig.patterns) {
+        final dataFile = File(pattern.dataFile);
+        if (await dataFile.exists()) {
+          final decoded = json.decode(await dataFile.readAsString()) as List;
+          stdout.writeln(
+              'Expanded dynamic pattern: ${pattern.pathPattern} (${decoded.length} items)');
+        }
+      }
+      stdout.writeln('\n=== MetaMantle Route Inspector ===');
+      stdout.writeln('Base URL: ${parsedConfig.baseUrl}');
+      stdout
+          .writeln('Configured explicit routes: ${parsedConfig.routes.length}');
+      for (final r in parsedConfig.routes) {
+        stdout.writeln('  ${r.path}');
+      }
+      return;
+    }
+
+    // 5. preview command
+    if (command.name == 'preview') {
+      final targetRoute = command['route'] as String;
+      final matched = parsedConfig.routes.firstWhere(
+        (r) => r.path == targetRoute,
+        orElse: () =>
+            StaticRoute(path: targetRoute, metadata: const WebMetadata()),
+      );
+
+      final renderer = const MetadataRenderer();
+      final tags = renderer.render(
+        matched.metadata,
+        config: MetaMantleConfig(
+          baseUrl: parsedConfig.baseUrl,
+          siteName: parsedConfig.siteName,
+          titleTemplate: parsedConfig.titleTemplate,
+          defaultImage: parsedConfig.defaultImage,
+          defaultRobots: parsedConfig.defaultRobots,
+        ),
+      );
+
+      stdout.writeln('=== Raw Crawler Preview for "$targetRoute" ===');
+      for (final t in tags) {
+        if (t.tagName == 'title') {
+          stdout.writeln('TITLE:       ${t.textContent}');
+        } else if (t.attributes['name'] == 'description') {
+          stdout.writeln('DESCRIPTION: ${t.attributes['content']}');
+        } else if (t.attributes['property'] == 'og:title') {
+          stdout.writeln('OG TITLE:    ${t.attributes['content']}');
+        } else if (t.attributes['property'] == 'og:image') {
+          stdout.writeln('OG IMAGE:    ${t.attributes['content']}');
+        }
+      }
+      return;
+    }
+
+    // 6. report command
+    if (command.name == 'report') {
+      final asJson = command['json'] as bool;
+      final warnings = await const StaticHeadBuilder().validateConfiguration(
+        config: parsedConfig,
+        configFile: configFile,
+      );
+
+      final reportData = {
+        'baseUrl': parsedConfig.baseUrl,
+        'siteName': parsedConfig.siteName,
+        'routesCount': parsedConfig.routes.length,
+        'patternsCount': parsedConfig.patterns.length,
+        'strictCompliant': warnings.isEmpty,
+        'warnings': warnings,
+      };
+
+      if (asJson) {
+        stdout.writeln(const JsonEncoder.withIndent('  ').convert(reportData));
+      } else {
+        stdout.writeln('=== MetaMantle SEO Audit Report ===');
+        stdout.writeln(
+            'Site Name:       ${parsedConfig.siteName ?? "(unnamed)"}');
+        stdout.writeln('Base URL:        ${parsedConfig.baseUrl}');
+        stdout.writeln(
+            'Strict Quality:  ${warnings.isEmpty ? "PASS" : "FAIL (${warnings.length} warning(s))"}');
+        if (warnings.isNotEmpty) {
+          stdout.writeln('\nRemediations:');
+          for (final w in warnings) {
+            stdout.writeln('  * $w');
+          }
+        }
+      }
+      return;
+    }
+
+    // 7. crawl command
+    if (command.name == 'crawl') {
+      final baseUrl = command['base-url'] as String? ?? parsedConfig.baseUrl;
+
+      stdout.writeln('Crawling routes against $baseUrl ...\n');
+      final inspector = CrawlerInspector();
+      var failCount = 0;
+
+      for (final route in parsedConfig.routes) {
+        final fullUrl = baseUrl.endsWith('/')
+            ? '$baseUrl${route.path.substring(1)}'
+            : '$baseUrl${route.path}';
+        try {
+          final res = await inspector.inspectUrl(fullUrl);
+          stdout.writeln(
+              '  [${res.statusCode}] ${res.url} - ${res.title ?? "(NO TITLE)"}');
+          if (res.statusCode >= 400) failCount++;
+        } catch (e) {
+          stderr.writeln('  [ERR] $fullUrl: $e');
+          failCount++;
+        }
+      }
+
+      stdout.writeln('\nCrawl finished. Failures: $failCount');
+      if (failCount > 0) exitCode = 1;
+      return;
+    }
+
+    // 8. build command
     final input = Directory(command['input'] as String);
     final output = Directory(command['output'] as String);
     final isDryRun = command['dry-run'] as bool;
     final isVerbose = command['verbose'] as bool;
-    final effectiveConfig = StaticHeadConfig(
-      baseUrl: config.baseUrl,
-      defaults: config.defaults,
-      siteName: config.siteName,
-      titleTemplate: config.titleTemplate,
-      defaultImage: config.defaultImage,
-      defaultRobots: config.defaultRobots,
-      themeColor: config.themeColor,
-      language: config.language,
-      trailingSlash: config.trailingSlash,
-      routes: config.routes,
-      patterns: config.patterns,
-      sitemap: command['no-sitemap'] == true ? false : config.sitemap,
-      robotsTxt: command['no-robots'] == true ? false : config.robotsTxt,
-    );
+
+    var effectiveConfig = parsedConfig;
+    if (command['no-sitemap'] == true || command['no-robots'] == true) {
+      effectiveConfig = parsedConfig.copyWith(
+        sitemap: command['no-sitemap'] == true ? false : parsedConfig.sitemap,
+        robotsTxt:
+            command['no-robots'] == true ? false : parsedConfig.robotsTxt,
+      );
+    }
 
     if (isDryRun) {
       stdout.writeln('[DRY RUN] Simulating static HTML generation...');
@@ -198,20 +352,14 @@ Usage:
   dart run meta_mantle <command> [options]
 
 Commands:
-  build     Generate route-specific HTML documents from a Flutter build.
-  validate  Validate the JSON route configuration.
-  inspect   Display all resolved routes and metadata without writing files.
-  doctor    Diagnose project configuration and build readiness.
-
-Build options:
-  --config <file>  Config JSON (default: meta_mantle.config.json)
-  --input <dir>    Flutter build directory (default: build/web)
-  --output <dir>   Output directory (default: build/web)
-  --strict         Fail when metadata warnings are found.
-  --dry-run        Simulate file generation without writing to disk.
-  --verbose, -v    Print detailed progress during generation.
-  --no-sitemap     Do not generate sitemap.xml.
-  --no-robots      Do not generate robots.txt.
+  build        Generate route-specific HTML documents from a Flutter build.
+  validate     Validate the JSON route configuration.
+  inspect      Display all resolved routes and metadata without writing files.
+  doctor       Diagnose project configuration and build readiness.
+  inspect-url  Inspect a live HTTP URL without executing JavaScript.
+  crawl        Crawl and verify all routes on a live or local server.
+  preview      Preview raw crawler metadata for a given route.
+  report       Generate structured SEO audit report.
 
 ${parser.usage}
 """;

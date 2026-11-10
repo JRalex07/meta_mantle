@@ -1,76 +1,66 @@
-# Architecture
+# MetaMantle Architecture & System Design
 
-## Overview & System Design
+MetaMantle is an enterprise-grade metadata management, static pre-rendering, and dynamic server-side rendering (SSR) framework for Flutter Web and the Dart ecosystem.
 
-`meta_mantle` is a metadata management and static SEO framework designed for Flutter Web. It operates on a unified model architecture powering two complementary engines:
+---
 
-1. **Engine A (Runtime DOM Injection):** High-performance, reactive DOM reconciliation that dynamically modifies the browser's `document.head` during client-side Flutter navigation.
-2. **Engine B (Static SEO Route Generator):** Build-time HTML AST processor that pre-populates initial static HTML files with route-specific metadata, Open Graph cards, structured JSON-LD data, and generates `sitemap.xml` and `robots.txt`.
+## 1. Tripartite System Architecture
 
-Both engines share identical data models (`WebMetadata`), default inheritance logic, and rendering pipelines (`MetadataRenderer`), ensuring consistent output across both runtime execution and crawler indexing.
+MetaMantle operates on a unified model architecture powering three complementary engines:
+
+1. **Engine A (Runtime DOM Injection):** High-performance, reactive DOM reconciliation that dynamically modifies the browser's `document.head` during client-side Flutter navigation (`lib/meta_mantle.dart`).
+2. **Engine B (Static SEO Route Generator):** Build-time HTML AST processor that pre-populates initial static HTML files with route-specific metadata, Open Graph cards, structured JSON-LD data, sitemaps, and robots.txt (`lib/meta_mantle_builder.dart`).
+3. **Engine C (Native Server-Side Rendering):** Real-time, dynamic request rendering pipeline executing in pure Dart on the server, featuring database abstraction, semantic HTML body generation, RFC 5861 HTTP caching, and single-flight stampede protection (`lib/meta_mantle_server.dart`).
 
 ```
-       ┌───────────────────────────────┐
-       │ WebMetadata + MetaMantleConfig│
-       └──────────────┬────────────────┘
-                      │
-                      ▼
-       ┌───────────────────────────────┐
-       │       MetadataRenderer        │
-       └──────────────┬────────────────┘
-                      │
-         ┌────────────┴─────────────┐
-         ▼                          ▼
-┌──────────────────┐      ┌────────────────────┐
-│ Runtime Engine A │      │   Static Engine B  │
-│ (DOM Adapter Web)│      │(HTML AST Injector) │
-└──────────────────┘      └────────────────────┘
+                    ┌───────────────────────────────┐
+                    │  WebMetadata + MetadataRenderer│
+                    └──────────────┬────────────────┘
+                                   │
+       ┌───────────────────────────┼───────────────────────────┐
+       ▼                           ▼                           ▼
+┌──────────────┐           ┌──────────────┐           ┌──────────────┐
+│   Engine A   │           │   Engine B   │           │   Engine C   │
+│ Client-Side  │           │  Build-Time  │           │ Native Dart  │
+│  DOM Interop │           │ Static Pre-  │           │ Server-Side  │
+│ (Wasm Ready) │           │  Rendering   │           │  Rendering   │
+└──────────────┘           └──────────────┘           └──────────────┘
 ```
 
 ---
 
-## Core Components
+## 2. Subsystem Architecture
 
-### 1. Unified Models (`lib/src/models/metadata.dart`)
-- **`WebMetadata`:** Immutable specification of page metadata (title, description, canonical, robots directives, OpenGraph, TwitterCard, JSON-LD, icons, resource hints, verification tags, custom tags).
-- **`MetaMantleConfig`:** Global defaults (base URL, site name, title template, default sharing image, default robots). (Alias: `WebHeadConfig`).
-- **`RobotsDirective`:** Typed flags (`index`, `noindex`, `follow`, `nofollow`, `noarchive`, `nosnippet`, `none`, etc.).
-- **`JsonLd`:** Structured data schema factory providing 13 verified schema.org types with XSS-safe serialization.
+### 1. Pure Dart Core (`lib/meta_mantle_core.dart`)
+- **Zero Dependencies**: Zero dependencies on `flutter` and zero dependencies on `dart:io`.
+- **`WebMetadata`**: Strongly typed model for page title, description, canonical, robots, Open Graph, Twitter cards, and JSON-LD structured data.
+- **`MetadataRenderer`**: Deterministic serialization of metadata objects into standards-compliant HTML tags.
+- **`H` & `HtmlDocument`**: Semantic HTML DSL producing accessible HTML5 documents without browser dependencies.
+- **`HtmlSanitizer`**: Strict allowlist-based sanitizer stripping malicious tags and dangerous URL schemes.
 
-### 2. Shared Tag Renderer (`lib/src/core/metadata_renderer.dart`)
-Transforms a `WebMetadata` object and optional `MetaMantleConfig` into a deterministic list of `HeadTag` objects:
-- Resolves title formatting via `titleTemplate` (`%s | Acme Store`).
-- Merges default values without duplicating tags.
-- Normalizes canonical URLs (enforcing absolute URLs and handling trailing slash rules).
-- Performs single-identity validation for `<meta>` elements (with exceptions for repeated multi-value tags like `og:locale:alternate`).
+### 2. Runtime Engine A (`lib/src/runtime/`)
+- **`WebHead` Widget**: Declarative widget mounting metadata into the active widget tree.
+- **`RuntimeCoordinator`**: Stack-based scope manager generating monotonic tokens to prevent race conditions during page transitions.
+- **`DomAdapter`**: Browser DOM adapter using modern `package:web` and `dart:js_interop` (100% WebAssembly compatible).
 
-### 3. Runtime Lifecycle Coordinator (`lib/src/runtime/`)
-- **`RuntimeCoordinator`:** Centralized state and lifecycle engine:
-  - Manages a stack of metadata scopes.
-  - Generates a monotonic `generationToken` for every scope change.
-  - Prevents race conditions from asynchronous metadata updates on unmounted or superseded routes.
-  - Automatically restores the parent/previous scope when a route pops or disposes.
-- **`MetaHead` Widget:** Pure declarative widget wrapper. Safely dispatches `activate`, `update`, and `remove` events in `initState()`, `didUpdateWidget()`, and `dispose()`. Does **zero** DOM mutations in `build()`. (Alias: `WebHead`).
-- **`MetaMantle` Facade:** Imperative API (`setTitle`, `setDescription`, `setCanonical`, `update`, `reset`) for non-widget contexts. (Alias: `FlutterWebHead`).
-- **`HeadAdapterWeb`:** Manipulates browser DOM using `package:web`. Tags elements with `data-mm-owner="meta_mantle"` and `data-mm-key`.
-- **`HeadAdapterStub`:** Safe no-op adapter compiled on non-web platforms (Android, iOS, macOS, Windows, Linux) ensuring cross-platform stability.
+### 3. Static Builder Engine B (`lib/src/builder/`)
+- **`StaticHeadBuilder`**: Injects route-specific tags into Flutter's `build/web/index.html` template.
+- **`BuildManifest`**: SHA-256 content fingerprinting enabling sub-second incremental builds.
+- **Sitemaps & Robots**: Automated XML sitemap generation with chunking and reciprocal hreflang validation.
 
-### 4. Static Route Builder & CLI (`lib/src/builder/`, `bin/`)
-- **HTML AST Engine:** Uses `package:html` to parse Flutter's `build/web/index.html` template.
-- **Bootstrap Preservation:** Detects and preserves Flutter initialization scripts (`flutter_bootstrap.js` or `{{flutter_js}}` tokens).
-- **Dynamic Route Expansion:** Generates static pages from parameterized routes (`/products/:slug`) and external JSON datasets.
-- **Asset Generation:** Generates valid XML `sitemap.xml` (filtering out `noindex` and `none` routes) and `robots.txt`.
-- **CLI Commands:**
-  - `build`: Runs preflight validation and compiles static route documents.
-  - `validate`: Verifies configuration syntax and data file paths.
-  - `inspect`: Displays all expanded static routes and metadata.
-  - `doctor`: Performs environment and template diagnostics.
+### 4. Dynamic SSR Engine C (`lib/src/server/`)
+- **`MetaMantleServerEngine`**: Framework-agnostic request handler executing route matching, database querying, caching, and document rendering.
+- **`MetaMantleDataProvider<T>`**: Universal data abstraction with pre-built adapters for Relational SQL databases, Document/NoSQL databases, in-memory stores, and REST/GraphQL APIs.
+- **`MetaMantleCacheStore`**: LRU memory caching with tag invalidation, RFC 5861 Stale-While-Revalidate, and Stale-If-Error.
+- **`SingleFlightCoordinator`**: Concurrency coordinator eliminating cache stampedes / thundering herds.
+- **`RedirectManager`**: Redirect pipeline with automated chain collapsing (A -> B -> C becomes A -> C), loop detection, and open-redirect validation.
 
 ---
 
-## Security Model
+## 3. Security Design
 
-1. **Context-Aware Escaping:** All HTML attribute values and tag bodies are escaped to prevent injection.
-2. **Safe JSON-LD:** Structured data is serialized using Unicode escaping for `<`, `>`, `&`, and `"` to neutralize script breakout attacks.
-3. **Traversal Prevention:** Route paths and data files are checked against path traversal (`..`) prior to reading or writing.
-4. **Scheme Restrictions:** Rejects dangerous URL schemes (`javascript:`, `data:`) on canonical links and alternate tags.
+1. **Context-Aware Escaping**: All HTML attribute values and tag bodies are escaped to prevent DOM injection.
+2. **Safe JSON-LD**: Structured data is serialized using Unicode escaping for `<`, `>`, `&`, and `"` to neutralize script breakout attacks.
+3. **SSRF Guard (`SsrfGuard`)**: Comprehensive protection against Server-Side Request Forgery by blocking requests to loopback addresses, private networks, link-local addresses, and cloud instance metadata services (`169.254.169.254`).
+4. **HTML Sanitization**: Removes all `<script>`, `<iframe>`, and `on*` event handlers from rich text payloads.
+5. **Open Redirect Defense**: Rejects external redirects unless explicitly permitted by security policies.
