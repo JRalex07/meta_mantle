@@ -12,7 +12,7 @@ void main() {
       baseUrl: 'https://metamantle.alex.runs-on.dev',
       defaultTitle: 'MetaMantle',
       defaultDescription:
-      'Typed metadata management and static SEO framework for Flutter Web.',
+          'Typed metadata management and static SEO framework for Flutter Web.',
       defaultRobots: RobotsDirective.indexFollow,
       titleTemplate: '%s | MetaMantle',
       defaultImage:

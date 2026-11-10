@@ -59,3 +59,9 @@ This document reflects the verified status of the `meta_mantle` package (version
 - HTML5 AST-based parsing via `package:html`.
 - Preserves modern `flutter_bootstrap.js` and legacy `{{flutter_js}}` tokens.
 - Generates compliant `sitemap.xml` and `robots.txt` referencing `https://metamantle.alex.runs-on.dev/`.
+
+### 6. GitHub Actions CI/CD Pipeline Order & Formatting
+- **Dependency Resolution Before Formatting:** CI workflow (`.github/workflows/ci.yml`) executes `flutter pub get` for root and `example/` prior to invoking `dart format --output=none --set-exit-if-changed .`, preventing `analysis_options.yaml` package resolution failures on `package:flutter_lints/flutter.yaml`.
+- **Formatted Repository:** All 26 Dart files are strictly formatted according to Dart formatting standards (0 changed, clean exit code 0).
+- **Separated Analysis & Test Execution:** Enforces sequential root dependency installation, example dependency installation, format verification, root analysis, example analysis, full unit/widget test suite, example release + wasm builds, static generation preflight, and package publication dry-run.
+
