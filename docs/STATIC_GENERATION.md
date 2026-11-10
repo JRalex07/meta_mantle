@@ -139,6 +139,15 @@ dart run meta_mantle build \
   --strict
 ```
 
+#### Strict Mode Preflight Validation (`--strict`)
+
+When `--strict` is enabled, the builder performs preflight validation across all resolved routes before writing any files:
+- **Title Validation:** Every route must resolve a non-empty `title`.
+- **Description Validation:** Every route must resolve a non-empty `description` (either specified per-route or inherited from `"defaults"`).
+- **URL & Scheme Sanitization:** Absolute URLs must use valid `http` or `https` schemes; canonical URLs cannot contain query parameters or hash fragments.
+- **Atomic Execution:** If any route fails strict validation, the build halts with an exit code of 1, leaving the output directory intact.
+
+
 ### Build Artifacts Produced
 
 ```text

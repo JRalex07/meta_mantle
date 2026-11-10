@@ -53,36 +53,36 @@ class HomePage extends StatelessWidget {
         title: 'Home',
         description:
             'Shop fresh groceries, daily essentials, and organic produce.',
-        canonical: 'https://example.com/',
+        canonical: 'https://metamantle.alex.runs-on.dev/',
         keywords: 'groceries, basmati rice, dairy, organic, delivery',
-        author: 'Example Store Team',
+        author: 'MetaMantle Store Team',
         openGraph: const OpenGraph(
           type: OpenGraphType.website,
-          image: 'https://example.com/assets/social-card.png',
-          imageAlt: 'Example Store storefront banner',
+          image: 'https://metamantle.alex.runs-on.dev/assets/social-card.png',
+          imageAlt: 'MetaMantle Store storefront banner',
           imageWidth: 1200,
           imageHeight: 630,
         ),
         twitter: const TwitterCard(
           card: TwitterCardType.summaryLargeImage,
-          site: '@ExampleStore',
+          site: '@MetaMantle',
         ),
         jsonLd: [
           JsonLd.website(
-            name: 'Example Store',
-            url: 'https://example.com/',
+            name: 'MetaMantle Store',
+            url: 'https://metamantle.alex.runs-on.dev/',
             description: 'Fresh groceries and daily essentials.',
           ),
           JsonLd.organization(
-            name: 'Example Store Inc.',
-            url: 'https://example.com/',
-            logo: 'https://example.com/assets/logo.png',
+            name: 'MetaMantle Store Inc.',
+            url: 'https://metamantle.alex.runs-on.dev/',
+            logo: 'https://metamantle.alex.runs-on.dev/assets/logo.png',
           ),
         ],
       ),
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Flutter Web Head Store'),
+          title: const Text('MetaMantle Store'),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         ),
         body: ListView(
@@ -143,16 +143,21 @@ class AboutPage extends StatelessWidget {
       metadata: const WebMetadata(
         title: 'About Us',
         description:
-            'Learn about Example Store mission, organic sourcing, and local farmers.',
-        canonical: 'https://example.com/about/',
+            'Learn about MetaMantle, its features, architecture and tools for managing Flutter Web metadata and SEO.',
+        canonical: 'https://metamantle.alex.runs-on.dev/about/',
         alternates: [
-          AlternateUrl(language: 'hi', url: 'https://example.com/hi/about/'),
-          AlternateUrl(language: 'es', url: 'https://example.com/es/about/'),
+          AlternateUrl(
+              language: 'hi',
+              url: 'https://metamantle.alex.runs-on.dev/hi/about/'),
+          AlternateUrl(
+              language: 'es',
+              url: 'https://metamantle.alex.runs-on.dev/es/about/'),
         ],
         openGraph: OpenGraph(
           type: OpenGraphType.article,
-          title: 'About Example Store',
-          description: 'Our journey delivering farm-fresh groceries.',
+          title: 'About MetaMantle',
+          description:
+              'Learn about MetaMantle, its features, architecture and tools for managing Flutter Web metadata and SEO.',
         ),
       ),
       child: Scaffold(
@@ -188,22 +193,23 @@ class ProductPage extends StatelessWidget {
         title: 'Premium Basmati Rice (5kg)',
         description:
             'Aged long-grain aromatic basmati rice for gourmet dining.',
-        canonical: 'https://example.com/products/basmati-rice/',
+        canonical: 'https://metamantle.alex.runs-on.dev/products/basmati-rice/',
         openGraph: const OpenGraph(
           type: OpenGraphType.product,
-          image: 'https://example.com/assets/basmati-rice.png',
+          image: 'https://metamantle.alex.runs-on.dev/assets/basmati-rice.png',
           imageAlt: '5kg pack of aged basmati rice',
           imageWidth: 800,
           imageHeight: 800,
         ),
         twitter: const TwitterCard(
           card: TwitterCardType.summaryLargeImage,
-          image: 'https://example.com/assets/basmati-rice.png',
+          image: 'https://metamantle.alex.runs-on.dev/assets/basmati-rice.png',
         ),
         jsonLd: [
           JsonLd.product(
             name: 'Premium Basmati Rice',
-            image: 'https://example.com/assets/basmati-rice.png',
+            image:
+                'https://metamantle.alex.runs-on.dev/assets/basmati-rice.png',
             description: 'Long-grain premium basmati rice.',
             sku: 'RICE-001',
             brand: 'Himalayan Harvest',
@@ -302,22 +308,24 @@ class BlogPage extends StatelessWidget {
         title: 'How to Cook Fluffy Basmati Rice',
         description:
             'Step-by-step master guide to cooking fluffy, long-grain basmati rice.',
-        canonical: 'https://example.com/blog/cook-fluffy-basmati-rice/',
+        canonical:
+            'https://metamantle.alex.runs-on.dev/blog/cook-fluffy-basmati-rice/',
         author: 'Chef Antonio',
-        publisher: 'Example Store Culinary Team',
+        publisher: 'MetaMantle Store Culinary Team',
         openGraph: const OpenGraph(
           type: OpenGraphType.article,
           title: 'How to Cook Fluffy Basmati Rice',
-          image: 'https://example.com/assets/cooking-rice.png',
+          image: 'https://metamantle.alex.runs-on.dev/assets/cooking-rice.png',
         ),
         jsonLd: [
           JsonLd.article(
             headline: 'How to Cook Fluffy Basmati Rice',
-            image: 'https://example.com/assets/cooking-rice.png',
+            image:
+                'https://metamantle.alex.runs-on.dev/assets/cooking-rice.png',
             datePublished: '2026-02-15T08:00:00+00:00',
             dateModified: '2026-03-01T12:00:00+00:00',
             author: 'Chef Antonio',
-            publisher: 'Example Store',
+            publisher: 'MetaMantle Store',
           ),
         ],
       ),

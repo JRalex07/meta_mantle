@@ -279,21 +279,22 @@ dart run meta_mantle build --config meta_mantle.config.json --strict
 
 ---
 
-## Documentation Website & Custom Domain Setup
+## Documentation & Live Showcase
 
-The official documentation website is hosted via GitHub Pages at:
-[https://metamantle.alex.runs-on.dev](https://metamantle.alex.runs-on.dev)
+The official documentation and interactive live showcase are available at:
+👉 **[https://metamantle.alex.runs-on.dev](https://metamantle.alex.runs-on.dev)**
 
-### DNS Configuration Instructions for Repository Owner:
-To point `metamantle.alex.runs-on.dev` to GitHub Pages:
-1. **Add CNAME Record in DNS:**
-   - Type: `CNAME`
-   - Host/Name: `metamantle` (under domain `alex.runs-on.dev`)
-   - Target/Value: `jralex07.github.io`
-2. **Configure in GitHub Repository:**
-   - Go to **Settings > Pages**.
-   - Under **Custom domain**, enter `metamantle.alex.runs-on.dev` and click **Save**.
-   - Once DNS propagation is verified, check **Enforce HTTPS**.
+Explore the interactive showcase to see real-time DOM updates, dynamic title templates, and inspect the pre-rendered HTML payloads for social crawlers and search engines.
+
+### In-Depth Documentation Guides:
+- **[API Reference](docs/API.md)** — Comprehensive widget, model, builder, and CLI parameters.
+- **[Architecture Guide](docs/ARCHITECTURE.md)** — Deep dive into the dual-engine architecture.
+- **[Static Generation Guide](docs/STATIC_GENERATION.md)** — Pre-rendering, dynamic pattern expansion, and crawler optimization.
+- **[Routing and Hosting Guide](docs/ROUTING_AND_HOSTING.md)** — Production deployment recipes (GitHub Pages, Vercel, Netlify, Firebase, Nginx).
+- **[Security Architecture](docs/SECURITY.md)** — Attribute escaping, JSON-LD sanitization, and origin boundaries.
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** — Common pitfalls, tab switching, and strict validation resolution.
+- **[SEO Limitations](docs/SEO_LIMITATIONS.md)** — Web crawler capabilities and JavaScript rendering realities.
+- **[Build & Verification Status](BUILD_STATUS.md)** — Tested environments, Wasm verification, and regression matrices.
 
 ---
 
@@ -304,20 +305,6 @@ To point `metamantle.alex.runs-on.dev` to GitHub Pages:
 - **URL Sanitization:** `javascript:` and `data:` schemes are strictly rejected for canonical and alternate URLs.
 - **Directory Traversal Protection:** Static file paths and route strings are validated against path traversal (`..`) prior to file writing.
 - **Strict DOM Ownership:** Elements injected by the package are tagged with `data-mm-owner="meta_mantle"` and `data-mm-key`. Third-party tags and analytics scripts in `document.head` are strictly preserved.
-
----
-
-## Documentation
-
-- [Online Documentation](https://metamantle.alex.runs-on.dev)
-- [API Reference](docs/API.md)
-- [Architecture Guide](docs/ARCHITECTURE.md)
-- [Security Architecture](docs/SECURITY.md)
-- [Static Generation Guide](docs/STATIC_GENERATION.md)
-- [Routing and Hosting Guide](docs/ROUTING_AND_HOSTING.md)
-- [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
-- [SEO Limitations](docs/SEO_LIMITATIONS.md)
-- [Build and Verification Status](BUILD_STATUS.md)
 
 ---
 

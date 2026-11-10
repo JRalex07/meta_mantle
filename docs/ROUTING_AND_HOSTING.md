@@ -91,19 +91,33 @@ final router = GoRouter(
 
 ## 4. Hosting Configurations
 
-### GitHub Pages (Project Site: `/meta_mantle/`)
-When deploying a project repository site to GitHub Pages (`https://<username>.github.io/<repo>/`), Flutter must be built with `--base-href`:
+### GitHub Pages
 
+#### Custom Domain (`metamantle.alex.runs-on.dev`)
+When deploying with a custom domain, Flutter must be built with root base href `--base-href /`:
+```bash
+flutter build web --release --base-href /
+dart run meta_mantle build --config meta_mantle.config.json --strict
+```
+
+**DNS Configuration for Repository Owner:**
+1. **Add CNAME Record in DNS:**
+   - Type: `CNAME`
+   - Host/Name: `metamantle` (under domain `alex.runs-on.dev`)
+   - Target/Value: `jralex07.github.io`
+2. **Configure in GitHub Repository:**
+   - Navigate to **Settings > Pages**.
+   - Under **Custom domain**, enter `metamantle.alex.runs-on.dev` and click **Save**.
+   - Check **Enforce HTTPS** once DNS propagation is verified.
+
+#### Project Subpath Site (`https://<username>.github.io/<repo>/`)
+When deploying without a custom domain under a GitHub repository path:
 ```bash
 flutter build web --release --base-href /meta_mantle/
 dart run meta_mantle build --config meta_mantle.config.json --strict
 ```
-
-Key considerations for GitHub Pages:
-- **Base href:** `--base-href /meta_mantle/` ensures scripts (`flutter_bootstrap.js`, `main.dart.js`, `main.dart.wasm`) and assets load from the correct subdirectory.
-- **Canonical URLs:** Configure `baseUrl: "https://<username>.github.io/meta_mantle"` in `meta_mantle.config.json`.
-- **HTTPS:** GitHub Pages enforces HTTPS automatically.
-- **Relative assets:** Favicons and social images should use absolute URLs or resolve against the configured `baseUrl`.
+- **Base href:** `--base-href /<repo>/` ensures scripts (`flutter_bootstrap.js`, `main.dart.js`, `main.dart.wasm`) and assets load from the correct subdirectory.
+- **Canonical URLs:** Configure `baseUrl: "https://<username>.github.io/<repo>"` in `meta_mantle.config.json`.
 
 ### Firebase Hosting (`firebase.json`)
 ```json

@@ -3,14 +3,14 @@
     "slug": "basmati-rice",
     "name": "Premium Basmati Rice",
     "description": "Long-grain premium basmati rice.",
-    "image": "https://example.com/assets/basmati-rice.png",
+    "image": "https://metamantle.alex.runs-on.dev/assets/basmati-rice.png",
     "sku": "RICE-001"
   },
   {
     "slug": "whole-milk",
     "name": "Whole Milk",
     "description": "Fresh whole milk delivered chilled.",
-    "image": "https://example.com/assets/whole-milk.png",
+    "image": "https://metamantle.alex.runs-on.dev/assets/whole-milk.png",
     "sku": "DAIRY-004"
   }
 ]

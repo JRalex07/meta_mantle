@@ -86,3 +86,37 @@ MetaMantle requires a recognizable Flutter initialization marker to ensure gener
 
 ### Solution:
 Ensure your `web/index.html` contains the standard Flutter Web bootstrap script or template placeholders before running `flutter build web`.
+
+---
+
+## 6. Strict mode failure: `<path> has no description` or `<path> has no title`
+
+### Symptom:
+When running `dart run meta_mantle build --strict`, the build aborts before writing output:
+```text
+Configuration/build error:
+Strict mode failed before writing output:
+/about/ has no description.
+```
+
+### Cause:
+MetaMantle's `--strict` preflight mode validates all static routes before touching the output directory. It requires every indexable route to provide both a non-empty `title` and `description` (either declared directly in the route or inherited from top-level `defaults`).
+
+### Solution:
+Add an accurate, meaningful `description` to the route in `meta_mantle.config.json`:
+```json
+{
+  "path": "/about",
+  "metadata": {
+    "title": "About Us",
+    "description": "Learn about MetaMantle, its features, architecture and tools for managing Flutter Web metadata and SEO."
+  }
+}
+```
+Or declare a global fallback description under the root `"defaults"` section:
+```json
+"defaults": {
+  "description": "Default description for routes without specific descriptions."
+}
+```
+

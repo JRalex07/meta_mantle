@@ -41,7 +41,8 @@
     {
       "path": "/about",
       "metadata": {
-        "description": "Learn more about MetaMantle and its dual-engine SEO architecture."
+        "title": "About Us",
+        "description": "Learn about MetaMantle, its features, architecture and tools for managing Flutter Web metadata and SEO."
       }
     }
   ],
