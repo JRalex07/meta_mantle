@@ -13,6 +13,7 @@ MetaMantle enforces automated test coverage spanning unit, widget, contract, con
 | `test/database_provider_contract_test.dart` | 10 | Contract tests for Memory, Relational, Document, REST, and GraphQL providers. |
 | `test/server_engine_test.dart` | 7 | SSR request lifecycle, 200 OK, 304 Not Modified, 404, 410 Gone, redirects. |
 | `test/shelf_adapter_and_crawler_test.dart` | 2 | Shelf adapter handler/middleware, crawler link discovery and broken link detection. |
+| `test/crawler_security_test.dart` | 11 | SSRF defaults and ranges, DNS rebinding on the pinned transport, redirect safety/limits, timeout behavior, and bounded/cancelled body streaming. |
 | `test/seo_and_security_test.dart` | 5 | Sitemap chunking, image extensions, hreflang validation, SSRF guard network security. |
 | `test/large_catalogue_benchmark_test.dart` | 3 | High-scale 1k/10k/50k route benchmarks and sitemap index scaling. |
 | `test/extended_features_test.dart` | 15 | Canonical URL resolution, JSON-LD serialization, template rendering. |
@@ -20,7 +21,7 @@ MetaMantle enforces automated test coverage spanning unit, widget, contract, con
 | `test/runtime_lifecycle_test.dart` | 10 | Flutter WebHead widget lifecycle, DOM interop, stack restoration. |
 | `test/static_head_builder_test.dart` | 10 | Static HTML file injection, strict validation, route replacement. |
 
-Total automated tests: **83 passing tests**.
+The current checkout has **148 automated tests**; this directory matrix highlights the principal suites and may not list every test file.
 
 ---
 

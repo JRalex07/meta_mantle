@@ -76,12 +76,11 @@ The static builder writes HTML files to disk based on configured route paths and
 
 In SSR and Crawler environments, resolving untrusted external URLs risks exposing internal private networks and cloud metadata services.
 
-`SsrfGuard` (`lib/src/security/ssrf_guard.dart`) intercepts outbound requests and enforces:
-- **Cloud Metadata Defense**: Blocks requests to `169.254.169.254` (AWS, GCP, Azure, DigitalOcean instance metadata endpoints).
-- **Private Subnet Blocking**: Blocks RFC 1918 addresses (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`).
-- **Loopback Blocking**: Blocks `127.0.0.0/8`, `localhost`, and `::1`.
-- **Link-Local Blocking**: Blocks `169.254.0.0/16` and `fe80::/10`.
-- **Scheme Enforcement**: Disallows non-HTTP/HTTPS protocols (`gopher://`, `file://`, `dict://`).
+`SsrfGuard` (`lib/src/security/ssrf_guard.dart`) blocks loopback, private, link-local, unspecified, multicast, and selected reserved/special-purpose IPv4 and IPv6 ranges. It rejects mixed DNS answers if any returned address is forbidden, rejects empty/error answers, strips a final DNS dot before policy checks, blocks metadata names and IPs, and permits only HTTP(S) URLs without user-info or fragments.
+
+`CrawlerInspector` uses a pinned-address `dart:io` transport by default. For each new connection it disables proxies, resolves the hostname again, validates every answer, and opens a socket directly to a checked address. It does not attempt an unchecked address fallback. Dart's `HttpClient` still receives the original URI, preserving its normal Host header and TLS hostname verification/SNI. Redirects are manual, limited to five by default (hard cap ten), loop checked, revalidated before each request, and HTTPS-to-HTTP downgrades are rejected. Response bodies are streamed with a 2 MiB default cap; per-hop timeout defaults to 10 seconds and total operation budget to 30 seconds.
+
+Localhost access is **off by default**. Library users who intentionally inspect a local server can opt in with `ssrfGuard: const SsrfGuard(allowLocalhostInDev: true)`. This permits loopback addresses only; private and link-local networks remain blocked. Do not enable this option for untrusted URLs. Call `CrawlerInspector.close()` when finished to close its internally created client. A caller-supplied `http.Client` replaces the pinned default transport, so the caller is responsible for its proxy, DNS-pinning, and cancellation behavior; the guard still checks URLs before each request but cannot control an arbitrary custom client's socket implementation. DNS lookup itself is not cancellable through `InternetAddress.lookup`; a timed-out lookup may finish in the background, but no request is sent until validation succeeds. REST/GraphQL providers continue to validate DNS before requests but do not yet pin the connection address, so deployments using those providers should apply outbound network egress controls.
 
 ---
 

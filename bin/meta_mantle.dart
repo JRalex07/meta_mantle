@@ -99,13 +99,16 @@ Future<void> main(List<String> arguments) async {
       );
 
       stdout.writeln('Inspecting raw HTTP endpoint: $targetUrl ...\n');
-      final report = await inspector.inspectUrl(targetUrl);
-
-      if (asJson) {
-        stdout.writeln(
-            const JsonEncoder.withIndent('  ').convert(report.toJson()));
-      } else {
-        stdout.writeln(report.toTerminalSummary());
+      try {
+        final report = await inspector.inspectUrl(targetUrl);
+        if (asJson) {
+          stdout.writeln(
+              const JsonEncoder.withIndent('  ').convert(report.toJson()));
+        } else {
+          stdout.writeln(report.toTerminalSummary());
+        }
+      } finally {
+        inspector.close();
       }
       return;
     }
@@ -394,19 +397,23 @@ Future<void> main(List<String> arguments) async {
       final inspector = CrawlerInspector();
       var failCount = 0;
 
-      for (final route in parsedConfig.routes) {
-        final fullUrl = baseUrl.endsWith('/')
-            ? '$baseUrl${route.path.substring(1)}'
-            : '$baseUrl${route.path}';
-        try {
-          final res = await inspector.inspectUrl(fullUrl);
-          stdout.writeln(
-              '  [${res.statusCode}] ${res.url} - ${res.title ?? "(NO TITLE)"}');
-          if (res.statusCode >= 400) failCount++;
-        } catch (e) {
-          stderr.writeln('  [ERR] $fullUrl: $e');
-          failCount++;
+      try {
+        for (final route in parsedConfig.routes) {
+          final fullUrl = baseUrl.endsWith('/')
+              ? '$baseUrl${route.path.substring(1)}'
+              : '$baseUrl${route.path}';
+          try {
+            final res = await inspector.inspectUrl(fullUrl);
+            stdout.writeln(
+                '  [${res.statusCode}] ${res.url} - ${res.title ?? "(NO TITLE)"}');
+            if (res.statusCode >= 400) failCount++;
+          } catch (e) {
+            stderr.writeln('  [ERR] $fullUrl: $e');
+            failCount++;
+          }
         }
+      } finally {
+        inspector.close();
       }
 
       stdout.writeln('\nCrawl finished. Failures: $failCount');

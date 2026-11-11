@@ -13,8 +13,8 @@ Every gate must be evaluated and verified against live execution evidence before
 | **1. Formatting** | `dart format --output=none --set-exit-if-changed .` | 0 files modified | :white_check_mark: PASS |
 | **2. Static Analysis (Root)** | `flutter analyze` | 0 issues | :white_check_mark: PASS |
 | **3. Static Analysis (Example)** | `flutter analyze example` | 0 issues | :white_check_mark: PASS |
-| **4. Unit & Integration Tests** | `flutter test` | All tests pass | :white_check_mark: PASS (137/137, 2026-11-11) |
-| **5. Package Dry-Run** | `dart pub publish --dry-run` | 0 errors, 0 warnings | WARN: one working-tree warning; rerun from a clean checkout |
+| **4. Unit & Integration Tests** | `flutter test` | All tests pass | :white_check_mark: PASS (148/148, 2026-11-11) |
+| **5. Package Dry-Run** | `dart pub publish --dry-run` | 0 errors, 0 warnings | WARN: 1 working-tree warning; no package published |
 | **6. Flutter Web JS Build** | `flutter build web --release` in `example/` | Clean build in `build/web` | :white_check_mark: PASS |
 | **7. Flutter Web Wasm Build** | `flutter build web --release --wasm` in `example/` | `main.dart.wasm` emitted | :white_check_mark: PASS |
 | **8. Static CLI Builder** | `dart run meta_mantle build --config meta_mantle.config.json --strict` | HTML, sitemap.xml, robots.txt | :white_check_mark: PASS |
@@ -32,7 +32,7 @@ Every gate must be evaluated and verified against live execution evidence before
 - [x] Zero deprecated `dart:html` imports across the codebase.
 
 ### B. Security & Cryptographic Integrity
-- [ ] SSRF validation covers the initial REST URL and each redirect destination; DNS rebinding remains a deployment/network-layer risk unless destination IPs are pinned at connection time.
+- [x] Crawler defaults to localhost denied, manually validates redirects, bounds response streaming, rejects downgrade/loops, and uses a direct pinned-address socket transport (no proxy or unchecked fallback). Caller-supplied crawler clients and REST/GraphQL providers do not receive this socket-pinning guarantee; enforce egress restrictions for those paths.
 - [x] Chunk-by-chunk stream counting with immediate abort on oversized responses (`BytesBuilder`).
 - [x] Incoming HTTP `Host` headers validated against registered tenants (`TenantHostValidator`).
 - [x] Untrusted `x-tenant-id` request headers ignored when host validation is active.

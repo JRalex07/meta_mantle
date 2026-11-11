@@ -19,9 +19,9 @@ dart run meta_mantle build [options]
 ---
 
 ### `meta_mantle crawl`
-Audits your live site or local staging server for SEO compliance:
+Audits a live or staging site for SEO compliance. Localhost and private destinations are denied by default by `CrawlerInspector`; the CLI does not silently enable a development exception:
 ```bash
-dart run meta_mantle crawl --url=http://localhost:8080 --concurrency=5
+dart run meta_mantle crawl --url=https://staging.example.com --concurrency=5
 ```
 - Discovers internal links recursively.
 - Verifies HTTP 200 responses.
@@ -42,6 +42,8 @@ Inspects a single URL and prints resolved metadata, Open Graph cards, and JSON-L
 ```bash
 dart run meta_mantle inspect-url https://example.com/products/basmati-rice
 ```
+Crawler requests follow at most five redirects after validating every destination, reject HTTPS downgrades and loops, cap response bodies at 2 MiB, and use 10-second per-hop / 30-second total budgets. The library API offers an explicit loopback-only opt-in for trusted local development; there is no CLI environment-based bypass.
+For the one-URL inspection command only, trusted local development can explicitly opt in with `--allow-localhost`; this option never permits private or link-local addresses. The recursive `crawl` command has no localhost opt-in.
 
 ---
 

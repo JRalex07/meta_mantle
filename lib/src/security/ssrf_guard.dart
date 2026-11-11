@@ -7,17 +7,34 @@ class SsrfGuard {
   const SsrfGuard({
     this.allowedHosts = const {},
     this.allowLocalhostInDev = false,
+    this.resolver = _systemResolver,
   });
 
   /// Optional strict hostname allowlist.
   final Set<String> allowedHosts;
 
   /// Whether localhost/loopback is permitted for local development inspection.
+  /// This opt-in permits loopback only; private, link-local and special-purpose
+  /// ranges remain blocked.
   final bool allowLocalhostInDev;
+
+  /// Resolver hook for deterministic tests and controlled server environments.
+  /// Every returned address is checked; an empty or mixed unsafe result fails closed.
+  final Future<List<InternetAddress>> Function(String host) resolver;
+
+  static Future<List<InternetAddress>> _systemResolver(String host) =>
+      InternetAddress.lookup(host);
 
   /// Validates [uri] against SSRF boundaries before making any network connection.
   /// Throws [SecurityException] if the target violates security constraints.
   Future<void> validateUri(Uri uri) async {
+    await resolveAndValidate(uri);
+  }
+
+  /// Resolves [uri] and returns only after every candidate address passes policy.
+  /// A pinned socket transport must connect directly to one of these returned
+  /// addresses instead of resolving the hostname again.
+  Future<List<InternetAddress>> resolveAndValidate(Uri uri) async {
     // 1. Protocol validation
     final scheme = uri.scheme.toLowerCase();
     if (scheme != 'http' && scheme != 'https') {
@@ -25,15 +42,19 @@ class SsrfGuard {
           'Disallowed protocol: "$scheme". Only HTTP and HTTPS are permitted.');
     }
 
-    final host = uri.host.trim().toLowerCase();
+    if (uri.userInfo.isNotEmpty || uri.hasFragment) {
+      throw const SecurityException(
+          'Target URL must not contain user info or a fragment.');
+    }
+    final host = uri.host.trim().toLowerCase().replaceFirst(RegExp(r'\.$'), '');
     if (host.isEmpty) {
-      throw SecurityException('Target URL host is missing.');
+      throw const SecurityException('Target URL host is missing.');
     }
 
     // 2. Strict cloud metadata host check
     if (host == '169.254.169.254' ||
         host == 'metadata.google.internal' ||
-        host.contains('metadata')) {
+        host.endsWith('.metadata.google.internal')) {
       throw SecurityException(
           'Access to cloud metadata endpoints is strictly blocked: $host');
     }
@@ -46,13 +67,14 @@ class SsrfGuard {
 
     // 4. Resolve IP addresses and inspect against private ranges
     try {
-      final addresses = await InternetAddress.lookup(host);
+      final literal = InternetAddress.tryParse(host);
+      final addresses = literal == null ? await resolver(host) : [literal];
       if (addresses.isEmpty) {
         throw SecurityException('Unable to resolve host: $host');
       }
 
       for (final addr in addresses) {
-        if (!allowLocalhostInDev && addr.isLoopback) {
+        if (addr.isLoopback && !allowLocalhostInDev) {
           throw SecurityException(
               'Target resolves to a loopback address: ${addr.address}');
         }
@@ -62,28 +84,43 @@ class SsrfGuard {
               'Target resolves to a link-local address: ${addr.address}');
         }
 
-        if (!allowLocalhostInDev && _isPrivateIp(addr)) {
+        if (_isForbiddenAddress(addr) &&
+            !(allowLocalhostInDev && addr.isLoopback)) {
           throw SecurityException(
               'Target resolves to a private network address: ${addr.address}');
         }
       }
-    } on SocketException catch (e) {
-      throw SecurityException(
-          'DNS resolution failed for "$host": ${e.message}');
+      return List.unmodifiable(addresses);
+    } on SocketException {
+      throw SecurityException('DNS resolution failed for "$host".');
     }
   }
 
-  bool _isPrivateIp(InternetAddress address) {
+  bool _isForbiddenAddress(InternetAddress address) {
+    if (address.type == InternetAddressType.IPv6 &&
+        address.address.contains('%')) {
+      return true;
+    }
+    if (address.isMulticast) return true;
     if (address.type == InternetAddressType.IPv4) {
       final parts = address.rawAddress;
-      // 10.0.0.0/8
-      if (parts[0] == 10) return true;
-      // 172.16.0.0/12
-      if (parts[0] == 172 && parts[1] >= 16 && parts[1] <= 31) return true;
-      // 192.168.0.0/16
-      if (parts[0] == 192 && parts[1] == 168) return true;
-      // 169.254.0.0/16 (Link local / Cloud metadata)
-      if (parts[0] == 169 && parts[1] == 254) return true;
+      if (parts.every((byte) => byte == 0) ||
+          parts[0] == 0 ||
+          parts[0] == 10 ||
+          parts[0] >= 224 ||
+          (parts[0] == 100 && parts[1] >= 64 && parts[1] <= 127) ||
+          (parts[0] == 169 && parts[1] == 254) ||
+          (parts[0] == 172 && parts[1] >= 16 && parts[1] <= 31) ||
+          (parts[0] == 192 &&
+              (parts[1] == 0 || parts[1] == 168 || parts[1] == 2)) ||
+          (parts[0] == 192 && parts[1] == 88 && parts[2] == 99) ||
+          (parts[0] == 198 &&
+              (parts[1] == 18 ||
+                  parts[1] == 19 ||
+                  parts[1] == 51 && parts[2] == 100)) ||
+          (parts[0] == 203 && parts[1] == 0 && parts[2] == 113)) {
+        return true;
+      }
     } else if (address.type == InternetAddressType.IPv6) {
       // IPv4-mapped IPv6 addresses must inherit the IPv4 private-range checks.
       final raw = address.rawAddress;
@@ -92,15 +129,33 @@ class SsrfGuard {
           raw[11] == 0xff;
       if (isIpv4Mapped) {
         final ipv4 = raw.sublist(12);
-        return ipv4[0] == 10 ||
+        return ipv4[0] == 0 ||
+            ipv4[0] == 10 ||
+            ipv4[0] == 127 ||
+            ipv4[0] >= 224 ||
+            (ipv4[0] == 100 && ipv4[1] >= 64 && ipv4[1] <= 127) ||
             (ipv4[0] == 172 && ipv4[1] >= 16 && ipv4[1] <= 31) ||
             (ipv4[0] == 192 && ipv4[1] == 168) ||
             (ipv4[0] == 169 && ipv4[1] == 254) ||
-            ipv4[0] == 127;
+            (ipv4[0] == 192 &&
+                (ipv4[1] == 0 || ipv4[1] == 2 || ipv4[1] == 168)) ||
+            (ipv4[0] == 192 && ipv4[1] == 88 && ipv4[2] == 99) ||
+            (ipv4[0] == 198 &&
+                (ipv4[1] == 18 ||
+                    ipv4[1] == 19 ||
+                    ipv4[1] == 51 && ipv4[2] == 100)) ||
+            (ipv4[0] == 203 && ipv4[1] == 0 && ipv4[2] == 113);
       }
-      // IPv6 Unique Local Address (fc00::/7) or Site Local (fec0::/10)
+      if (raw.every((byte) => byte == 0) || raw[0] == 0xff) return true;
       if ((raw[0] & 0xfe) == 0xfc) return true;
+      if (raw[0] == 0xfe && (raw[1] & 0xc0) == 0x80) return true;
       if (raw[0] == 0xfe && (raw[1] & 0xc0) == 0xc0) return true;
+      if (raw[0] == 0x20 &&
+          raw[1] == 0x01 &&
+          raw[2] == 0x0d &&
+          raw[3] == 0xb8) {
+        return true;
+      }
     }
     return false;
   }
