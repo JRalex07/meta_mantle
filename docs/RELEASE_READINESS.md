@@ -13,7 +13,7 @@ Every gate must be evaluated and verified against live execution evidence before
 | **1. Formatting** | `dart format --output=none --set-exit-if-changed .` | 0 files modified | :white_check_mark: PASS |
 | **2. Static Analysis (Root)** | `flutter analyze` | 0 issues | :white_check_mark: PASS |
 | **3. Static Analysis (Example)** | `flutter analyze example` | 0 issues | :white_check_mark: PASS |
-| **4. Unit & Integration Tests** | `flutter test` | All tests pass | :white_check_mark: PASS (148/148, 2026-11-11) |
+| **4. Unit & Integration Tests** | `flutter test --concurrency=1` | All tests pass | :white_check_mark: PASS (184/184, 2026-11-11) |
 | **5. Package Dry-Run** | `dart pub publish --dry-run` | 0 errors, 0 warnings | WARN: 1 working-tree warning; no package published |
 | **6. Flutter Web JS Build** | `flutter build web --release` in `example/` | Clean build in `build/web` | :white_check_mark: PASS |
 | **7. Flutter Web Wasm Build** | `flutter build web --release --wasm` in `example/` | `main.dart.wasm` emitted | :white_check_mark: PASS |

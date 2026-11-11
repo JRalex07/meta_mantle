@@ -49,6 +49,7 @@ Beyond rendering, MetaMantle includes a universal database abstraction layer, tr
 - **Social SVG Image Generator:** Pure Dart SVG card generation with custom themes, Open Graph dimensions, and LRU output caching.
 - **Core Web Vitals Telemetry:** Telemetry engine ingesting LCP, INP, CLS, FCP, TTFB with zero PII and p75 Google CrUX rating classification.
 - **CLI & Testing Tooling:** Command-line suite (`build`, `validate`, `inspect`, `doctor`, `inspect-url`, `crawl`, `regression`) and snapshot-based SEO regression testing.
+- **Experimental Hybrid Rendering:** Paginated dynamic-route document generation, versioned filesystem artifacts, dependency indexes, and direct revalidation. A single-host durable queue, fenced worker runner, and optional stale-artifact callback provide ISR building blocks, but production multi-instance ISR and post-deployment static-site mutation are not provided; see [Hybrid Rendering](docs/HYBRID_RENDERING.md).
 
 ### Decoupled Framework Adapters:
 - **Shelf Adapter:** Verified adapter for Dart Shelf servers (`engine.toShelfHandler()`).

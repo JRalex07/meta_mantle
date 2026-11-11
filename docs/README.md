@@ -16,6 +16,7 @@ Welcome to the **MetaMantle** technical documentation. This directory contains c
 - **[Core Source Overview](CORE.md)** — Pure-Dart source primitives and models; package resolution still requires Flutter.
 - **[Runtime Engine](RUNTIME.md)** — Reactive DOM reconciler, monotonic generation tokens, and parent scope restoration.
 - **[Static Site Generation](STATIC_GENERATION.md)** — AST-based HTML injection, incremental generation manifests, and preflight validation.
+- **[Hybrid Rendering](HYBRID_RENDERING.md)** — Experimental paginated dynamic-route generation, filesystem artifacts, dependency tags, and current deployment limitations.
 - **[Native Server Rendering](SERVER_RENDERING.md)** — Pure Dart request-time rendering, zero-JS crawler payloads, and Shelf adapter.
 - **[Semantic HTML Rendering](HTML_RENDERING.md)** — Pure Dart virtual DOM tree (`ElementNode`, `TextNode`, `RawHtmlNode`) and HTML sanitization.
 - **[API Reference](API.md)** — Comprehensive specification of widgets, models, builders, engines, and CLI parameters.

@@ -15,6 +15,14 @@ typedef RouteHtmlBuilder<T> = List<HtmlNode> Function(
   RouteDataContext context,
 );
 
+/// How an artifact-backed route behaves when no generated document exists.
+///
+/// [renderImmediately] preserves normal request-time SSR. [notFound] is useful
+/// for routes that must be explicitly generated before they are public.
+/// [renderAndPublish] performs blocking SSR, then publishes the complete result
+/// to the configured single-site artifact store for later safe requests.
+enum ArtifactMissPolicy { renderImmediately, notFound, renderAndPublish }
+
 /// Typed definition of an SSR page route.
 class MetaRoute<T> {
   MetaRoute({
@@ -24,6 +32,8 @@ class MetaRoute<T> {
     required this.htmlBuilder,
     this.cachePolicy = const CachePolicy(),
     this.includeFlutterBootstrap = false,
+    this.artifactRouteId,
+    this.artifactMissPolicy = ArtifactMissPolicy.renderImmediately,
   }) : _segments = _parseSegments(pattern);
 
   /// Path pattern (e.g. `/`, `/about`, `/products/:slug`).
@@ -43,6 +53,13 @@ class MetaRoute<T> {
 
   /// Whether to embed the Flutter Web bootstrap script for progressive enhancement.
   final bool includeFlutterBootstrap;
+
+  /// Optional stable ID stored with an on-demand generated artifact.
+  /// Defaults to [pattern] when omitted.
+  final String? artifactRouteId;
+
+  /// Per-route behavior when a safe artifact lookup misses.
+  final ArtifactMissPolicy artifactMissPolicy;
 
   final List<String> _segments;
 

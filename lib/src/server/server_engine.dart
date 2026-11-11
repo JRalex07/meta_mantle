@@ -6,6 +6,7 @@ import '../cache/cache_store.dart';
 import '../cache/memory_cache_store.dart';
 import '../cache/single_flight.dart';
 import '../html/html_document.dart';
+import '../hybrid/hybrid_generation.dart';
 import '../models/metadata.dart';
 import '../providers/data_provider.dart';
 import '../saas/tenant_context.dart';
@@ -23,6 +24,11 @@ class MetaMantleServerEngine {
     RedirectManager? redirectManager,
     SingleFlightCoordinator? singleFlight,
     this.tenantHostValidator,
+    this.artifactStore,
+    this.artifactStoreForTenant,
+    this.artifactMaxAge,
+    this.artifactStaleWhileRevalidate = const Duration(seconds: 60),
+    this.onStaleArtifact,
   })  : cache = cacheStore ?? MemoryCacheStore(),
         redirects = redirectManager ?? RedirectManager(),
         singleFlight = singleFlight ?? SingleFlightCoordinator();
@@ -33,6 +39,20 @@ class MetaMantleServerEngine {
   final RedirectManager redirects;
   final SingleFlightCoordinator singleFlight;
   final TenantHostValidator? tenantHostValidator;
+
+  /// Optional generated HTML store for a single-site deployment.
+  final FileHtmlArtifactStore? artifactStore;
+
+  /// Resolves an isolated store from an already validated tenant context.
+  final FileHtmlArtifactStore? Function(TenantContext tenant)?
+      artifactStoreForTenant;
+  final Duration? artifactMaxAge;
+  final Duration artifactStaleWhileRevalidate;
+
+  /// Optional ISR hook called for a stale generated artifact. Connect this to
+  /// an idempotent durable queue; repeated requests may invoke it concurrently.
+  final Future<void> Function(String path, RouteDependency dependency)?
+      onStaleArtifact;
 
   /// Handles an incoming [ServerRequest] through the full SSR pipeline.
   Future<ServerResponse> handleRequest(ServerRequest request) async {
@@ -95,6 +115,73 @@ class MetaMantleServerEngine {
           config.language,
     );
 
+    final selectedArtifactStore = validatedTenant == null
+        ? artifactStore
+        : artifactStoreForTenant?.call(validatedTenant);
+    final canUseArtifacts = selectedArtifactStore != null &&
+        artifactMaxAge != null &&
+        artifactMaxAge! >= Duration.zero &&
+        request.queryParameters.isEmpty &&
+        request.header('authorization') == null &&
+        request.header('cookie') == null &&
+        request.header('accept-language') == null;
+    var artifactMiss = false;
+
+    // Fresh, published HTML can satisfy a request without loading route data.
+    if (canUseArtifacts) {
+      final published = await selectedArtifactStore.readPublished(request.path);
+      final dependency = published?.dependency;
+      final generatedAt = dependency?.generatedAt;
+      if (dependency != null && generatedAt != null && published != null) {
+        final html = published.html;
+        final etag = _generateEtag(html);
+        final lastModified = dependency.lastModified ?? generatedAt;
+        final age = DateTime.now().toUtc().difference(generatedAt);
+        final stale = age > artifactMaxAge!;
+        if (stale && onStaleArtifact != null) {
+          unawaited(_notifyStaleArtifact(request.path, dependency));
+          final responseHtml = request.method == 'HEAD' ? '' : html;
+          return ServerResponse.okHtml(
+            responseHtml,
+            etag: etag,
+            lastModified: lastModified,
+            cacheControl:
+                'public, max-age=0, stale-while-revalidate=${artifactStaleWhileRevalidate.inSeconds}',
+            headers: {'X-MetaMantle-Cache': 'STALE-ARTIFACT'},
+          );
+        }
+        if (stale) {
+          // Without a revalidation hook, stale artifacts fall through to SSR.
+        } else {
+          if (_isNotModified(request, etag, lastModified)) {
+            return ServerResponse.notModified(
+              etag: etag,
+              lastModified: lastModified,
+              cacheControl: 'public, max-age=${artifactMaxAge!.inSeconds}',
+            );
+          }
+          return _buildResponse(
+            request,
+            html: html,
+            etag: etag,
+            lastModified: lastModified,
+            policy: CachePolicy(ttl: artifactMaxAge!),
+            cacheStatus: 'ARTIFACT',
+          );
+        }
+      } else {
+        artifactMiss = true;
+      }
+    }
+
+    if (canUseArtifacts &&
+        artifactMiss &&
+        route.artifactMissPolicy == ArtifactMissPolicy.notFound) {
+      return ServerResponse.notFound(
+        message: 'No generated artifact exists for "${request.path}".',
+      );
+    }
+
     // 5. Cache Key Calculation (Tenant-partitioned)
     final cacheKey =
         _computeCacheKey(request, route, tenantContext: validatedTenant);
@@ -139,6 +226,19 @@ class MetaMantleServerEngine {
         return rendered.response!;
       }
 
+      var cacheStatus = 'MISS';
+      if (canUseArtifacts &&
+          artifactMiss &&
+          route.artifactMissPolicy == ArtifactMissPolicy.renderAndPublish) {
+        final published = await _publishOnDemandArtifact(
+          path: request.path,
+          route: route,
+          rendered: rendered,
+          store: selectedArtifactStore,
+        );
+        if (published) cacheStatus = 'MISS-PUBLISHED';
+      }
+
       // Check conditional GET on fresh render
       if (_isNotModified(request, rendered.etag, rendered.lastModified)) {
         return ServerResponse.notModified(
@@ -154,7 +254,7 @@ class MetaMantleServerEngine {
         etag: rendered.etag,
         lastModified: rendered.lastModified,
         policy: route.cachePolicy,
-        cacheStatus: 'MISS',
+        cacheStatus: cacheStatus,
       );
     } catch (e) {
       if (route.cachePolicy.staleIfError != null) {
@@ -171,6 +271,15 @@ class MetaMantleServerEngine {
         }
       }
       return ServerResponse.serverError(message: 'SSR Rendering failed: $e');
+    }
+  }
+
+  Future<void> _notifyStaleArtifact(
+      String path, RouteDependency dependency) async {
+    try {
+      await onStaleArtifact?.call(path, dependency);
+    } on Object {
+      // Queue outages must not turn a stale-but-usable page into a 500.
     }
   }
 
@@ -211,14 +320,13 @@ class MetaMantleServerEngine {
     final html = doc.render(currentUrl: context.path);
     final etag = result.etag ?? _generateEtag(html);
     final lastModified = result.lastModified ?? DateTime.now().toUtc();
+    final allTags = {
+      ...route.cachePolicy.tags,
+      ...result.cacheTags,
+      context.path,
+    };
 
     if (route.cachePolicy.isCacheable) {
-      final allTags = {
-        ...route.cachePolicy.tags,
-        ...result.cacheTags,
-        context.path,
-      };
-
       final entry = CacheEntry(
         html: html,
         metadata: metadata,
@@ -237,7 +345,49 @@ class MetaMantleServerEngine {
       html: html,
       etag: etag,
       lastModified: lastModified,
+      artifactTags: allTags.toList()..sort(),
+      sourceVersion: result.etag,
+      canonicalUrl: metadata.canonical,
+      indexable: !(metadata.robots?.toLowerCase().contains('noindex') ?? false),
     );
+  }
+
+  /// Publishes the SSR result only after a safe, request-invariant miss.
+  /// A publication race never invalidates the response that was already rendered.
+  Future<bool> _publishOnDemandArtifact({
+    required String path,
+    required MetaRoute<dynamic> route,
+    required _RenderResult rendered,
+    required FileHtmlArtifactStore store,
+  }) async {
+    final html = rendered.html;
+    if (html == null) return false;
+    String? version;
+    try {
+      version = await store.beginVersion();
+      final dependencies = await store.loadVersionDependencies(version);
+      await store.writeVersion(version, path, html);
+      dependencies[path] = RouteDependency(
+        path: path,
+        routeId: route.artifactRouteId ?? route.pattern,
+        tags: rendered.artifactTags,
+        generatedAt: DateTime.now().toUtc(),
+        sourceVersion: rendered.sourceVersion,
+        lastModified: rendered.lastModified,
+        canonicalUrl: rendered.canonicalUrl,
+        indexable: rendered.indexable,
+      );
+      await store.saveVersionDependencies(version, dependencies);
+      if (await store.readVersionSitemap(version) != null ||
+          dependencies.values.any((item) => item.canonicalUrl != null)) {
+        await store.writeVersionSitemap(version, dependencies.values);
+      }
+      await store.publishVersion(version);
+      return true;
+    } on Object {
+      if (version != null) await store.discardVersion(version);
+      return false;
+    }
   }
 
   Future<void> _regenerate(
@@ -376,9 +526,22 @@ class _RouteMatch {
 }
 
 class _RenderResult {
-  _RenderResult({this.html, this.etag, this.lastModified, this.response});
+  _RenderResult({
+    this.html,
+    this.etag,
+    this.lastModified,
+    this.response,
+    this.artifactTags = const [],
+    this.sourceVersion,
+    this.canonicalUrl,
+    this.indexable = true,
+  });
   final String? html;
   final String? etag;
   final DateTime? lastModified;
   final ServerResponse? response;
+  final List<String> artifactTags;
+  final String? sourceVersion;
+  final String? canonicalUrl;
+  final bool indexable;
 }

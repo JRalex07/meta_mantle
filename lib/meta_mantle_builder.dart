@@ -8,5 +8,6 @@ export 'meta_mantle_core.dart';
 export 'src/builder/incremental_manifest.dart';
 export 'src/builder/static_head_builder.dart';
 export 'src/builder/static_head_config.dart';
+export 'src/hybrid/hybrid_generation.dart';
 export 'src/seo/hreflang_validator.dart';
 export 'src/seo/sitemap_index.dart';

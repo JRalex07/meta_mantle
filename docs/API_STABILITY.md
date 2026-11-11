@@ -43,6 +43,7 @@ Evolving subsystems are fully implemented and verified with automated test suite
 APIs explicitly marked with `@experimental` or documented as preview.
 - These APIs may change based on community feedback.
 - Experimental status is always stated in the Dart doc comment.
+- Hybrid paginated generation and dependency-based revalidation (`FileHtmlArtifactStore`, `CollectionRouteSource`, `HybridStaticGenerator`, `HybridRevalidator`, `HybridRevalidationScheduler`, `RevalidationWebhookHandler`, `FileRegenerationQueue`, `RegenerationWorker`, and `ArtifactMissPolicy`) are experimental. The file queue and webhook replay store are single-host; applications can isolate tenants with separate validated stores and queues, while transactional multi-instance storage and production ISR guarantees are not provided.
 
 ---
 
