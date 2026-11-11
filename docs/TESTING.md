@@ -23,8 +23,9 @@ MetaMantle enforces automated test coverage spanning unit, widget, contract, con
 | `test/metadata_renderer_test.dart` | 12 | Exact tag string rendering and escaping. |
 | `test/runtime_lifecycle_test.dart` | 10 | Flutter WebHead widget lifecycle, DOM interop, stack restoration. |
 | `test/static_head_builder_test.dart` | 10 | Static HTML file injection, strict validation, route replacement. |
+| `test/isr_hardening_and_benchmark_test.dart` | 11 | Content-addressed artifact immutability, atomic rollback, garbage collection, storage capabilities, O(1) queue idempotency/batching/cleanup/rebuild, 10,000 jobs benchmark, multi-worker lease fencing, and REST/GraphQL socket IP pinning. |
 
-The current checkout has **184 automated tests**; the full serial run passed all 184 on 2026-11-11. This directory matrix highlights the principal suites and may not list every test file.
+The current checkout has **195 automated tests**; the full serial run passed all 195 on 2026-11-12. This directory matrix highlights the principal suites and may not list every test file.
 
 ---
 

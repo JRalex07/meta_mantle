@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 
 import '../security/ssrf_guard.dart';
 
@@ -105,23 +103,8 @@ class CrawlerInspector {
     }
   }
 
-  static http.Client _createPinnedClient(SsrfGuard guard) {
-    final io = HttpClient();
-    io.findProxy = (_) => 'DIRECT';
-    io.connectionTimeout = const Duration(seconds: 10);
-    io.connectionFactory = (uri, proxyHost, proxyPort) async {
-      if (proxyHost != null || proxyPort != null) {
-        throw const SecurityException(
-            'Crawler proxy connections are disabled.');
-      }
-      final candidates = await guard.resolveAndValidate(uri);
-      // Connect by the checked address. HttpClient retains the original URI
-      // for Host, TLS SNI, and certificate hostname verification.
-      // No unvalidated fallback is attempted if this candidate fails.
-      return Socket.startConnect(candidates.first, uri.port);
-    };
-    return IOClient(io);
-  }
+  static http.Client _createPinnedClient(SsrfGuard guard) =>
+      guard.createPinnedClient(connectionTimeout: const Duration(seconds: 10));
 
   final http.Client client;
   final SsrfGuard ssrfGuard;

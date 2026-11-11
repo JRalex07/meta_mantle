@@ -20,7 +20,8 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
     this.maxRetries = 2,
     this.entityTag = 'rest_api',
     this.ssrfGuard = const SsrfGuard(),
-  }) : client = client ?? http.Client();
+  }) : client =
+            client ?? ssrfGuard.createPinnedClient(connectionTimeout: timeout);
 
   final String Function(RouteDataContext context) urlBuilder;
   final JsonEntityMapper<T> mapper;
@@ -204,7 +205,8 @@ class GraphQLDataProvider<T> implements MetaMantleDataProvider<T> {
     this.maxResponseSizeBytes = 5 * 1024 * 1024,
     this.entityTag = 'graphql_api',
     this.ssrfGuard = const SsrfGuard(),
-  }) : client = client ?? http.Client();
+  }) : client =
+            client ?? ssrfGuard.createPinnedClient(connectionTimeout: timeout);
 
   final Uri endpoint;
   final String Function(RouteDataContext context) queryBuilder;

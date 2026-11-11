@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
+
 /// Security guard that protects outbound HTTP requests (URL inspector, crawler preview)
 /// against Server-Side Request Forgery (SSRF), internal network scanning, and cloud metadata access.
 class SsrfGuard {
@@ -24,6 +27,25 @@ class SsrfGuard {
 
   static Future<List<InternetAddress>> _systemResolver(String host) =>
       InternetAddress.lookup(host);
+
+  /// Creates an [http.Client] that pins every socket connection directly to an
+  /// IP address that was validated against SSRF rules, preventing DNS rebinding.
+  http.Client createPinnedClient({
+    Duration connectionTimeout = const Duration(seconds: 10),
+  }) {
+    final io = HttpClient();
+    io.findProxy = (_) => 'DIRECT';
+    io.connectionTimeout = connectionTimeout;
+    io.connectionFactory = (uri, proxyHost, proxyPort) async {
+      if (proxyHost != null || proxyPort != null) {
+        throw const SecurityException(
+            'Outbound proxy connections are disabled for SSRF protection.');
+      }
+      final candidates = await resolveAndValidate(uri);
+      return Socket.startConnect(candidates.first, uri.port);
+    };
+    return IOClient(io);
+  }
 
   /// Validates [uri] against SSRF boundaries before making any network connection.
   /// Throws [SecurityException] if the target violates security constraints.
