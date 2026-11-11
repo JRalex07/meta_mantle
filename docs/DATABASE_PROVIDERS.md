@@ -1,4 +1,6 @@
-# Universal Database Abstraction Layer
+# Callback-Based Database Provider Contracts
+
+MetaMantle does not ship PostgreSQL, MySQL, SQLite, Firestore, MongoDB, CouchDB, or Supabase drivers. `RelationalDatabaseAdapter` and `DocumentDatabaseAdapter` are generic contracts that call application-provided callbacks. Your application owns the actual database client, credentials, connection pool, query semantics, and error handling.
 
 MetaMantle decouples data loading from server and rendering frameworks through the `MetaMantleDataProvider<T>` interface (`lib/src/providers/`).
 
@@ -34,7 +36,9 @@ abstract class MetaMantleDataProvider<T> {
 
 ## 2. Relational Database Adapter (`RelationalDatabaseAdapter<T>`)
 
-Designed for SQL databases (PostgreSQL, MySQL, SQLite, Supabase):
+Can be connected to any SQL database by supplying a query callback (for example, one backed by PostgreSQL, MySQL, or SQLite):
+
+`RelationalDatabaseAdapter` supplies SQL containing a `?` value placeholder and a separate parameter list. The callback must use the database driver's prepared-statement API and translate the placeholder syntax if that driver requires a different form (for example, PostgreSQL `$1`). MetaMantle does not implement driver-specific translation.
 
 ```dart
 final productProvider = RelationalDatabaseAdapter<Product>(
@@ -50,8 +54,8 @@ final productProvider = RelationalDatabaseAdapter<Product>(
 );
 ```
 
-### Automatic Features:
-- Parameterized SQL execution preventing SQL injection.
+### Adapter Behavior:
+- Passes the route key as a separate parameter rather than interpolating it into the SQL string. The callback must bind that parameter with a prepared statement; safety is lost if the callback interpolates it.
 - Automatic ETag extraction from version or ID columns.
 - Soft-delete detection: Returns `410 Gone` if `is_deleted == true` or `deleted_at != null`.
 - Cache tagging using `$tableName` and `$tableName:$key`.
@@ -60,7 +64,7 @@ final productProvider = RelationalDatabaseAdapter<Product>(
 
 ## 3. Document Database Adapter (`DocumentDatabaseAdapter<T>`)
 
-Designed for NoSQL and Document stores (Firestore, MongoDB, CouchDB):
+Can be connected to a document store by supplying a fetch callback (for example, one backed by Firestore, MongoDB, or CouchDB):
 
 ```dart
 final articleProvider = DocumentDatabaseAdapter<Article>(

@@ -2,6 +2,8 @@
 
 Complete and verify each item before publishing the official release of `meta_mantle` (`0.1.0`):
 
+> **Audit update (2026-11-11):** Historical checked items below are not release approval. The current test run passed 137 tests; the package dry-run reports one warning due to modified files; Gitleaks scans are configured in CI but still require an executed CI run. CloudFront is unsupported, and the package cannot resolve using Dart SDK alone. Use `RELEASE_READINESS.md` for current release gates.
+
 - [x] Configure repository (`https://github.com/JRalex07/meta_mantle`), official documentation/homepage (`https://metamantle.alex.runs-on.dev`), and issue tracker in `pubspec.yaml`.
 - [x] Configure all canonical documentation URLs to use `https://metamantle.alex.runs-on.dev`.
 - [x] Configure documentation website deployment for root base path `/` (`--base-href /`).
@@ -10,7 +12,7 @@ Complete and verify each item before publishing the official release of `meta_ma
 - [x] Preserve package CI workflow (`.github/workflows/ci.yml`) for analysis, testing, and dry-run validation.
 - [x] Include Git installation instructions in `README.md` (`git: url: https://github.com/JRalex07/meta_mantle.git`).
 - [x] Fix title template deduplication and verify homepage title produces clean `<title>` without duplication.
-- [x] Add regression test suite for title templates (47/47 tests passing).
+- [x] Add regression test suite for title templates (historical baseline; current full suite passed 137 tests on 2026-11-11).
 - [x] Run `dart format --output=none --set-exit-if-changed .` (0 changed, clean exit).
 - [x] Run `flutter analyze` in package root (0 issues).
 - [x] Run `flutter test` in package root (all 47 tests passing).
@@ -25,6 +27,6 @@ Complete and verify each item before publishing the official release of `meta_ma
 - [x] Verify `data-mm-owner` DOM ownership and parent scope restoration.
 - [x] Verify JSON-LD script tags escape `<` and `>` against XSS.
 - [x] Verify non-web stub compilation does not crash or throw unsupported errors.
-- [x] Run `dart pub publish --dry-run` and confirm 0 warnings.
+- [ ] Run `dart pub publish --dry-run` from a clean checkout and confirm 0 warnings.
 - [x] Confirm version consistency across `pubspec.yaml`, `README.md`, `CHANGELOG.md`, and `BUILD_STATUS.md` (`0.1.0`).
 - [ ] Obtain explicit maintainer authorization before publishing to pub.dev.

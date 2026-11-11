@@ -6,6 +6,8 @@ MetaMantle provides first-class HTTP client data providers for connecting SSR ap
 
 ## 1. REST Data Provider (`RestDataProvider<T>`)
 
+REST GET redirects are disabled at the HTTP client layer, then followed manually only after validating each destination with `SsrfGuard`; at most five redirects are followed. Cross-origin redirects retain only `Accept` and `User-Agent` headers, dropping application credentials. GraphQL POST redirects are rejected. Hostname validation still does not pin the resolved IP used by the socket, so DNS rebinding protection requires an HTTP transport that connects to the validated address or network egress controls.
+
 Connects an SSR route to any HTTP RESTful endpoint:
 
 ```dart

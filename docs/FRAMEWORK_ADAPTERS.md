@@ -70,11 +70,7 @@ void run(List<String> args) async {
 
 ---
 
-## 4. Jaspr SSR Adapter (`jasprSsrHandler`)
+## 4. Jaspr-compatible HTML bridge
 
-For full-stack hybrid web applications using Jaspr:
-```dart
-final handler = jasprSsrHandler(engine: engine);
-```
-Allows using MetaMantle's typed metadata engine alongside Jaspr SSR components.
+MetaMantle does not provide a `jasprSsrHandler` function or a native Jaspr component/router adapter. Applications can use `MetaMantleHead.renderDescriptors()` or `MetaMantleDocument.renderDocumentShell()` from `meta_mantle_server.dart`, then connect the generated descriptors or HTML string to Jaspr using Jaspr's own APIs. See [Jaspr integration limits](JASPR_INTEGRATION.md).
 

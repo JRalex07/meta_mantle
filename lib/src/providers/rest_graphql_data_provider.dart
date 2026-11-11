@@ -31,6 +31,7 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
   final int maxRetries;
   final String entityTag;
   final SsrfGuard ssrfGuard;
+  static const int maxRedirects = 5;
 
   @override
   Future<DataProviderResult<T>> load(RouteDataContext context) async {
@@ -52,7 +53,7 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
             ...headers,
           });
 
-        final streamed = await client.send(request).timeout(timeout);
+        final streamed = await _sendFollowingValidatedRedirects(request);
 
         // Check Content-Length header early
         if (streamed.contentLength != null &&
@@ -91,6 +92,8 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
           continue;
         }
         break;
+      } on SecurityException {
+        rethrow;
       } on Exception catch (e) {
         lastException = e;
         if (attempt >= maxRetries) rethrow;
@@ -140,6 +143,53 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
       cacheTags: [entityTag, '$entityTag:${context.path}'],
     );
   }
+
+  bool _isRedirect(int statusCode) =>
+      statusCode == 301 ||
+      statusCode == 302 ||
+      statusCode == 303 ||
+      statusCode == 307 ||
+      statusCode == 308;
+
+  Future<http.StreamedResponse> _sendFollowingValidatedRedirects(
+    http.Request initialRequest,
+  ) async {
+    var currentUri = initialRequest.url;
+    final requestHeaders = Map<String, String>.of(initialRequest.headers);
+    for (var redirects = 0;; redirects++) {
+      final request = http.Request('GET', currentUri)
+        ..headers.addAll(requestHeaders)
+        ..followRedirects = false
+        ..maxRedirects = 0;
+      final response = await client.send(request).timeout(timeout);
+      final location = response.headers['location'];
+      if (!_isRedirect(response.statusCode) || location == null) {
+        return response;
+      }
+      if (redirects >= maxRedirects) {
+        await response.stream.drain<void>();
+        throw StateError(
+            'REST API exceeded maximum of $maxRedirects redirects.');
+      }
+      final nextUri = currentUri.resolve(location);
+      await ssrfGuard.validateUri(nextUri);
+      await response.stream.drain<void>();
+      if (!_sameOrigin(currentUri, nextUri)) {
+        // Keep only headers that are normally safe to share with an unrelated
+        // origin. This also removes application-specific API key headers.
+        requestHeaders.removeWhere(
+          (key, _) =>
+              !const {'accept', 'user-agent'}.contains(key.toLowerCase()),
+        );
+      }
+      currentUri = nextUri;
+    }
+  }
+
+  bool _sameOrigin(Uri a, Uri b) =>
+      a.scheme.toLowerCase() == b.scheme.toLowerCase() &&
+      a.host.toLowerCase() == b.host.toLowerCase() &&
+      a.port == b.port;
 }
 
 /// Adapter for querying GraphQL APIs for MetaMantle dynamic SEO.
@@ -184,6 +234,8 @@ class GraphQLDataProvider<T> implements MetaMantleDataProvider<T> {
         'User-Agent': 'MetaMantle-SSR/0.1.0',
         ...headers,
       })
+      ..followRedirects = false
+      ..maxRedirects = 0
       ..body = payload;
 
     final streamed = await client.send(request).timeout(timeout);
@@ -215,6 +267,13 @@ class GraphQLDataProvider<T> implements MetaMantleDataProvider<T> {
       persistentConnection: streamed.persistentConnection,
       reasonPhrase: streamed.reasonPhrase,
     );
+
+    if (response.statusCode >= 300 && response.statusCode < 400) {
+      throw http.ClientException(
+        'GraphQL endpoint redirects are not followed.',
+        endpoint,
+      );
+    }
 
     if (response.statusCode != 200) {
       throw http.ClientException(

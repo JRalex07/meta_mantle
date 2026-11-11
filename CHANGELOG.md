@@ -4,6 +4,8 @@
 
 Official release of **MetaMantle** (`meta_mantle`), the typed metadata management, native server rendering, and universal SEO infrastructure framework for Flutter Web and Dart applications.
 
+**Integration limits:** The package currently requires Flutter SDK resolution (Dart `>=3.6.0`, Flutter `>=3.27.0`). Core/server source entrypoints avoid Flutter imports, but are not independently installable with the Dart SDK alone. Database adapters require application-supplied callbacks and drivers. Jaspr helpers produce metadata descriptors/HTML strings rather than native Jaspr components. CloudFront invalidation is unsupported and returns failure until a genuine AWS API implementation is added.
+
 ### Product Evolution & Architectural Hardening
 - **True Access-Order LRU Cache Eviction:** Overhauled `MemoryCacheStore` to re-insert keys on access, guaranteeing genuine LRU eviction order under memory pressure. Added granular cache performance metrics: `evictions`, `invalidations`, `expiredCount`, and `hitRatio`.
 - **Fail-Closed Distributed Locking:** Hardened `SingleFlightCoordinator` to raise `DistributedLockException` upon lock acquisition timeout, preventing unbounded concurrent executions during cluster outages. Added `completer.future.ignore()` to neutralize unhandled asynchronous zone exception leaks.
@@ -25,7 +27,7 @@ Official release of **MetaMantle** (`meta_mantle`), the typed metadata managemen
 - **SaaS Multi-Tenancy & Host Security:**
   - `TenantHostValidator` enforcing strict allowlists on incoming HTTP `Host` headers across registered custom domains and wildcard subdomains, completely neutralizing Host Header Injection attacks.
   - `TenantCachePartitioner` deterministically isolating cache keys by `tenant:host:locale:currency` and enabling atomic, single-tenant cache invalidation without flushing global entries.
-- **Jaspr Web Framework Adapters:**
+- **Jaspr-compatible HTML bridge (not a native Jaspr adapter):**
   - `MetaMantleDocument`, `MetaMantleHead`, `MetaMantleRouteAdapter`, `MetaMantleDataComponent`, and `MetaMantleContentAdapter`.
   - Support for Jaspr + Flutter Web hybrid embedding: server-rendered HTML shells with pre-rendered crawler content and Flutter Web canvas initialization.
 - **Industry Schema Profiles:**
@@ -47,9 +49,9 @@ Official release of **MetaMantle** (`meta_mantle`), the typed metadata managemen
 - **Multi-Tenant Host Security Integration:** Wired `TenantHostValidator` into `MetaMantleServerEngine`. Unregistered or missing `Host` headers return HTTP 400 Bad Request, untrusted `x-tenant-id` headers are ignored, and cache keys are strictly partitioned by validated tenant context.
 - **Social Card & Image Generation Subsystem:** Added pure Dart SVG synthesis (`SocialCardGenerator`) supporting OpenGraph (1200x630), Twitter Summary (1200x628), and Square (600x600) dimensions with XML escaping, custom themes, and LRU output caching.
 - **Core Web Vitals Telemetry Subsystem:** Added `CoreWebVitalsCollector` ingesting LCP, INP, CLS, FCP, TTFB with zero PII (strips query parameters), calculating p75/p90/p95 percentiles, and categorizing metrics against Google CrUX thresholds.
-- **CDN Invalidation Abstraction & Provider Adapters:** Implemented `CdnInvalidator` interface (`purgeUrls`, `purgeTags`, `purgeAll`) with production adapters for Memory, Cloudflare (API v4), AWS CloudFront, and Nginx reverse proxy.
+- **CDN Invalidation Abstraction:** Implemented `CdnInvalidator` with Memory, Cloudflare (API v4), and Nginx adapters. CloudFront is an unsupported placeholder and reports failure; it does not call AWS.
 - **SEO Regression Testing & CLI Integration:** Added `SeoRegressionTester` comparing baseline and current crawl snapshots to flag title/description mutations, dropped routes, dropped OG tags, and accidental NOINDEX transitions. Added `regression` subcommand to `meta_mantle` CLI.
-- **Jaspr Component Parity Bridge:** Implemented `JasprTagDescriptor` and `renderDescriptors()` on `MetaMantleHead` allowing virtual DOM components to render complete metadata trees without escaping bugs, verified by acceptance tests to produce 100% metadata parity with native MetaMantle HTML rendering.
+- **Jaspr HTML Compatibility Bridge:** Implemented `JasprTagDescriptor` and HTML rendering helpers. The parity tests compare generated HTML output and do not demonstrate integration with Jaspr's component or router APIs.
 - **E-Commerce End-to-End Inventory Lifecycle:** Verified complete 9-step inventory lifecycle (Request -> Cache Hit -> Warehouse Price Change -> Event Dispatch -> Tag Invalidation -> Cache Miss Re-request -> Updated HTML, JSON-LD, and Merchant XML feed), stock depletion lifecycle, and faceted navigation crawl budget protection.
 
 ### Bug Fixes & Refinements

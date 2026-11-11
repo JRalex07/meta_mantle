@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -130,6 +131,165 @@ void main() {
   });
 
   group('SSRF Protection & Response Streaming Security Tests', () {
+    test('REST redirects are manually validated before the next request',
+        () async {
+      final validated = <Uri>[];
+      final requests = <http.BaseRequest>[];
+      final guard = _RecordingSsrfGuard(validated);
+      final client = MockClient.streaming((request, _) async {
+        requests.add(request);
+        if (requests.length == 1) {
+          return http.StreamedResponse(
+            const Stream<List<int>>.empty(),
+            302,
+            headers: {'location': 'https://api.example.test/next'},
+          );
+        }
+        return http.StreamedResponse(
+          Stream.value(utf8.encode('{"ok":true}')),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      final provider = RestDataProvider<Map<String, dynamic>>(
+        urlBuilder: (_) => 'https://api.example.test/start',
+        mapper: (json) => json as Map<String, dynamic>,
+        client: client,
+        ssrfGuard: guard,
+        maxRetries: 0,
+      );
+
+      await provider.load(RouteDataContext(path: '/test'));
+
+      expect(validated, [
+        Uri.parse('https://api.example.test/start'),
+        Uri.parse('https://api.example.test/next'),
+      ]);
+      expect(requests, hasLength(2));
+      expect(requests.every((request) => !request.followRedirects), isTrue);
+      expect(requests[1].url.path, '/next');
+    });
+
+    test('REST redirect limit is enforced', () async {
+      var requestCount = 0;
+      final client = MockClient.streaming((request, _) async {
+        requestCount++;
+        return http.StreamedResponse(
+          const Stream<List<int>>.empty(),
+          302,
+          headers: {'location': '/again'},
+        );
+      });
+      final provider = RestDataProvider<Map<String, dynamic>>(
+        urlBuilder: (_) => 'https://api.example.test/start',
+        mapper: (json) => json as Map<String, dynamic>,
+        client: client,
+        ssrfGuard: _RecordingSsrfGuard([]),
+        maxRetries: 0,
+      );
+
+      await expectLater(
+        provider.load(RouteDataContext(path: '/test')),
+        throwsA(isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('maximum of 5 redirects'),
+        )),
+      );
+      expect(requestCount, 6);
+    });
+
+    test('REST redirect destination is rejected by the SSRF guard', () async {
+      final client =
+          MockClient.streaming((request, _) async => http.StreamedResponse(
+                const Stream<List<int>>.empty(),
+                302,
+                headers: {'location': 'http://127.0.0.1/admin'},
+              ));
+      final provider = RestDataProvider<Map<String, dynamic>>(
+        urlBuilder: (_) => 'https://api.example.test/start',
+        mapper: (json) => json as Map<String, dynamic>,
+        client: client,
+        maxRetries: 0,
+        ssrfGuard: _RecordingSsrfGuard([], blockedHost: '127.0.0.1'),
+      );
+
+      await expectLater(
+        provider.load(RouteDataContext(path: '/test')),
+        throwsA(isA<SecurityException>()),
+      );
+    });
+
+    test('cross-origin redirects do not forward authorization or cookies',
+        () async {
+      final requests = <http.BaseRequest>[];
+      final client = MockClient.streaming((request, _) async {
+        requests.add(request);
+        if (requests.length == 1) {
+          return http.StreamedResponse(
+            const Stream<List<int>>.empty(),
+            302,
+            headers: {'location': 'https://other.example.test/data'},
+          );
+        }
+        return http.StreamedResponse(
+          Stream.value(utf8.encode('{"ok":true}')),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      });
+      final provider = RestDataProvider<Map<String, dynamic>>(
+        urlBuilder: (_) => 'https://api.example.test/start',
+        mapper: (json) => json as Map<String, dynamic>,
+        client: client,
+        headers: {
+          'Authorization': 'Bearer test-value',
+          'Cookie': 'session=test-value',
+          'X-Api-Key': 'test-value',
+        },
+        ssrfGuard: _RecordingSsrfGuard([]),
+        maxRetries: 0,
+      );
+
+      await provider.load(RouteDataContext(path: '/test'));
+
+      expect(requests[1].headers.keys.map((key) => key.toLowerCase()),
+          isNot(contains('authorization')));
+      expect(requests[1].headers.keys.map((key) => key.toLowerCase()),
+          isNot(contains('cookie')));
+      expect(requests[1].headers.keys.map((key) => key.toLowerCase()),
+          isNot(contains('x-api-key')));
+    });
+
+    test('GraphQL redirects are disabled and rejected', () async {
+      var followRedirects = true;
+      final client = MockClient.streaming((request, _) async {
+        followRedirects = request.followRedirects;
+        return http.StreamedResponse(
+          const Stream<List<int>>.empty(),
+          302,
+          headers: {'location': 'https://other.example.test/graphql'},
+        );
+      });
+      final provider = GraphQLDataProvider<Map<String, dynamic>>(
+        endpoint: Uri.parse('https://api.example.test/graphql'),
+        queryBuilder: (_) => '{ status }',
+        mapper: (json) => json as Map<String, dynamic>,
+        client: client,
+        ssrfGuard: _RecordingSsrfGuard([]),
+      );
+
+      await expectLater(
+        provider.load(RouteDataContext(path: '/test')),
+        throwsA(isA<http.ClientException>().having(
+          (error) => error.message,
+          'message',
+          contains('redirects are not followed'),
+        )),
+      );
+      expect(followRedirects, isFalse);
+    });
+
     test(
         'RestDataProvider blocks loopback addresses before making network requests',
         () async {
@@ -162,6 +322,15 @@ void main() {
           'message',
           contains('cloud metadata'),
         )),
+      );
+    });
+
+    test('SsrfGuard blocks IPv4-mapped IPv6 loopback addresses', () async {
+      expect(
+        () => const SsrfGuard().validateUri(
+          Uri.parse('http://[::ffff:127.0.0.1]/internal'),
+        ),
+        throwsA(isA<SecurityException>()),
       );
     });
 
@@ -291,4 +460,19 @@ void main() {
               'Cache key must be partitioned by validated host tenant, not spoofed header');
     });
   });
+}
+
+class _RecordingSsrfGuard extends SsrfGuard {
+  _RecordingSsrfGuard(this.validated, {this.blockedHost});
+
+  final List<Uri> validated;
+  final String? blockedHost;
+
+  @override
+  Future<void> validateUri(Uri uri) async {
+    validated.add(uri);
+    if (uri.host == blockedHost) {
+      throw const SecurityException('Blocked redirect destination.');
+    }
+  }
 }

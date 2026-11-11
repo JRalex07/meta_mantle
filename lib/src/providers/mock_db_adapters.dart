@@ -29,6 +29,11 @@ class RelationalDatabaseAdapter<T> implements MetaMantleDataProvider<T> {
 
   @override
   Future<DataProviderResult<T>> load(RouteDataContext context) async {
+    if (!_isSafeIdentifier(tableName) || !_isSafeIdentifier(keyColumn)) {
+      throw ArgumentError(
+        'tableName and keyColumn must be simple SQL identifiers.',
+      );
+    }
     final key =
         context.parameters[paramName] ?? context.queryParameters[paramName];
     if (key == null || key.isEmpty) {
@@ -66,6 +71,9 @@ class RelationalDatabaseAdapter<T> implements MetaMantleDataProvider<T> {
       cacheTags: [tableName, '$tableName:$key'],
     );
   }
+
+  bool _isSafeIdentifier(String value) =>
+      RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(value);
 }
 
 /// Function signature for fetching a document by collection and ID.

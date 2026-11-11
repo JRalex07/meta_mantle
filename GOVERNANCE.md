@@ -56,3 +56,4 @@ Before any pull request can be merged into the `main` branch, it must satisfy al
   - **PATCH (0.0.X):** Backward-compatible bug fixes and security patches.
 - **Pre-Release Checklist:** Releases must satisfy the formal verification criteria documented in [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md).
 - **Decoupled Deployments:** Official package releases on GitHub are independent of the separate marketing and documentation website deployment.
+

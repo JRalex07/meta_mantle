@@ -7,6 +7,8 @@
 **Commit Verified:** `afc37e9`  
 **Audit Standard:** Gravitas Verification-First Engineering  
 
+> **Current audit note (2026-11-11):** The snapshot below predates this checkout's verified base commit `b8e003e73f1aecb2649cf27ac5541d4907c1ff00`. There were 18 pre-existing modified files when this audit began; all were preserved. Current test/build evidence is in `BUILD_STATUS.md`; the Gitleaks scan is configured but still pending execution.
+
 ---
 
 ## 1. Executive Summary
@@ -16,7 +18,7 @@ This report documents the completed execution of repository cleanup, secret audi
 ### Key Objectives Achieved:
 1. **GitHub Pages Removal:** Completely deleted `.github/workflows/pages.yml`, eliminated all references to `deploy-pages` and `upload-pages-artifact`, and removed repository-specific CNAME instructions.
 2. **CI Hardening:** Retained and validated `.github/workflows/ci.yml` covering formatting, static analysis, test execution, Flutter Web release and Wasm builds, static generator execution, and package publish dry-run validation.
-3. **Repository-Wide Credential Audit:** Scanned all tracked files, configurations, workflows, and Git commit history for API tokens, cloud keys, database passwords, and private certificates. Confirmed zero live secrets exist. Hardened `.gitignore` and authored `.env.example`.
+3. **Repository-Wide Credential Audit:** A previous manual review was recorded, but it did not provide a reproducible scanner command or verifiable run output. CI now runs a pinned Gitleaks scanner over the checked-out Git history; no claim about past scan completeness is made by this report.
 4. **Documentation Overhaul:** Rewrote `README.md` into a structured, professional 13-section specification. Authored `CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, and `GOVERNANCE.md`. Added `docs/README.md`, `docs/GETTING_STARTED.md`, `docs/INSTALLATION.md`, and `docs/QUICK_START.md`.
 5. **API Stabilization & Landing Website Readiness:** Authored `docs/API_STABILITY.md`, `docs/INTEGRATION_CONTRACT.md`, and `docs/RELEASE_READINESS.md` establishing a formal integration contract for the independent landing website.
 
@@ -54,7 +56,7 @@ This report documents the completed execution of repository cleanup, secret audi
 ## 4. Phase 3 — Credential & Secret Audit Results
 
 ### 4.1 Search Vectors & Scanning Techniques
-- Scanned for:
+- The prior report claimed searches for the following, but did not retain a reproducible scanner command or evidence. Those zero-secret conclusions are unverified and superseded by a pinned Gitleaks CI gate added during the 2026-11-11 audit:
   - AWS access keys (`AKIA[0-9A-Z]{16}`)
   - Google Cloud & Firebase service account private keys (`AIza...`, `BEGIN PRIVATE KEY`)
   - Cloudflare API tokens, Resend keys, Bearer tokens
@@ -64,9 +66,9 @@ This report documents the completed execution of repository cleanup, secret audi
   - Full Git commit history search (`git log -p -S`)
 
 ### 4.2 Findings Matrix
-- **Confirmed Live Secrets:** **0 (Zero)**
-- **Historical Secrets in Git History:** **0 (Zero)**
-- **Dummy Placeholders Cleaned:** Updated `docs/REST_GRAPHQL.md` to use explicit placeholder `YOUR_API_KEY`.
+- **Confirmed Live Secrets:** Not established by the prior report; current Gitleaks CI run is pending.
+- **Historical Secrets in Git History:** Not established by the prior report; current Gitleaks CI run is pending.
+- **Dummy Placeholders:** Review `.env.example` values as placeholders only; no claim that every historical commit was clean has been verified.
 - **Secret Protection Added:**
   - Updated `.gitignore` with strict rules for `.env`, `*.pem`, `*.key`, `*.keystore`, `*.jks`, `credentials.json`, `service-account*.json`, `google-services.json`, `GoogleService-Info.plist`.
   - Authored `.env.example` with safe placeholder variables.
@@ -103,4 +105,4 @@ This report documents the completed execution of repository cleanup, secret audi
 | **Package Analysis** | `flutter analyze` | **PASS** (0 issues found) |
 | **Example Analysis** | `flutter analyze example` | **PASS** (0 issues found) |
 | **Automated Test Suite** | `flutter test` | **PASS** (128 / 128 tests passing) |
-| **Package Publication Dry-Run** | `dart pub publish --dry-run` | **PASS** (0 errors, 0 warnings) |
+| **Package Publication Dry-Run** | `dart pub publish --dry-run` | **WARN** (1 working-tree warning; rerun from a clean checkout) |

@@ -6,6 +6,8 @@
 **Verified Commit:** `3d3a14b`  
 **Verified Branch:** `main`  
 
+> **Audit update (2026-11-11):** This report is a historical snapshot at commit `3d3a14b`. Current review at `b8e003e` found REST redirect validation missing, CloudFront success simulated, Jaspr APIs absent, and prior secret-scan claims unsupported by reproducible evidence. Fixes and current verification are recorded in `BUILD_STATUS.md`; Gitleaks CI results are still pending.
+
 ---
 
 ## 1. Executive Summary & Verification Methodology

@@ -77,15 +77,6 @@ Future<void> main(List<String> arguments) async {
     ..addFlag('json',
         defaultsTo: false, help: 'Output regression report as JSON.');
 
-  parser.commands['regression']!
-    ..addFlag('help', abbr: 'h', negatable: false)
-    ..addOption('baseline',
-        mandatory: true, help: 'Path to baseline crawl/audit JSON file.')
-    ..addOption('current',
-        mandatory: true, help: 'Path to current crawl/audit JSON file.')
-    ..addFlag('json',
-        defaultsTo: false, help: 'Output regression report as JSON.');
-
   try {
     final result = parser.parse(arguments);
     if (result['help'] == true ||

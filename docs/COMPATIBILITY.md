@@ -2,6 +2,8 @@
 
 MetaMantle is engineered to support both modern Flutter Web compilation targets and headless Dart server runtimes.
 
+The server/core source entrypoints avoid Flutter imports, but the root package manifest declares Flutter as an SDK dependency. Therefore Dart SDK-only dependency resolution is not currently supported by this package distribution.
+
 ---
 
 ## 1. Supported SDK & Runtime Targets

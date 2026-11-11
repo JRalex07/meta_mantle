@@ -2,6 +2,17 @@
 
 This document details the security principles, data sanitization, URL validation, SSRF mitigation, and filesystem protections implemented in `meta_mantle`.
 
+## Reproducible secret scan
+
+The CI workflow runs Gitleaks v8.30.1 against both checked-out Git history and current checkout files with redaction enabled. To run the same version locally with Docker:
+
+```bash
+docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git --redact --no-banner --log-opts="--all" /repo
+docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 dir --redact --no-banner /repo
+```
+
+The scan redacts detected secret values. Treat any finding as sensitive and do not share unredacted scanner output.
+
 ---
 
 ## 1. Context-Aware HTML Escaping

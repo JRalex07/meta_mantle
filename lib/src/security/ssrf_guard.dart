@@ -85,8 +85,20 @@ class SsrfGuard {
       // 169.254.0.0/16 (Link local / Cloud metadata)
       if (parts[0] == 169 && parts[1] == 254) return true;
     } else if (address.type == InternetAddressType.IPv6) {
-      // IPv6 Unique Local Address (fc00::/7) or Site Local (fec0::/10)
+      // IPv4-mapped IPv6 addresses must inherit the IPv4 private-range checks.
       final raw = address.rawAddress;
+      final isIpv4Mapped = raw.take(10).every((byte) => byte == 0) &&
+          raw[10] == 0xff &&
+          raw[11] == 0xff;
+      if (isIpv4Mapped) {
+        final ipv4 = raw.sublist(12);
+        return ipv4[0] == 10 ||
+            (ipv4[0] == 172 && ipv4[1] >= 16 && ipv4[1] <= 31) ||
+            (ipv4[0] == 192 && ipv4[1] == 168) ||
+            (ipv4[0] == 169 && ipv4[1] == 254) ||
+            ipv4[0] == 127;
+      }
+      // IPv6 Unique Local Address (fc00::/7) or Site Local (fec0::/10)
       if ((raw[0] & 0xfe) == 0xfc) return true;
       if (raw[0] == 0xfe && (raw[1] & 0xc0) == 0xc0) return true;
     }

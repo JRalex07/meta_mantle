@@ -12,8 +12,9 @@ This document specifies the official integration contract for downstream consume
 | **Official Repository** | `https://github.com/JRalex07/meta_mantle` |
 | **Current Stable Baseline** | `0.1.0` |
 | **License** | MIT License |
-| **Dart SDK Compatibility** | `>=3.0.0 <4.0.0` |
-| **Flutter SDK Compatibility** | `>=3.3.0` (Stable channel) |
+| **Dart SDK Compatibility** | `>=3.6.0 <4.0.0` |
+| **Flutter SDK Compatibility** | `>=3.27.0` |
+| **Package Resolution** | The package manifest requires Flutter SDK resolution, including for core/server entrypoints. |
 | **WebAssembly Support** | Verified under `dart2wasm` |
 | **Canonical Documentation Source** | `docs/` within this repository |
 | **Official Documentation Domain** | `https://metamantle.alex.runs-on.dev` |
@@ -22,7 +23,7 @@ This document specifies the official integration contract for downstream consume
 
 ## 2. Public Entrypoints & Import Contracts
 
-Consumers must strictly import public library entrypoints and avoid referencing `src/` internals:
+Consumers must import public library entrypoints and avoid referencing `src/` internals. The core and server source entrypoints avoid Flutter imports, but package installation still requires Flutter because the root `pubspec.yaml` declares Flutter as an SDK dependency. This is not a separately resolvable pure-Dart package today.
 
 ```dart
 // 1. Flutter Web Client Applications (Widgets & Reactive DOM)
@@ -34,7 +35,7 @@ import 'package:meta_mantle/meta_mantle_server.dart';
 // 3. Static Site Generation CLI & Pre-rendering Builders
 import 'package:meta_mantle/meta_mantle_builder.dart';
 
-// 4. Pure Dart Core Models & Policy Primitives (Zero Flutter, Zero IO)
+// 4. Core Models & Policy Primitives (source has no Flutter or IO imports)
 import 'package:meta_mantle/meta_mantle_core.dart';
 ```
 
@@ -78,6 +79,7 @@ The separate **Landing Website repository** should consume or display documentat
 
 ## 5. Security & Isolation Boundaries
 
-- **Zero Hardcoded Secrets:** Downstream consumers must provide their own environment variables for private services (e.g., database URLs, CDN tokens). MetaMantle supplies `.env.example` templates.
+- **Database Adapters:** SQL and document adapters accept callbacks. Applications must supply and configure their database clients, query/fetch functions, connection pooling, and database-specific error handling; no vendor database drivers are bundled.
 - **Strict Host Header Validation:** When configuring multi-tenant servers, downstream consumers must register authorized domains with `TenantHostValidator`.
 - **SSRF Guarding:** Downstream consumers utilizing `RestDataProvider` must configure `SsrfGuard` allowlists if connecting to private APIs.
+

@@ -1,8 +1,6 @@
 # MetaMantle Jaspr Web Framework Integration
 
-Jaspr is the leading server-oriented web framework for Dart, providing fast server-side HTML rendering, component-based architectures, and lightweight hydration.
-
-MetaMantle provides first-class adapters to unify SEO, document head rendering, and Markdown content handling within Jaspr applications.
+This page describes a compatibility bridge, not a first-class Jaspr integration. The current package does not import Jaspr or implement Jaspr `Component`, document, or router APIs. It provides metadata descriptors, HTML-string rendering, and MetaMantle-owned route helpers that an application may connect to Jaspr itself.
 
 ---
 
@@ -10,11 +8,7 @@ MetaMantle provides first-class adapters to unify SEO, document head rendering, 
 
 Jaspr renders component trees into HTML strings on the server and attaches client-side event listeners. 
 
-MetaMantle's Jaspr integration bridges:
-1. **`MetaMantleHead`**: Replaces manual `<head>` configuration with complete reactive SEO tags.
-2. **`MetaMantleDocument`**: Generates full HTML document envelopes (`<!DOCTYPE html>`, `<html lang="...">`, `<head>`, `<body>`, and mounting nodes).
-3. **`MetaMantleRouteAdapter`**: Handles data resolution, metadata synthesis, and server caching for Jaspr SSR routes.
-4. **`MetaMantleContentAdapter`**: Extracts Markdown frontmatter for documentation portals and blog pages.
+The bridge includes `MetaMantleHead` (tag descriptors/HTML), `MetaMantleDocument` (a string document shell), `MetaMantleRouteAdapter` (MetaMantle route/data abstractions), and `MetaMantleContentAdapter` (frontmatter conversion). These helpers do not create or mount Jaspr components and do not provide Jaspr router/cache integration.
 
 ---
 

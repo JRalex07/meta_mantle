@@ -1,6 +1,6 @@
 # MetaMantle Core Architecture
 
-`meta_mantle_core` is the pure Dart, platform-agnostic foundation of the MetaMantle framework. It has **zero dependencies on `flutter` and zero dependencies on `dart:io`**, enabling safe usage in server environments, command-line interfaces, edge workers, and client applications.
+`meta_mantle_core.dart` is the pure-Dart, platform-agnostic source entrypoint. It has **zero imports of `package:flutter` and `dart:io`**. However, the root `meta_mantle` package manifest requires Flutter for dependency resolution, so this entrypoint is not currently distributed as a Dart-SDK-only package.
 
 ---
 

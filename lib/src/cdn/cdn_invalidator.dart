@@ -127,7 +127,9 @@ class CloudflareCdnInvalidator implements CdnInvalidator {
       );
 
       final jsonRes = json.decode(res.body) as Map<String, dynamic>;
-      final success = jsonRes['success'] == true;
+      final success = res.statusCode >= 200 &&
+          res.statusCode < 300 &&
+          jsonRes['success'] == true;
       final resultId =
           jsonRes['result'] is Map ? jsonRes['result']['id'] : null;
 
@@ -136,7 +138,9 @@ class CloudflareCdnInvalidator implements CdnInvalidator {
         provider: 'cloudflare',
         purgedCount: success ? count : 0,
         invalidationId: resultId?.toString(),
-        errorMessage: success ? null : json.encode(jsonRes['errors']),
+        errorMessage: success
+            ? null
+            : 'HTTP ${res.statusCode}: ${json.encode(jsonRes['errors'])}',
       );
     } catch (e) {
       return CdnPurgeResult(
@@ -149,7 +153,12 @@ class CloudflareCdnInvalidator implements CdnInvalidator {
   }
 }
 
-/// AWS CloudFront Invalidation adapter.
+/// Unsupported placeholder for AWS CloudFront invalidation.
+///
+/// This package does not currently implement AWS Signature Version 4, so this
+/// adapter deliberately reports failure instead of simulating an invalidation.
+@Deprecated(
+    'CloudFront invalidation is unsupported; use a real AWS SDK adapter.')
 class CloudFrontCdnInvalidator implements CdnInvalidator {
   CloudFrontCdnInvalidator({
     required this.distributionId,
@@ -163,35 +172,26 @@ class CloudFrontCdnInvalidator implements CdnInvalidator {
 
   @override
   Future<CdnPurgeResult> purgeUrls(List<String> urls) async {
-    if (urls.isEmpty) {
-      return const CdnPurgeResult(
-          success: true, provider: 'cloudfront', purgedCount: 0);
-    }
-    // CloudFront invalidations take path patterns (e.g. /products/* or /about)
-    final paths = urls.map((u) {
-      final uri = Uri.tryParse(u);
-      return uri?.path ?? u;
-    }).toList();
-
-    return CdnPurgeResult(
-      success: true,
-      provider: 'cloudfront',
-      purgedCount: paths.length,
-      invalidationId: 'cf-${DateTime.now().microsecondsSinceEpoch}',
-    );
+    return _unsupported();
   }
 
   @override
   Future<CdnPurgeResult> purgeTags(List<String> tags) async {
-    // CloudFront natively invalidates by path patterns
-    final paths = tags.map((t) => '/*$t*').toList();
-    return purgeUrls(paths);
+    return _unsupported();
   }
 
   @override
   Future<CdnPurgeResult> purgeAll() async {
-    return purgeUrls(['/*']);
+    return _unsupported();
   }
+
+  CdnPurgeResult _unsupported() => const CdnPurgeResult(
+        success: false,
+        provider: 'cloudfront',
+        purgedCount: 0,
+        errorMessage:
+            'CloudFront invalidation is unsupported: AWS authentication and API calls are not implemented.',
+      );
 }
 
 /// Nginx / Fastly reverse proxy cache purge adapter via HTTP PURGE.

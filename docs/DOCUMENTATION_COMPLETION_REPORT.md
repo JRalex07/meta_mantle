@@ -6,6 +6,8 @@
 **Branch:** `main`  
 **Execution Standard:** Gravitas Verification-First Engineering  
 
+> **Audit update (2026-11-11):** This document preserves a prior completion record. Its claims of zero live or historical secrets were not supported by reproducible scan evidence and are withdrawn. Pinned Gitleaks `git` and `dir` scans are now configured in CI; an executed scan result is still pending. Current test, analyzer, build, and package dry-run results are recorded in `BUILD_STATUS.md`.
+
 ---
 
 ## 1. GitHub Pages Removal
@@ -45,12 +47,12 @@
   - Git commit history diffs (`git log -p -S`).
 
 ## 5. Confirmed Exposed Secrets
-- **Confirmed Live Secrets Found:** **0 (Zero)**.
-- **Historical Exposed Secrets:** **0 (Zero)**.
+- **Confirmed Live Secrets Found:** Not established by the prior review; a current Gitleaks scan is pending.
+- **Historical Exposed Secrets:** Not established by the prior review; a current Gitleaks scan is pending.
 - **Cleaned Documentation Placeholders:** Replaced `secret_key` with explicit `YOUR_API_KEY` in `docs/REST_GRAPHQL.md`.
 
 ## 6. Required Key Rotation & Git History Remediation
-- Since zero actual credentials, private keys, or tokens were committed to the repository or Git history, **no credential revocations or Git history rewriting are required**.
+- Credential rotation and history remediation decisions must be based on the pending reproducible scan; the previous report does not establish that no credentials were committed.
 
 ## 7. `.gitignore` and Environment Templates
 - **Hardened `.gitignore`:** Added comprehensive exclusions for:
@@ -59,7 +61,7 @@
   - Cloud credentials (`credentials.json`, `service-account*.json`, `google-services.json`, `GoogleService-Info.plist`).
   - Coverage and test artifacts (`*.lcov`, `test_results/`).
   - Operating system files (`.DS_Store`, `Thumbs.db`).
-- **Template Created:** Added `.env.example` documenting server port, host, optional Cloudflare/CloudFront purge tokens, and database connection strings using safe dummy placeholders.
+- **Template Created:** `.env.example` documents server settings, optional Cloudflare API credentials, and database endpoints using placeholders. CloudFront is unsupported; no AWS credentials are required or used by MetaMantle.
 
 ## 8. README.md Improvements
 - Completely redesigned and rewritten according to the mandated 13-section structure:
@@ -118,8 +120,9 @@
 
 ## 14. Package Publish Dry-Run Result
 - **Command:** `dart pub publish --dry-run`
-- **Result:** **0 warnings, 0 errors**. Package passes all static analysis and packaging checks cleanly.
+- **Historical Result:** The prior report recorded 0 warnings/0 errors. The 2026-11-11 dry-run completed with 1 working-tree warning; rerun from a clean checkout before release.
 
 ## 15. Remaining Issues / Next Steps
 - None within repository scope.
 - Maintainers can proceed with developing the independent landing website, referencing the formal contract in `docs/INTEGRATION_CONTRACT.md`.
+

@@ -170,6 +170,37 @@ void main() {
       expect(res.success, isTrue);
       expect(res.invalidationId, equals('cf-purge-001'));
     });
+
+    test('CloudFront placeholder reports unsupported instead of fake success',
+        () async {
+      final cdn = CloudFrontCdnInvalidator(distributionId: 'distribution');
+      final result = await cdn.purgeUrls(['https://example.com/path']);
+
+      expect(result.success, isFalse);
+      expect(result.invalidationId, isNull);
+      expect(result.purgedCount, 0);
+      expect(result.errorMessage, contains('not implemented'));
+    });
+
+    test('Cloudflare HTTP error cannot report a successful purge', () async {
+      final cdn = CloudflareCdnInvalidator(
+        zoneId: 'zone',
+        apiToken: 'test-token',
+        httpClient: MockClient((_) async => http.Response(
+              json.encode({
+                'success': true,
+                'result': {'id': 'fake'}
+              }),
+              500,
+            )),
+      );
+
+      final result = await cdn.purgeUrls(['/page']);
+
+      expect(result.success, isFalse);
+      expect(result.purgedCount, 0);
+      expect(result.errorMessage, contains('HTTP 500'));
+    });
   });
 
   group('SEO Regression Tester Tests', () {

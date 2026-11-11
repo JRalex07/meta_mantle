@@ -19,6 +19,28 @@ class SampleProduct {
 }
 
 void main() {
+  test('rejects unsafe SQL identifiers before invoking the query callback',
+      () async {
+    var called = false;
+    final provider = RelationalDatabaseAdapter<String>(
+      tableName: 'products; DROP TABLE users',
+      queryRunner: (sql, parameters) async {
+        called = true;
+        return null;
+      },
+      rowMapper: (row) => '',
+    );
+
+    await expectLater(
+      provider.load(RouteDataContext(
+        path: '/products/item',
+        parameters: {'slug': 'item'},
+      )),
+      throwsArgumentError,
+    );
+    expect(called, isFalse);
+  });
+
   group('Universal Database Provider Contract Tests', () {
     void runStandardProviderContractTests({
       required String providerName,

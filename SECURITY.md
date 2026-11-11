@@ -70,6 +70,7 @@ Outbound HTTP requests executed by `RestDataProvider` and `GraphQLDataProvider` 
 
 ## 4. Secret Handling & Credentials
 
-- **Zero Secrets in Repository:** The MetaMantle codebase, examples, tests, and documentation do not contain live private API keys, cloud tokens, database passwords, or private certificates.
+- **Secret Scan Status:** Do not treat earlier statements that the repository contains zero secrets as verified. Pinned Gitleaks history and checkout scans are configured in CI; the current run remains pending. See [`docs/SECURITY.md`](docs/SECURITY.md) for redacted commands.
 - **Testing with Mocks:** All tests must use `MockClient`, `MemoryDataProvider`, or clearly designated dummy test strings (`test-token-xyz`).
 - **Template Configuration:** Developers requiring local environment secrets should copy `.env.example` to `.env` (which is excluded by `.gitignore`).
+

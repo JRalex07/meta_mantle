@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/JRalex07/meta_mantle/actions/workflows/ci.yml/badge.svg)](https://github.com/JRalex07/meta_mantle/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Dart SDK](https://img.shields.io/badge/Dart-3.0%2B-blue.svg)](https://dart.dev)
-[![Flutter SDK](https://img.shields.io/badge/Flutter-3.3%2B-blue.svg)](https://flutter.dev)
+[![Dart SDK](https://img.shields.io/badge/Dart-3.6%2B-blue.svg)](https://dart.dev)
+[![Flutter SDK](https://img.shields.io/badge/Flutter-3.27%2B-blue.svg)](https://flutter.dev)
 [![WebAssembly](https://img.shields.io/badge/Wasm-Ready-green.svg)](docs/FLUTTER_INTEGRATION.md)
 
 **MetaMantle** is a universal typed metadata management, native server rendering (SSR), and automated SEO infrastructure framework for Flutter Web and Dart applications.
@@ -41,7 +41,7 @@ Beyond rendering, MetaMantle includes a universal database abstraction layer, tr
 - **Social Media Cards:** Complete Open Graph (with image dimensions, video, audio, multiple alternate locales) and Twitter / X Summary and Summary Large Image cards.
 - **13 Schema.org JSON-LD Builders:** Strongly typed builders for Organization, WebSite, Product, AggregateOffer, Article, BreadcrumbList, LocalBusiness, FAQPage, Event, JobPosting, Recipe, and Course schemas with Unicode character escaping against XSS.
 - **Native Dart SSR Engine:** Real-time dynamic document rendering on the server in pure Dart VM with zero headless browser dependencies.
-- **Universal Database Providers:** Data contracts with built-in adapters for Relational SQL databases, Document/NoSQL databases, in-memory caches, and REST/GraphQL APIs.
+- **Database Provider Contracts:** In-memory storage, callback-based SQL/document adapters, and REST/GraphQL clients. Database drivers and connection management are supplied by your application.
 - **Enterprise Caching & Concurrency:** True access-order LRU cache eviction, cryptographic SHA-256 ETags, RFC 7232 conditional GET evaluation, RFC 5861 `stale-while-revalidate` and `stale-if-error` origin recovery, and single-flight distributed lock coordination.
 - **Security & Multi-Tenancy:** In-line SSRF validation (`SsrfGuard`), response streaming size limits (`BytesBuilder`), and Host Header Injection defense with tenant-isolated caching (`TenantHostValidator`).
 - **E-Commerce SEO Subsystem:** Product models, Google Merchant Center RSS 2.0 XML feeds, inventory webhook event invalidation (`InventoryEventDispatcher`), and faceted navigation crawl budget protection (`FacetedNavPolicy`).
@@ -52,7 +52,7 @@ Beyond rendering, MetaMantle includes a universal database abstraction layer, tr
 
 ### Decoupled Framework Adapters:
 - **Shelf Adapter:** Verified adapter for Dart Shelf servers (`engine.toShelfHandler()`).
-- **Jaspr Web Framework:** Verified parity adapters (`MetaMantleHead`, `JasprTagDescriptor`) and hybrid Flutter canvas embedding.
+- **Jaspr-compatible HTML bridge:** Metadata descriptors and document-shell HTML helpers. This package does not currently integrate with Jaspr component or routing APIs.
 
 ---
 
@@ -83,7 +83,7 @@ Beyond rendering, MetaMantle includes a universal database abstraction layer, tr
 +-----------------------------------+                           +-----------------------------------+
 |  meta_mantle_builder (Static CLI) |                           |        Framework Adapters         |
 |  - StaticHeadBuilder              |                           |  - Shelf HTTP Adapter             |
-|  - Dynamic Pattern Expansion      |                           |  - Jaspr Virtual DOM Parity       |
+|  - Dynamic Pattern Expansion      |                           |  - Jaspr-compatible HTML Bridge   |
 |  - Sitemap & Robots.txt Generator |                           |  - CDN Invalidation (Cloudflare)  |
 +-----------------------------------+                           +-----------------------------------+
 ```
@@ -105,7 +105,7 @@ dependencies:
       ref: main # Or pin to a specific release tag such as v0.1.0
 ```
 
-For pure Dart server applications (no Flutter SDK dependencies):
+The server and core entrypoints contain no Flutter imports, but this package manifest currently requires the Flutter SDK to resolve the package. Pure Dart SDK-only consumers need a separately published core/server package, which is not currently provided.
 ```yaml
 dependencies:
   meta_mantle:

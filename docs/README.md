@@ -13,7 +13,7 @@ Welcome to the **MetaMantle** technical documentation. This directory contains c
 
 ## 2. Core Architecture & Concepts
 - **[Architecture Deep-Dive](ARCHITECTURE.md)** — Tripartite architecture (Engine A: Runtime, Engine B: Static, Engine C: Native SSR).
-- **[Core Package Overview](CORE.md)** — Pure Dart core primitives, models, and zero-Flutter dependency guarantees.
+- **[Core Source Overview](CORE.md)** — Pure-Dart source primitives and models; package resolution still requires Flutter.
 - **[Runtime Engine](RUNTIME.md)** — Reactive DOM reconciler, monotonic generation tokens, and parent scope restoration.
 - **[Static Site Generation](STATIC_GENERATION.md)** — AST-based HTML injection, incremental generation manifests, and preflight validation.
 - **[Native Server Rendering](SERVER_RENDERING.md)** — Pure Dart request-time rendering, zero-JS crawler payloads, and Shelf adapter.
@@ -51,13 +51,13 @@ Welcome to the **MetaMantle** technical documentation. This directory contains c
 
 ## 6. Framework Integrations
 - **[Flutter Web Integration](FLUTTER_INTEGRATION.md)** — Declarative `MetaHead` widget lifecycle, GoRouter wrapping, and WebAssembly compilation.
-- **[Jaspr Web Integration](JASPR_INTEGRATION.md)** — Jaspr document shells, `JasprTagDescriptor` parity, and hybrid Flutter embedding.
+- **[Jaspr-compatible HTML bridge](JASPR_INTEGRATION.md)** — HTML/metadata helpers that applications may connect to Jaspr; no native Jaspr component or router integration.
 - **[Framework Adapters](FRAMEWORK_ADAPTERS.md)** — Connecting MetaMantle to Shelf, Jaspr, Dart Frog, and standalone servers.
 
 ---
 
 ## 7. Operations, Deployment & Tooling
-- **[Routing & Hosting Guide](ROUTING_AND_HOSTING.md)** — Production hosting recipes for GitHub Pages, Firebase, Vercel, Netlify, and Docker.
+- **[Routing & Hosting Guide](ROUTING_AND_HOSTING.md)** — Hosting recipes for Firebase, Vercel, Netlify, and Docker.
 - **[CLI Tooling Guide](CLI.md)** — Command-line workflows: `build`, `validate`, `inspect`, `doctor`, `inspect-url`, `crawl`, and `regression`.
 - **[Troubleshooting Guide](TROUBLESHOOTING.md)** — Solutions for common issues: strict validation failures, tab switching, and fonts.
 - **[Performance & Concurrency](PERFORMANCE.md)** — Concurrency benchmarks, ring buffers, and memory bounds.
@@ -72,3 +72,4 @@ Welcome to the **MetaMantle** technical documentation. This directory contains c
 - **[Repository Cleanup Report](REPOSITORY_CLEANUP_REPORT.md)** — Audit report on GitHub Pages removal and credential scanning.
 - **[Verification & Repair Report](VERIFICATION_AND_REPAIR_REPORT.md)** — Subsystem audit and verification test results.
 - **[Execution Checkpoint](EXECUTION_CHECKPOINT.md)** — Ongoing execution status and verified milestones.
+

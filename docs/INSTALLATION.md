@@ -1,13 +1,13 @@
 # Installation Guide
 
-This guide details how to install and configure **MetaMantle** in Flutter Web applications, pure Dart server applications, and local development workspaces.
+This guide details how to install and configure **MetaMantle** in Flutter Web applications and applications using its Dart server/core APIs. The package itself currently requires Flutter SDK resolution, even for server-only use.
 
 ---
 
 ## 1. Environment Requirements
 
-- **Dart SDK:** `>=3.0.0 <4.0.0`
-- **Flutter SDK:** `>=3.3.0` (Tested on Flutter 3.47.5+)
+- **Dart SDK:** `>=3.6.0 <4.0.0`
+- **Flutter SDK:** `>=3.27.0`
 - **Platforms Supported:**
   - **Flutter Web:** Fully supported (JavaScript and WebAssembly / `dart2wasm`).
   - **Dart Server / VM:** Fully supported for Native SSR, static generation CLI, and caching.
@@ -30,14 +30,7 @@ dependencies:
       ref: main # Or pin to a specific release tag such as v0.1.0
 ```
 
-For pure Dart server applications (no Flutter dependencies), depend on the pure Dart entrypoint:
-```yaml
-dependencies:
-  meta_mantle:
-    git:
-      url: https://github.com/JRalex07/meta_mantle.git
-      ref: main
-```
+Although the core and server entrypoints do not import Flutter, the package manifest requires Flutter for dependency resolution. A Dart SDK-only project cannot currently depend on this package directly; a separate core/server distribution would be needed to support that installation boundary.
 
 ### Local Path Dependency
 For monorepos or local package development:
@@ -50,8 +43,7 @@ dependencies:
 Then resolve dependencies:
 ```bash
 flutter pub get
-# Or for pure Dart projects:
-dart pub get
+# Flutter SDK resolution is required even when using core/server entrypoints.
 ```
 
 ---
@@ -94,3 +86,4 @@ In Flutter Web applications, if you receive a warning about CupertinoIcons missi
 
 ### 3. Git Authentication / Submodule Failures
 Ensure your machine has network access to `https://github.com/JRalex07/meta_mantle.git`.
+

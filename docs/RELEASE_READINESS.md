@@ -13,13 +13,13 @@ Every gate must be evaluated and verified against live execution evidence before
 | **1. Formatting** | `dart format --output=none --set-exit-if-changed .` | 0 files modified | :white_check_mark: PASS |
 | **2. Static Analysis (Root)** | `flutter analyze` | 0 issues | :white_check_mark: PASS |
 | **3. Static Analysis (Example)** | `flutter analyze example` | 0 issues | :white_check_mark: PASS |
-| **4. Unit & Integration Tests** | `flutter test` | 100% passing across all 18 test suites | :white_check_mark: PASS (128/128) |
-| **5. Package Dry-Run** | `dart pub publish --dry-run` | 0 errors | :white_check_mark: PASS |
+| **4. Unit & Integration Tests** | `flutter test` | All tests pass | :white_check_mark: PASS (137/137, 2026-11-11) |
+| **5. Package Dry-Run** | `dart pub publish --dry-run` | 0 errors, 0 warnings | WARN: one working-tree warning; rerun from a clean checkout |
 | **6. Flutter Web JS Build** | `flutter build web --release` in `example/` | Clean build in `build/web` | :white_check_mark: PASS |
 | **7. Flutter Web Wasm Build** | `flutter build web --release --wasm` in `example/` | `main.dart.wasm` emitted | :white_check_mark: PASS |
 | **8. Static CLI Builder** | `dart run meta_mantle build --config meta_mantle.config.json --strict` | HTML, sitemap.xml, robots.txt | :white_check_mark: PASS |
 | **9. CLI Preflight Diagnostics** | `dart run meta_mantle doctor` | All checks pass | :white_check_mark: PASS |
-| **10. Security Audit** | Repo-wide credential & secret scan | 0 live credentials committed | :white_check_mark: PASS |
+| **10. Security Audit** | Pinned Gitleaks `git` and `dir` scans with `--redact` | 0 unresolved findings in history and checkout files | Pending executed CI run |
 
 ---
 
@@ -32,7 +32,7 @@ Every gate must be evaluated and verified against live execution evidence before
 - [x] Zero deprecated `dart:html` imports across the codebase.
 
 ### B. Security & Cryptographic Integrity
-- [x] In-line SSRF protection enforced on all outbound HTTP data provider requests (`SsrfGuard`).
+- [ ] SSRF validation covers the initial REST URL and each redirect destination; DNS rebinding remains a deployment/network-layer risk unless destination IPs are pinned at connection time.
 - [x] Chunk-by-chunk stream counting with immediate abort on oversized responses (`BytesBuilder`).
 - [x] Incoming HTTP `Host` headers validated against registered tenants (`TenantHostValidator`).
 - [x] Untrusted `x-tenant-id` request headers ignored when host validation is active.
@@ -53,9 +53,9 @@ Every gate must be evaluated and verified against live execution evidence before
 - [x] Faceted navigation crawl budget protection verified.
 - [x] Pure Dart SVG social card generation verified.
 - [x] Core Web Vitals telemetry ingestion and p75 CrUX classification verified.
-- [x] Multi-provider CDN invalidation abstraction verified.
+- [ ] Cloudflare and Nginx adapters have live request paths; CloudFront remains unsupported until AWS authentication and API calls are implemented.
 - [x] SEO regression test engine and CLI command verified.
-- [x] Jaspr component parity acceptance test verified (100% metadata match).
+- [ ] Jaspr support is a metadata/HTML compatibility bridge; no native Jaspr component or router adapter is provided.
 
 ### E. Documentation & Repository Health
 - [x] Obsolete GitHub Pages deployment workflow (`pages.yml`) deleted.
@@ -73,3 +73,4 @@ Every gate must be evaluated and verified against live execution evidence before
 
 - The package is currently at **v0.1.0** baseline.
 - Version **1.0.0** will be declared after initial real-world production feedback from downstream consumers (including the standalone landing website) without breaking public API changes.
+

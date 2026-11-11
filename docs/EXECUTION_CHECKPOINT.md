@@ -7,6 +7,8 @@
 **Last Completed Commit:** `3d3a14b` (`feat: product evolution, LRU caching, policy engine, and vertical SEO engines`)  
 **Mode:** Gravitas Continuous Execution
 
+> **Audit update (2026-11-11):** This checkpoint is a historical work log and its completion claims are superseded where they describe native Jaspr parity, CloudFront invalidation, or verified secret absence. Jaspr support is an HTML bridge, CloudFront is unsupported, and the Gitleaks CI scan is pending. See `BUILD_STATUS.md` and `RELEASE_READINESS.md` for current results.
+
 ---
 
 ## 1. Milestone Objectives Verification
@@ -25,9 +27,9 @@
 - [x] **In-line SSRF Guard:** `RestDataProvider` and `GraphQLDataProvider` enforce `SsrfGuard.validateUri()` before initiating outbound connections.
 - [x] **Protected Subnets:** Private IP ranges, loopback (`127.0.0.1`), link-local (`169.254.169.254` cloud metadata), and unresolvable DNS hosts are blocked.
 
-### Priority 4 & 5 — Jaspr Parity & Flutter Embedding
+### Priority 4 & 5 — Jaspr HTML Bridge & Flutter Embedding
 - [x] **Component Tree Tag Descriptors:** Created `JasprTagDescriptor` and `renderDescriptors()` on `MetaMantleHead` allowing virtual DOM components to render complete metadata trees without escaping bugs.
-- [x] **Full Metadata Parity:** Verified identical product route rendering between native MetaMantle engine and Jaspr component adapter in `test/jaspr_parity_acceptance_test.dart`.
+- [x] **HTML Output Comparison:** Tests compare HTML emitted by the bridge with native MetaMantle output; they do not exercise a Jaspr component adapter.
 
 ### Priority 6 — E-Commerce Lifecycle & Invalidation
 - [x] **9-Step Inventory Lifecycle:** Verified request -> cache hit -> price change -> event dispatch (`PriceChanged`) -> tag invalidation -> re-request cache miss -> updated HTML, JSON-LD, and Merchant XML feed.
@@ -41,7 +43,7 @@
 ### Priority 9 — Differentiators & Tooling
 - [x] **Social Image Generator:** Created `SocialCardGenerator` producing pure Dart SVG cards with XML escaping, custom themes, and LRU output caching.
 - [x] **Core Web Vitals Telemetry:** Created `CoreWebVitalsCollector` ingesting LCP, INP, CLS, FCP, TTFB, stripping PII query parameters, and calculating p75/p90/p95 CrUX ratings.
-- [x] **CDN Invalidation Abstraction:** Created `CdnInvalidator` with adapters for Memory, Cloudflare (API v4), CloudFront, and Nginx reverse proxy.
+- [x] **CDN Invalidation Abstraction:** Created `CdnInvalidator` with Memory, Cloudflare (API v4), and Nginx adapters. CloudFront is unsupported and reports failure.
 - [x] **SEO Regression Tester:** Created `SeoRegressionTester` detecting title/description changes, dropped routes, dropped OG images, and accidental NOINDEX transitions.
 - [x] **CLI Regression Command:** Added `regression` subcommand to `bin/meta_mantle.dart`.
 

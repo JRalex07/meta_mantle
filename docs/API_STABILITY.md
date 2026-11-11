@@ -68,6 +68,7 @@ PATCH version: Backward-compatible bug fixes and security patches
 
 ## 4. Binary & Ecosystem Compatibility
 
-- **SDK Compatibility:** MetaMantle guarantees compatibility with the stable channel of the Flutter and Dart SDKs (`>=3.0.0 <4.0.0`).
+- **SDK Compatibility:** Package constraints are Dart `>=3.6.0 <4.0.0` and Flutter `>=3.27.0`. The root package requires Flutter for resolution, even though core/server entrypoint source avoids Flutter imports.
 - **WebAssembly Support:** All client-side runtime logic is guaranteed to compile and execute under `dart2wasm` without legacy `dart:html` symbols.
-- **Zero-Dependency Core:** `meta_mantle_core.dart` will strictly remain dependency-free from Flutter, `dart:io`, and browser packages.
+- **Core Source Boundary:** `meta_mantle_core.dart` will remain free of Flutter, `dart:io`, and browser imports. This source-level boundary does not make the current package independently installable with the Dart SDK alone.
+
