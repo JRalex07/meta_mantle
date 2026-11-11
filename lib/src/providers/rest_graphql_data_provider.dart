@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import '../security/ssrf_guard.dart';
 import 'data_provider.dart';
 
 /// Function to map a parsed JSON response map to entity [T].
@@ -17,6 +19,7 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
     this.maxResponseSizeBytes = 5 * 1024 * 1024, // 5MB limit
     this.maxRetries = 2,
     this.entityTag = 'rest_api',
+    this.ssrfGuard = const SsrfGuard(),
   }) : client = client ?? http.Client();
 
   final String Function(RouteDataContext context) urlBuilder;
@@ -27,11 +30,15 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
   final int maxResponseSizeBytes;
   final int maxRetries;
   final String entityTag;
+  final SsrfGuard ssrfGuard;
 
   @override
   Future<DataProviderResult<T>> load(RouteDataContext context) async {
     final targetUrl = urlBuilder(context);
     final uri = Uri.parse(targetUrl);
+
+    // 1. Validate URI against SSRF boundaries before any network request
+    await ssrfGuard.validateUri(uri);
 
     http.Response? response;
     Exception? lastException;
@@ -46,7 +53,36 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
           });
 
         final streamed = await client.send(request).timeout(timeout);
-        response = await http.Response.fromStream(streamed).timeout(timeout);
+
+        // Check Content-Length header early
+        if (streamed.contentLength != null &&
+            streamed.contentLength! > maxResponseSizeBytes) {
+          throw StateError(
+            'REST API response Content-Length (${streamed.contentLength}) exceeded maximum allowed size of $maxResponseSizeBytes bytes.',
+          );
+        }
+
+        // Stream accumulation with immediate abort on size limit breach
+        final byteBuilder = BytesBuilder(copy: false);
+        await for (final chunk in streamed.stream.timeout(timeout)) {
+          byteBuilder.add(chunk);
+          if (byteBuilder.length > maxResponseSizeBytes) {
+            throw StateError(
+              'REST API response stream exceeded maximum allowed size of $maxResponseSizeBytes bytes.',
+            );
+          }
+        }
+
+        final bodyBytes = byteBuilder.takeBytes();
+        response = http.Response.bytes(
+          bodyBytes,
+          streamed.statusCode,
+          headers: streamed.headers,
+          request: streamed.request,
+          isRedirect: streamed.isRedirect,
+          persistentConnection: streamed.persistentConnection,
+          reasonPhrase: streamed.reasonPhrase,
+        );
 
         if (response.statusCode >= 500 && attempt < maxRetries) {
           // Idempotent GET retry on server error
@@ -78,12 +114,6 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
       throw http.ClientException(
         'REST API returned unexpected status code: ${response.statusCode}',
         uri,
-      );
-    }
-
-    if (response.bodyBytes.length > maxResponseSizeBytes) {
-      throw StateError(
-        'REST response exceeded maximum allowed size of $maxResponseSizeBytes bytes.',
       );
     }
 
@@ -123,6 +153,7 @@ class GraphQLDataProvider<T> implements MetaMantleDataProvider<T> {
     this.timeout = const Duration(seconds: 10),
     this.maxResponseSizeBytes = 5 * 1024 * 1024,
     this.entityTag = 'graphql_api',
+    this.ssrfGuard = const SsrfGuard(),
   }) : client = client ?? http.Client();
 
   final Uri endpoint;
@@ -133,33 +164,57 @@ class GraphQLDataProvider<T> implements MetaMantleDataProvider<T> {
   final Duration timeout;
   final int maxResponseSizeBytes;
   final String entityTag;
+  final SsrfGuard ssrfGuard;
 
   @override
   Future<DataProviderResult<T>> load(RouteDataContext context) async {
+    // 1. Validate GraphQL endpoint against SSRF boundaries
+    await ssrfGuard.validateUri(endpoint);
+
     final query = queryBuilder(context);
     final payload = json.encode({
       'query': query,
       'variables': context.parameters,
     });
 
-    final response = await client
-        .post(
-          endpoint,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'User-Agent': 'MetaMantle-SSR/0.1.0',
-            ...headers,
-          },
-          body: payload,
-        )
-        .timeout(timeout);
+    final request = http.Request('POST', endpoint)
+      ..headers.addAll({
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'MetaMantle-SSR/0.1.0',
+        ...headers,
+      })
+      ..body = payload;
 
-    if (response.bodyBytes.length > maxResponseSizeBytes) {
+    final streamed = await client.send(request).timeout(timeout);
+
+    if (streamed.contentLength != null &&
+        streamed.contentLength! > maxResponseSizeBytes) {
       throw StateError(
-        'GraphQL response exceeded maximum allowed size of $maxResponseSizeBytes bytes.',
+        'GraphQL response Content-Length (${streamed.contentLength}) exceeded maximum allowed size of $maxResponseSizeBytes bytes.',
       );
     }
+
+    final byteBuilder = BytesBuilder(copy: false);
+    await for (final chunk in streamed.stream.timeout(timeout)) {
+      byteBuilder.add(chunk);
+      if (byteBuilder.length > maxResponseSizeBytes) {
+        throw StateError(
+          'GraphQL response stream exceeded maximum allowed size of $maxResponseSizeBytes bytes.',
+        );
+      }
+    }
+
+    final bodyBytes = byteBuilder.takeBytes();
+    final response = http.Response.bytes(
+      bodyBytes,
+      streamed.statusCode,
+      headers: streamed.headers,
+      request: streamed.request,
+      isRedirect: streamed.isRedirect,
+      persistentConnection: streamed.persistentConnection,
+      reasonPhrase: streamed.reasonPhrase,
+    );
 
     if (response.statusCode != 200) {
       throw http.ClientException(

@@ -39,6 +39,7 @@ class ServerResponse {
   /// Creates a 304 Not Modified conditional response.
   factory ServerResponse.notModified({
     String? etag,
+    DateTime? lastModified,
     String? cacheControl,
     Map<String, String>? headers,
   }) {
@@ -46,6 +47,8 @@ class ServerResponse {
       statusCode: 304,
       headers: {
         if (etag != null) 'ETag': etag,
+        if (lastModified != null)
+          'Last-Modified': lastModified.toUtc().toIso8601String(),
         if (cacheControl != null) 'Cache-Control': cacheControl,
         if (headers != null) ...headers,
       },

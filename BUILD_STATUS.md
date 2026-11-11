@@ -18,10 +18,10 @@ This document reflects the verified status of the `meta_mantle` package (version
 
 | Command / Check | Working Directory | Result | Notes |
 | :--- | :--- | :--- | :--- |
-| `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 83 files |
-| `flutter pub get` | `.` (Root) | **PASS** | Dependencies resolved (added `crypto: ^3.0.6`) |
+| `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 91 files |
+| `flutter pub get` | `.` (Root) | **PASS** | Dependencies resolved |
 | `flutter analyze` | `.` (Root) | **PASS** (0 issues) | Strict analysis enabled across core, server, and example |
-| `flutter test` | `.` (Root) | **PASS** (104/104 passing) | Complete test suite passing: cache, concurrency, contracts, HTML, policy, runtime, static, SSR, verticals |
+| `flutter test` | `.` (Root) | **PASS** (128/128 passing) | Complete test suite passing: cache, concurrency, contracts, HTML, policy, runtime, static, SSR, verticals, HTTP conditional RFC 7232, SSRF security, e-commerce lifecycle, social cards, vitals, CDN invalidation, Jaspr parity |
 | `flutter pub get` | `example/` | **PASS** | Dependencies resolved |
 | `flutter analyze` | `example/` | **PASS** (0 issues) | 7 runnable vertical examples clean |
 | `dart run example/bin/blog_publishing_example.dart` | `.` (Root) | **PASS** | RSS 2.0, Atom 1.0, Google News Sitemap |
@@ -34,6 +34,7 @@ This document reflects the verified status of the `meta_mantle` package (version
 | `dart run meta_mantle doctor` | `example/` | **PASS** | Preflight checks passed |
 | `dart run meta_mantle inspect` | `example/` | **PASS** | 4 static routes resolved |
 | `dart run meta_mantle build` | `example/` | **PASS** | Generated static files for routes |
+| `dart run meta_mantle regression --help` | `.` (Root) | **PASS** | SEO snapshot regression tester |
 | `dart pub publish --dry-run` | `.` (Root) | **PASS** (0 errors) | Clean package archive |
 
 ---
@@ -50,16 +51,21 @@ This document reflects the verified status of the `meta_mantle` package (version
 - **Incremental Manifest:** Content fingerprinting skips unchanged routes during static builds.
 - **Sitemap Chunking:** Compliant XML sitemap index for catalogues exceeding 50,000 URLs.
 
-### 3. Engine C: Native Server-Side Rendering (SSR)
-- **Zero-JavaScript Crawler Responses:** Raw HTTP crawlers receive complete semantic HTML (`<h1>`, `<article>`, `<img>`, `<table>`) and metadata before any client JavaScript executes.
+### 3. Engine C: Native Server-Side Rendering (SSR) & Security
+- **RFC 7232 Precedence & Weak ETags:** `If-None-Match` strictly overrides `If-Modified-Since`. Weak ETags (`W/"..."`) and wildcards are supported. `Last-Modified` is included on 304 responses.
+- **In-Line SSRF Protection:** `RestDataProvider` and `GraphQLDataProvider` validate URIs against `SsrfGuard`, blocking private IP ranges, loopback (`127.0.0.1`), and cloud metadata (`169.254.169.254`).
+- **Response Stream Limits:** Stream accumulation uses `BytesBuilder` and aborts immediately when exceeding `maxResponseSizeBytes` (default 2MB) before buffering oversized payloads into memory.
+- **Tenant Host Validation:** `TenantHostValidator` is integrated directly into `MetaMantleServerEngine`, rejecting missing or unauthorized `Host` headers with HTTP 400 Bad Request, ignoring untrusted `x-tenant-id` headers, and isolating cache keys per validated tenant.
 - **Universal Database Abstraction:** Verified contract test suites for Relational SQL (`RelationalDatabaseAdapter`), Document stores (`DocumentDatabaseAdapter`), in-memory stores (`MemoryDataProvider`), and REST/GraphQL APIs.
-- **Cryptographic SHA-256 ETags:** Evaluates conditional GETs (`If-None-Match` -> `304 Not Modified`, `If-Modified-Since`), RFC 5861 Stale-While-Revalidate, and true `stale-if-error` fallback when origin re-rendering fails.
 - **True LRU Eviction & Fail-Closed Distributed Lock:** Memory cache store executes true access-order LRU eviction with cache metrics. `SingleFlightCoordinator` enforces fail-closed distributed locking to prevent thundering herds in multi-instance clusters.
-- **Tenant Host Security & Isolation:** `TenantHostValidator` blocks host header injection attacks across custom domains and wildcard subdomains. `TenantCachePartitioner` isolates cache keys and enables targeted tenant tag invalidation.
 
 ### 4. Specialized Vertical Engines
-- **E-Commerce Engine:** `ProductItem`, `ProductVariant`, `ShippingDetails`, `ReturnPolicy`, Google-compliant `Product` and `AggregateOffer` JSON-LD, `InventoryEventDispatcher` tag invalidation, `FacetedNavPolicy` crawl budget protection, and `MerchantFeedGenerator` XML feeds.
+- **E-Commerce End-to-End Lifecycle:** Verified 9-step inventory lifecycle: Request -> Cache Hit -> Warehouse Price Change -> Event Dispatch (`PriceChanged`) -> Tag Invalidation -> Cache Miss Re-request -> Verified HTML, JSON-LD, and Merchant XML feed. Stock depletion lifecycle (`availableUnits = 0`) and `FacetedNavPolicy` crawl budget protection.
+- **Social Card & Image Generator:** Pure Dart SVG synthesis without native GUI or Flutter dependencies. OpenGraph (1200x630), Twitter Summary (1200x628), and Square (600x600) cards with XML escaping, custom themes, and LRU output caching.
+- **Core Web Vitals Telemetry:** `CoreWebVitalsCollector` ingests LCP, INP, CLS, FCP, TTFB with zero PII, calculates p75/p90/p95 percentiles, and categorizes performance against Google CrUX thresholds.
+- **CDN Invalidation Abstraction:** `CdnInvalidator` interface with provider adapters for Memory, Cloudflare (API v4), AWS CloudFront, and Nginx reverse proxy.
+- **SEO Regression Testing:** `SeoRegressionTester` detects title/description mutations, dropped routes, dropped OG images, and accidental NOINDEX transitions. Exposed via `meta_mantle regression` CLI subcommand.
+- **Jaspr Web Framework Parity:** `JasprTagDescriptor` and `renderDescriptors()` on `MetaMantleHead` allow Jaspr component trees to achieve 100% metadata parity with native MetaMantle HTML rendering.
 - **Documentation & Publishing Engine:** `FrontmatterExtractor` parsing YAML frontmatter, `DocVersionPolicy` managing version switcher routing and older version `noindex`, `DocSearchIndexer` generating `search.json`, `LlmsTxtGenerator` producing `/llms.txt`, `FeedGenerator` emitting RSS 2.0 / Atom 1.0, and `NewsSitemapGenerator` emitting Google News sitemaps.
-- **Jaspr Web Framework Adapters:** `MetaMantleDocument`, `MetaMantleHead`, `MetaMantleRouteAdapter`, `MetaMantleDataComponent`, `MetaMantleContentAdapter`.
 - **Industry Schema Profiles:** `LocalBusinessProfile`, `JobPostingProfile`, `RecipeProfile`, `CourseProfile`.
 - **7-Tier SEO Policy Engine:** Resolves metadata across global, application, tenant, locale, section, route, and page tiers with conflict provenance tracking.

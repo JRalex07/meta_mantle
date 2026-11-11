@@ -199,7 +199,8 @@ void main() {
       final restProvider = RestDataProvider<SampleProduct>(
         client: mockClient,
         urlBuilder: (ctx) =>
-            'https://api.example.com/items/${ctx.parameters['slug']}',
+            'http://localhost:8080/items/${ctx.parameters['slug']}',
+        ssrfGuard: const SsrfGuard(allowLocalhostInDev: true),
         mapper: (json) => SampleProduct(
           id: json['id'] as String,
           slug: json['slug'] as String,

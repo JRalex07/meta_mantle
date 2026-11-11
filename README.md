@@ -42,10 +42,14 @@ MetaMantle brings Next.js Metadata and React Helmet capabilities to Flutter Web.
   - Safe against asynchronous route transitions via monotonic generation tokens.
   - Safe non-web compilation: safe no-op stubs on Android, iOS, Windows, macOS, and Linux.
 - **Production CLI Tooling:**
-  - Complete CLI suite: `build`, `validate`, `inspect`, and `doctor`.
+  - Complete CLI suite: `build`, `validate`, `inspect`, `doctor`, `inspect-url`, `crawl`, `preview`, `report`, and `regression`.
   - Dynamic route expansion from JSON data files with dot-notation templating (`{{brand.name}}`).
-  - Automatic `sitemap.xml` and `robots.txt` generation.
+  - Automated `sitemap.xml`, `robots.txt`, and snapshot-based SEO regression testing.
   - `--strict`, `--dry-run`, and `--verbose` modes.
+- **Enterprise Performance & Differentiators:**
+  - Pure Dart SVG Social Image Generator (`SocialCardGenerator`) with LRU caching.
+  - Privacy-preserving Core Web Vitals telemetry engine (`CoreWebVitalsCollector`).
+  - Multi-provider CDN Invalidation abstraction (`CdnInvalidator`) supporting Cloudflare, CloudFront, and Nginx.
 
 ---
 
@@ -342,6 +346,9 @@ Located in [`example/bin/`](example/bin/):
 - **Context-Aware Escaping:** `MetadataRenderer` escapes all HTML attributes and tag bodies.
 - **XSS-Safe JSON-LD:** Structured data is serialized with Unicode character escaping for `<`, `>`, `&`, and `"` to prevent script tag breakout attacks (`</script><script>...`).
 - **URL Sanitization:** `javascript:` and `data:` schemes are strictly rejected for canonical and alternate URLs.
+- **In-Line SSRF Protection:** `RestDataProvider` and `GraphQLDataProvider` validate outbound URIs against `SsrfGuard`, blocking loopback (`127.0.0.1`), private RFC 1918 subnets, and cloud metadata (`169.254.169.254`).
+- **Response Stream Limits:** Stream accumulation uses chunk-by-chunk counting, aborting before buffering oversized payloads into memory.
+- **Tenant Host Validation:** `TenantHostValidator` blocks host header injection attacks across custom domains and wildcard subdomains, rejecting unverified hosts with HTTP 400 Bad Request.
 - **Directory Traversal Protection:** Static file paths and route strings are validated against path traversal (`..`) prior to file writing.
 - **Strict DOM Ownership:** Elements injected by the package are tagged with `data-mm-owner="meta_mantle"` and `data-mm-key`. Third-party tags and analytics scripts in `document.head` are strictly preserved.
 

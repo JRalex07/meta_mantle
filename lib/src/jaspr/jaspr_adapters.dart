@@ -9,6 +9,34 @@ import '../server/meta_route.dart';
 import '../server/server_request.dart';
 import '../server/server_response.dart';
 
+/// Structured component descriptor representing a Jaspr head element.
+class JasprTagDescriptor {
+  const JasprTagDescriptor({
+    required this.tag,
+    required this.attributes,
+    this.textContent,
+  });
+
+  final String tag;
+  final Map<String, String> attributes;
+  final String? textContent;
+
+  /// Renders this descriptor to HTML string.
+  String toHtml() {
+    if (tag == 'title') {
+      return '<title>${textContent ?? ''}</title>';
+    }
+    if (tag == 'script') {
+      final attrStr =
+          attributes.entries.map((e) => ' ${e.key}="${e.value}"').join();
+      return '<script$attrStr>${textContent ?? ''}</script>';
+    }
+    final attrStr =
+        attributes.entries.map((e) => ' ${e.key}="${e.value}"').join();
+    return '<$tag$attrStr />';
+  }
+}
+
 /// Renders MetaMantle metadata into Jaspr head element descriptors.
 class MetaMantleHead {
   const MetaMantleHead({
@@ -24,6 +52,18 @@ class MetaMantleHead {
   /// Generates the list of rendered [HeadTag] elements suitable for Jaspr's head tree.
   List<HeadTag> renderHeadTags({String? currentUrl}) {
     return renderer.render(metadata, config: config, currentUrl: currentUrl);
+  }
+
+  /// Maps rendered head tags into typed [JasprTagDescriptor] instances for Jaspr component trees.
+  List<JasprTagDescriptor> renderDescriptors({String? currentUrl}) {
+    final tags = renderHeadTags(currentUrl: currentUrl);
+    return tags.map((t) {
+      return JasprTagDescriptor(
+        tag: t.tagName,
+        attributes: t.attributes,
+        textContent: t.textContent,
+      );
+    }).toList();
   }
 
   /// Emits the raw HTML tags for direct embedding inside Jaspr HTML templates.

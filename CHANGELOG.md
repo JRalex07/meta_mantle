@@ -39,7 +39,18 @@ Official release of **MetaMantle** (`meta_mantle`), the typed metadata managemen
   - `example/bin/blog_publishing_example.dart` — Markdown publishing engine with RSS, Atom, and Google News sitemaps.
   - `example/bin/saas_multitenant_example.dart` — Multi-tenant host validation and isolated cache key partitioning.
 - **Comprehensive Documentation Suite:** 32 technical reference guides in `docs/` covering all architectural facets, security guarantees, performance metrics, and vertical integrations.
-- **Acceptance Test Suite:** Expanded from 83 to **104 passing tests** with 100% pass rate.
+- **Acceptance Test Suite:** Expanded from 83 to **128 passing tests** across 18 test suites with 100% pass rate.
+
+### Verification Milestone & Security Hardening
+- **RFC 7232 HTTP Precedence & Weak ETag Comparison:** Fixed `MetaMantleServerEngine._isNotModified` to strictly ignore `If-Modified-Since` when `If-None-Match` is present per RFC 7232 §3.3. Added weak ETag comparison (`_weakEtagMatch` and `_stripWeak`), supporting `W/"..."`, raw `"..."`, and wildcard `*`. Forwarded `Last-Modified` to HTTP 304 Not Modified responses.
+- **In-Line SSRF Protection & Response Streaming Security:** Wired `SsrfGuard` directly into `RestDataProvider` and `GraphQLDataProvider`, blocking loopback (`127.0.0.1`), private subnets, and cloud metadata (`169.254.169.254`). Replaced full buffering with chunk-by-chunk stream counting via `BytesBuilder`, immediately aborting with `StateError` if the response exceeds `maxResponseSizeBytes` (default 2MB) before consuming server heap.
+- **Multi-Tenant Host Security Integration:** Wired `TenantHostValidator` into `MetaMantleServerEngine`. Unregistered or missing `Host` headers return HTTP 400 Bad Request, untrusted `x-tenant-id` headers are ignored, and cache keys are strictly partitioned by validated tenant context.
+- **Social Card & Image Generation Subsystem:** Added pure Dart SVG synthesis (`SocialCardGenerator`) supporting OpenGraph (1200x630), Twitter Summary (1200x628), and Square (600x600) dimensions with XML escaping, custom themes, and LRU output caching.
+- **Core Web Vitals Telemetry Subsystem:** Added `CoreWebVitalsCollector` ingesting LCP, INP, CLS, FCP, TTFB with zero PII (strips query parameters), calculating p75/p90/p95 percentiles, and categorizing metrics against Google CrUX thresholds.
+- **CDN Invalidation Abstraction & Provider Adapters:** Implemented `CdnInvalidator` interface (`purgeUrls`, `purgeTags`, `purgeAll`) with production adapters for Memory, Cloudflare (API v4), AWS CloudFront, and Nginx reverse proxy.
+- **SEO Regression Testing & CLI Integration:** Added `SeoRegressionTester` comparing baseline and current crawl snapshots to flag title/description mutations, dropped routes, dropped OG tags, and accidental NOINDEX transitions. Added `regression` subcommand to `meta_mantle` CLI.
+- **Jaspr Component Parity Bridge:** Implemented `JasprTagDescriptor` and `renderDescriptors()` on `MetaMantleHead` allowing virtual DOM components to render complete metadata trees without escaping bugs, verified by acceptance tests to produce 100% metadata parity with native MetaMantle HTML rendering.
+- **E-Commerce End-to-End Inventory Lifecycle:** Verified complete 9-step inventory lifecycle (Request -> Cache Hit -> Warehouse Price Change -> Event Dispatch -> Tag Invalidation -> Cache Miss Re-request -> Updated HTML, JSON-LD, and Merchant XML feed), stock depletion lifecycle, and faceted navigation crawl budget protection.
 
 ### Bug Fixes & Refinements
 - **Strict Static SEO Preflight Validation:** Added explicit description to `/about` in `example/meta_mantle.config.json` and `example/web_head.config.json` satisfying strict mode requirements without disabling `--strict`.

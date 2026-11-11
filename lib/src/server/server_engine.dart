@@ -8,6 +8,7 @@ import '../cache/single_flight.dart';
 import '../html/html_document.dart';
 import '../models/metadata.dart';
 import '../providers/data_provider.dart';
+import '../saas/tenant_context.dart';
 import 'meta_route.dart';
 import 'redirect_manager.dart';
 import 'server_request.dart';
@@ -21,6 +22,7 @@ class MetaMantleServerEngine {
     MetaMantleCacheStore? cacheStore,
     RedirectManager? redirectManager,
     SingleFlightCoordinator? singleFlight,
+    this.tenantHostValidator,
   })  : cache = cacheStore ?? MemoryCacheStore(),
         redirects = redirectManager ?? RedirectManager(),
         singleFlight = singleFlight ?? SingleFlightCoordinator();
@@ -30,6 +32,7 @@ class MetaMantleServerEngine {
   final MetaMantleCacheStore cache;
   final RedirectManager redirects;
   final SingleFlightCoordinator singleFlight;
+  final TenantHostValidator? tenantHostValidator;
 
   /// Handles an incoming [ServerRequest] through the full SSR pipeline.
   Future<ServerResponse> handleRequest(ServerRequest request) async {
@@ -42,7 +45,27 @@ class MetaMantleServerEngine {
       );
     }
 
-    // 2. Redirect Resolution
+    // 2. Host Validation & Tenant Resolution (Multi-Tenant Security Guard)
+    TenantContext? validatedTenant;
+    if (tenantHostValidator != null) {
+      final host = request.header('host') ?? request.uri.host;
+      if (host.isEmpty) {
+        return ServerResponse(
+          statusCode: 400,
+          body: 'Bad Request: Missing Host header.',
+        );
+      }
+      try {
+        validatedTenant = tenantHostValidator!.validate(host);
+      } on HostValidationException catch (e) {
+        return ServerResponse(
+          statusCode: 400,
+          body: 'Bad Request: ${e.message}',
+        );
+      }
+    }
+
+    // 3. Redirect Resolution
     final redirect = redirects.resolve(request.path);
     if (redirect != null) {
       return ServerResponse.redirect(
@@ -51,7 +74,7 @@ class MetaMantleServerEngine {
       );
     }
 
-    // 3. Route Matching
+    // 4. Route Matching
     final match = _findRoute(request.path);
     if (match == null) {
       return ServerResponse.notFound(
@@ -67,21 +90,24 @@ class MetaMantleServerEngine {
       parameters: params,
       queryParameters: request.queryParameters,
       headers: request.headers,
-      locale: request.header('accept-language')?.split(',').first.trim() ??
+      locale: validatedTenant?.defaultLocale ??
+          request.header('accept-language')?.split(',').first.trim() ??
           config.language,
     );
 
-    // 4. Cache Key Calculation
-    final cacheKey = _computeCacheKey(request, route);
+    // 5. Cache Key Calculation (Tenant-partitioned)
+    final cacheKey =
+        _computeCacheKey(request, route, tenantContext: validatedTenant);
 
-    // 5. Cache Lookup
+    // 6. Cache Lookup
     if (route.cachePolicy.isCacheable) {
       final cached = await cache.get(cacheKey);
       if (cached != null) {
-        // Check conditional GET
+        // Check conditional GET (RFC 7232 precedence & weak ETag)
         if (_isNotModified(request, cached.etag, cached.lastModified)) {
           return ServerResponse.notModified(
             etag: cached.etag,
+            lastModified: cached.lastModified,
             cacheControl: _buildCacheControl(route.cachePolicy),
           );
         }
@@ -102,7 +128,7 @@ class MetaMantleServerEngine {
       }
     }
 
-    // 6. Cache Miss: Execute single-flight regeneration
+    // 7. Cache Miss: Execute single-flight regeneration
     try {
       final rendered = await singleFlight.run(
         cacheKey,
@@ -117,6 +143,7 @@ class MetaMantleServerEngine {
       if (_isNotModified(request, rendered.etag, rendered.lastModified)) {
         return ServerResponse.notModified(
           etag: rendered.etag,
+          lastModified: rendered.lastModified,
           cacheControl: _buildCacheControl(route.cachePolicy),
         );
       }
@@ -239,11 +266,17 @@ class MetaMantleServerEngine {
   }
 
   bool _isNotModified(ServerRequest req, String? etag, DateTime? lastMod) {
-    if (etag != null && req.ifNoneMatch != null) {
+    // RFC 7232 Section 3.3: A recipient MUST ignore If-Modified-Since if
+    // the request contains an If-None-Match header field.
+    if (req.ifNoneMatch != null) {
+      if (etag == null) return false;
       final clientEtags = req.ifNoneMatch!.split(',').map((e) => e.trim());
-      if (clientEtags.contains(etag) || clientEtags.contains('*')) {
-        return true;
+      for (final clientEtag in clientEtags) {
+        if (_weakEtagMatch(clientEtag, etag)) {
+          return true;
+        }
       }
+      return false; // MUST ignore If-Modified-Since when If-None-Match is present
     }
 
     if (lastMod != null && req.ifModifiedSince != null) {
@@ -253,6 +286,21 @@ class MetaMantleServerEngine {
     }
 
     return false;
+  }
+
+  /// Weak ETag comparison per RFC 7232 Section 2.3.2.
+  static bool _weakEtagMatch(String clientTag, String serverTag) {
+    if (clientTag == '*') return true;
+    final cleanClient = _stripWeak(clientTag.trim());
+    final cleanServer = _stripWeak(serverTag.trim());
+    return cleanClient == cleanServer;
+  }
+
+  static String _stripWeak(String tag) {
+    if (tag.startsWith('W/"') || tag.startsWith('w/"')) {
+      return tag.substring(2);
+    }
+    return tag;
   }
 
   ServerResponse _buildResponse(
@@ -292,13 +340,20 @@ class MetaMantleServerEngine {
     return buf.toString();
   }
 
-  String _computeCacheKey(ServerRequest req, MetaRoute<dynamic> route) {
-    final queryStr =
-        req.queryParameters.entries.map((e) => '${e.key}=${e.value}').join('&');
-    final tenant = req.tenantId ?? '';
-    final host = req.host ?? '';
-    final locale = req.locale ?? '';
-    final currency = req.currency ?? '';
+  String _computeCacheKey(
+    ServerRequest req,
+    MetaRoute<dynamic> route, {
+    TenantContext? tenantContext,
+  }) {
+    final sortedParams = req.queryParameters.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    final queryStr = sortedParams.map((e) => '${e.key}=${e.value}').join('&');
+
+    final tenant = tenantContext?.tenantId ??
+        (tenantHostValidator == null ? (req.tenantId ?? '') : '');
+    final host = tenantContext?.primaryDomain ?? req.host ?? '';
+    final locale = tenantContext?.defaultLocale ?? req.locale ?? '';
+    final currency = tenantContext?.defaultCurrency ?? req.currency ?? '';
     final prefix = (tenant.isNotEmpty ||
             host.isNotEmpty ||
             locale.isNotEmpty ||
