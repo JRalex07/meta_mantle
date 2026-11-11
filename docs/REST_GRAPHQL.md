@@ -58,7 +58,7 @@ final blogPostProvider = GraphQLDataProvider<BlogPost>(
   mapper: (data) => BlogPost.fromJson(data['postBySlug']),
   entityTag: 'blog',
   headers: {
-    'X-Api-Key': 'secret_key',
+    'X-Api-Key': 'YOUR_API_KEY',
   },
 );
 ```

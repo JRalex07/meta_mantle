@@ -93,22 +93,14 @@ final router = GoRouter(
 
 ### GitHub Pages
 
-#### Custom Domain (`metamantle.alex.runs-on.dev`)
-When deploying with a custom domain, Flutter must be built with root base href `--base-href /`:
+#### Custom Domain Setup
+When deploying a static Flutter Web application to GitHub Pages with a custom domain, build with root base href `--base-href /`:
 ```bash
 flutter build web --release --base-href /
 dart run meta_mantle build --config meta_mantle.config.json --strict
 ```
 
-**DNS Configuration for Repository Owner:**
-1. **Add CNAME Record in DNS:**
-   - Type: `CNAME`
-   - Host/Name: `metamantle` (under domain `alex.runs-on.dev`)
-   - Target/Value: `jralex07.github.io`
-2. **Configure in GitHub Repository:**
-   - Navigate to **Settings > Pages**.
-   - Under **Custom domain**, enter `metamantle.alex.runs-on.dev` and click **Save**.
-   - Check **Enforce HTTPS** once DNS propagation is verified.
+Create a `CNAME` file containing your custom domain in your publish directory (e.g., `build/web/CNAME`), and configure your DNS provider with a CNAME record pointing to `<username>.github.io`.
 
 #### Project Subpath Site (`https://<username>.github.io/<repo>/`)
 When deploying without a custom domain under a GitHub repository path:

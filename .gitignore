@@ -1,10 +1,45 @@
+# Dart & Flutter build artifacts
 .dart_tool/
 .packages
 .pub-cache/
+.pub/
 build/
 coverage/
+*.lcov
+test_results/
+
+# Flutter plugins & platform cache
 .flutter-plugins
 .flutter-plugins-dependencies
+
+# IDEs & Editors
 .idea/
 .vscode/
 *.iml
+*.iws
+*.ipr
+.fleet/
+
+# Environment files & secrets (NEVER commit live secrets)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+credentials.json
+service-account*.json
+google-services.json
+GoogleService-Info.plist
+
+# OS-generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

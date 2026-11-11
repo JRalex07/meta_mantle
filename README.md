@@ -1,359 +1,259 @@
 # MetaMantle
 
 [![CI](https://github.com/JRalex07/meta_mantle/actions/workflows/ci.yml/badge.svg)](https://github.com/JRalex07/meta_mantle/actions/workflows/ci.yml)
-[![Documentation](https://img.shields.io/badge/docs-metamantle.alex.runs--on.dev-blue.svg)](https://metamantle.alex.runs-on.dev)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Dart SDK](https://img.shields.io/badge/Dart-3.0%2B-blue.svg)](https://dart.dev)
+[![Flutter SDK](https://img.shields.io/badge/Flutter-3.3%2B-blue.svg)](https://flutter.dev)
+[![WebAssembly](https://img.shields.io/badge/Wasm-Ready-green.svg)](docs/FLUTTER_INTEGRATION.md)
 
-**Typed metadata management and static SEO framework for Flutter Web, offering runtime DOM updates and static route HTML generation.**
-
-MetaMantle brings Next.js Metadata and React Helmet capabilities to Flutter Web. Define your SEO and document metadata once in typed Dart, and apply it seamlessly both at runtime in the browser and ahead-of-time during static deployment builds.
+**MetaMantle** is a universal typed metadata management, native server rendering (SSR), and automated SEO infrastructure framework for Flutter Web and Dart applications.
 
 - **Official Repository:** [https://github.com/JRalex07/meta_mantle](https://github.com/JRalex07/meta_mantle)
-- **Official Documentation:** [https://metamantle.alex.runs-on.dev](https://metamantle.alex.runs-on.dev)
+- **Official Documentation Portal:** [https://metamantle.alex.runs-on.dev](https://metamantle.alex.runs-on.dev)
+- **Package Version:** `0.1.0` (Development baseline)
 
 ---
 
-## Key Features
+## 1. What is MetaMantle?
 
-- **Tripartite Architecture:**
-  - **Engine A (Runtime DOM Injection):** High-performance DOM reconciliation using modern `package:web` (zero legacy `dart:html`). Updates `<title>`, `<meta>`, `<link>`, and `<script type="application/ld+json">` during client-side navigation.
-  - **Engine B (Static Route Generator):** Injects route-specific metadata into Flutter's `build/web` output before deployment so search engine crawlers (Googlebot, Bingbot) and social bots (Twitterbot, Facebook, Slack, Discord) receive rich SEO metadata in the initial HTML response.
-  - **Engine C (Native Server-Side Rendering):** Real-time dynamic document rendering on the server in pure Dart without browser dependencies, delivering full semantic HTML bodies to crawlers before client JavaScript executes.
-- **Universal Vertical Engines:**
-  - **E-Commerce SEO:** Product models, Google-compliant `Product` and `AggregateOffer` JSON-LD, `InventoryEventDispatcher` cache tag invalidation, `FacetedNavPolicy` crawl budget protection, and Google Merchant Center RSS 2.0 XML feeds.
-  - **Documentation & Publishing:** YAML frontmatter extraction, documentation version switcher with automated `noindex` for older versions, hierarchical `search.json` indexing, `/llms.txt` generation for AI agents, RSS 2.0 / Atom 1.0 syndication, and Google News sitemaps.
-  - **SaaS Multi-Tenancy & Host Security:** `TenantHostValidator` blocking host header injection attacks across custom domains and wildcard subdomains; `TenantCachePartitioner` for tenant-isolated caching and targeted tenant tag purging.
-  - **Jaspr Web Framework Integration:** `MetaMantleDocument` shells, `MetaMantleRouteAdapter`, and hybrid Jaspr+Flutter embedding for sub-50ms TTFB and crawler fallback tables.
-  - **Industry Schema Profiles:** Dedicated schema generators for `LocalBusiness`, `JobPosting`, `Recipe`, and `Course`.
-  - **7-Tier Policy Engine:** Hierarchical metadata inheritance from global to page level with conflict provenance tracking.
-- **Unified Metadata Models:**
-  - Full Open Graph (title, type, image with dimensions, video, audio, multiple locale alternates).
-  - Twitter / X Cards (summary, summary large image, app, player).
-  - 13 JSON-LD Structured Data builders (Organization, WebSite, Product, Article, Breadcrumb, LocalBusiness, FAQPage, Event, etc.) with XSS escaping.
-  - Basic SEO: canonical URLs, robots directives, keywords, authors, publishers, theme color, color scheme, search verification tags.
-  - Icons and Manifests: Favicons (PNG, SVG, ICO), Apple Touch Icons, Web App Manifests.
-  - Resource Hints: `dns-prefetch`, `preconnect`, `prefetch`, `preload`, and `prerender`.
-- **Hardened Caching & Distributed Locking:**
-  - True access-order LRU eviction with cache metrics (`hitRatio`, `evictions`).
-  - Cryptographic SHA-256 ETags and genuine RFC 5861 `stale-if-error` origin recovery.
-  - Fail-closed distributed locking via `SingleFlightCoordinator` to eliminate cache stampedes.
-- **Deterministic Runtime Lifecycle:**
-  - Nested scope stacking and automatic parent scope restoration on page pop/dispose.
-  - Safe against asynchronous route transitions via monotonic generation tokens.
-  - Safe non-web compilation: safe no-op stubs on Android, iOS, Windows, macOS, and Linux.
-- **Production CLI Tooling:**
-  - Complete CLI suite: `build`, `validate`, `inspect`, `doctor`, `inspect-url`, `crawl`, `preview`, `report`, and `regression`.
-  - Dynamic route expansion from JSON data files with dot-notation templating (`{{brand.name}}`).
-  - Automated `sitemap.xml`, `robots.txt`, and snapshot-based SEO regression testing.
-  - `--strict`, `--dry-run`, and `--verbose` modes.
-- **Enterprise Performance & Differentiators:**
-  - Pure Dart SVG Social Image Generator (`SocialCardGenerator`) with LRU caching.
-  - Privacy-preserving Core Web Vitals telemetry engine (`CoreWebVitalsCollector`).
-  - Multi-provider CDN Invalidation abstraction (`CdnInvalidator`) supporting Cloudflare, CloudFront, and Nginx.
+Single-page applications (SPAs) built with Flutter Web compile to WebAssembly or JavaScript that renders on an HTML5 canvas. Traditional search engine crawlers (Googlebot, Bingbot) and social platform scrapers (Twitterbot, Facebook, Slack, Discord, LinkedIn) often inspect raw HTTP responses without waiting for client-side JavaScript execution or canvas hydration.
+
+MetaMantle solves this problem by providing a unified SEO and document infrastructure that works across the entire application lifecycle: from client-side reactive browser `<head>` updates, to pre-deployment static HTML generation, to high-performance dynamic server-side rendering (SSR) in pure Dart.
 
 ---
 
-## Installation
+## 2. Why MetaMantle?
+
+MetaMantle is built on three complementary rendering paradigms:
+
+1. **Engine A — Runtime Web DOM Engine (`MetaHead`):** Dynamically synchronizes document `<head>` metadata, Open Graph cards, and JSON-LD structured data in Flutter Web as users navigate between screens. Built with modern `package:web` and `dart:js_interop` with full WebAssembly (`dart2wasm`) compatibility.
+2. **Engine B — Static Pre-Rendering Builder (`meta_mantle build`):** Injects route-specific metadata and semantic HTML into Flutter's `build/web` output before deployment so crawlers receive rich SEO tags in the initial HTML payload. Generates XML sitemaps and `robots.txt` automatically.
+3. **Engine C — Native Request-Time SSR Engine (`MetaMantleServerEngine`):** Executes on the backend in pure Dart without browser overhead, returning complete semantic HTML documents, cryptographic SHA-256 ETags, and sub-50ms responses directly to search engine bots.
+
+Beyond rendering, MetaMantle includes a universal database abstraction layer, true access-order LRU caching, in-line SSRF protection, multi-tenant host security, and vertical SEO engines for e-commerce, publishing, documentation, and SaaS.
+
+---
+
+## 3. Key Capabilities
+
+### Implemented & Verified Capabilities:
+- **Declarative & Imperative Metadata:** Set title, description, canonical URLs, robots directives, keywords, authors, publishers, theme color, icons, and resource hints.
+- **Social Media Cards:** Complete Open Graph (with image dimensions, video, audio, multiple alternate locales) and Twitter / X Summary and Summary Large Image cards.
+- **13 Schema.org JSON-LD Builders:** Strongly typed builders for Organization, WebSite, Product, AggregateOffer, Article, BreadcrumbList, LocalBusiness, FAQPage, Event, JobPosting, Recipe, and Course schemas with Unicode character escaping against XSS.
+- **Native Dart SSR Engine:** Real-time dynamic document rendering on the server in pure Dart VM with zero headless browser dependencies.
+- **Universal Database Providers:** Data contracts with built-in adapters for Relational SQL databases, Document/NoSQL databases, in-memory caches, and REST/GraphQL APIs.
+- **Enterprise Caching & Concurrency:** True access-order LRU cache eviction, cryptographic SHA-256 ETags, RFC 7232 conditional GET evaluation, RFC 5861 `stale-while-revalidate` and `stale-if-error` origin recovery, and single-flight distributed lock coordination.
+- **Security & Multi-Tenancy:** In-line SSRF validation (`SsrfGuard`), response streaming size limits (`BytesBuilder`), and Host Header Injection defense with tenant-isolated caching (`TenantHostValidator`).
+- **E-Commerce SEO Subsystem:** Product models, Google Merchant Center RSS 2.0 XML feeds, inventory webhook event invalidation (`InventoryEventDispatcher`), and faceted navigation crawl budget protection (`FacetedNavPolicy`).
+- **Documentation & Publishing Engines:** YAML frontmatter extraction, documentation version canonicalization, hierarchical in-memory search index generation (`search.json`), `/llms.txt` generation for AI coding agents, RSS 2.0 / Atom 1.0 feeds, and Google News sitemaps.
+- **Social SVG Image Generator:** Pure Dart SVG card generation with custom themes, Open Graph dimensions, and LRU output caching.
+- **Core Web Vitals Telemetry:** Telemetry engine ingesting LCP, INP, CLS, FCP, TTFB with zero PII and p75 Google CrUX rating classification.
+- **CLI & Testing Tooling:** Command-line suite (`build`, `validate`, `inspect`, `doctor`, `inspect-url`, `crawl`, `regression`) and snapshot-based SEO regression testing.
+
+### Decoupled Framework Adapters:
+- **Shelf Adapter:** Verified adapter for Dart Shelf servers (`engine.toShelfHandler()`).
+- **Jaspr Web Framework:** Verified parity adapters (`MetaMantleHead`, `JasprTagDescriptor`) and hybrid Flutter canvas embedding.
+
+---
+
+## 4. Architecture Overview
+
+```
+                               +-------------------------------------+
+                               |     meta_mantle_core (Pure Dart)    |
+                               |  - WebMetadata & Unified Models     |
+                               |  - 13 Schema.org JSON-LD Builders   |
+                               |  - 7-Tier SEO Policy Engine         |
+                               |  - HtmlDocument & HtmlSanitizer     |
+                               +-------------------------------------+
+                                                  |
+                 +--------------------------------+-------------------------------+
+                 |                                                                |
+                 v                                                                v
++-----------------------------------+                           +-----------------------------------+
+|     meta_mantle (Flutter Web)     |                           |  meta_mantle_server (Pure Dart)   |
+|  - MetaHead / WebHead Widgets     |                           |  - MetaMantleServerEngine         |
+|  - Reactive DOM Reconciler        |                           |  - Universal Database Providers   |
+|  - Wasm-Ready (package:web)       |                           |  - True LRU Caching & Lock Safety |
+|  - Monotonic Race Token Guards    |                           |  - RFC 7232 ETags & SWR / SIE     |
+|  - Safe Non-Web Compilation Stubs |                           |  - SSRF Guard & Host Validator    |
++-----------------------------------+                           +-----------------------------------+
+                 |                                                                |
+                 v                                                                v
++-----------------------------------+                           +-----------------------------------+
+|  meta_mantle_builder (Static CLI) |                           |        Framework Adapters         |
+|  - StaticHeadBuilder              |                           |  - Shelf HTTP Adapter             |
+|  - Dynamic Pattern Expansion      |                           |  - Jaspr Virtual DOM Parity       |
+|  - Sitemap & Robots.txt Generator |                           |  - CDN Invalidation (Cloudflare)  |
++-----------------------------------+                           +-----------------------------------+
+```
+
+---
+
+## 5. Installation
 
 ### GitHub Git Dependency (Recommended)
+Add `meta_mantle` directly from the official GitHub repository in your `pubspec.yaml`:
 
-Add `meta_mantle` directly from the official GitHub repository:
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  meta_mantle:
+    git:
+      url: https://github.com/JRalex07/meta_mantle.git
+      ref: main # Or pin to a specific release tag such as v0.1.0
+```
 
+For pure Dart server applications (no Flutter SDK dependencies):
 ```yaml
 dependencies:
   meta_mantle:
     git:
       url: https://github.com/JRalex07/meta_mantle.git
-      ref: main # or a release tag such as v0.1.0
+      ref: main
 ```
 
 ### Local Path Dependency
-
-For local development or monorepos:
-
+For monorepos or local package development:
 ```yaml
 dependencies:
   meta_mantle:
     path: ../meta_mantle
 ```
 
+Run `flutter pub get` (or `dart pub get`) to resolve dependencies.
+
 ---
 
-## Quick Start
+## 6. Quick Start
 
-### 1. Global Initialization (Optional)
-
-Configure site-wide defaults in your application entrypoint:
+### Flutter Web Client Example
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:meta_mantle/meta_mantle.dart';
 
-void main() {
-  MetaMantle.initialize(
-    config: const MetaMantleConfig(
-      siteName: 'MetaMantle Store',
-      baseUrl: 'https://metamantle.alex.runs-on.dev',
-      defaultTitle: 'MetaMantle Store',
-      defaultDescription: 'Shop our catalog of high quality daily essentials.',
-      titleTemplate: '%s | MetaMantle Store',
-      defaultImage: 'https://metamantle.alex.runs-on.dev/assets/social-card.png',
-      defaultRobots: RobotsDirective.indexFollow,
-      themeColor: '#0066cc',
-      colorScheme: 'light dark',
-      language: 'en',
-    ),
-  );
+void main() => runApp(const MyApp());
 
-  runApp(const MyApp());
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(home: HomeScreen());
+  }
 }
-```
 
-### 2. Declarative Route Metadata with `MetaHead`
-
-Wrap any screen with `MetaHead` (or legacy alias `WebHead`):
-
-```dart
-class ProductDetailPage extends StatelessWidget {
-  final Product product;
-  const ProductDetailPage({super.key, required this.product});
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MetaHead(
       metadata: WebMetadata(
-        title: product.name,
-        description: product.summary,
-        canonical: 'https://metamantle.alex.runs-on.dev/products/${product.slug}',
-        robots: RobotsDirective.indexFollow,
-        keywords: ['groceries', 'organic', product.category],
-        author: 'MetaMantle Team',
-        openGraph: OpenGraph(
-          title: product.name,
-          description: product.summary,
-          type: OpenGraphType.product,
-          image: product.imageUrl,
-          imageAlt: product.name,
-          imageWidth: 1200,
-          imageHeight: 630,
-        ),
-        twitterCard: TwitterCard(
-          card: TwitterCardType.summaryLargeImage,
-          title: product.name,
-          description: product.summary,
-          image: product.imageUrl,
-          site: '@metamantle',
+        title: 'Home',
+        titleTemplate: '%s | MetaMantle Store',
+        description: 'Explore high-performance Flutter Web SEO.',
+        canonical: 'https://store.example.com/',
+        openGraph: const OpenGraph(
+          title: 'MetaMantle Store',
+          description: 'Explore high-performance Flutter Web SEO.',
+          type: 'website',
+          image: 'https://store.example.com/og-banner.png',
         ),
         jsonLd: [
-          JsonLd.product(
-            name: product.name,
-            description: product.summary,
-            image: product.imageUrl,
-            sku: product.sku,
-            brand: 'MetaMantle',
-            offers: JsonLd.offer(
-              price: product.price,
-              priceCurrency: 'USD',
-              availability: 'https://schema.org/InStock',
-            ),
+          WebSiteSchema(
+            name: 'MetaMantle Store',
+            url: 'https://store.example.com',
           ),
-          JsonLd.breadcrumb([
-            BreadcrumbItem(name: 'Home', url: 'https://metamantle.alex.runs-on.dev'),
-            BreadcrumbItem(name: 'Products', url: 'https://metamantle.alex.runs-on.dev/products'),
-            BreadcrumbItem(name: product.name, url: 'https://metamantle.alex.runs-on.dev/products/${product.slug}'),
-          ]),
-        ],
-        resourceHints: const [
-          ResourceHint.preconnect('https://images.example.com', crossorigin: true),
         ],
       ),
       child: Scaffold(
-        appBar: AppBar(title: Text(product.name)),
-        body: ProductView(product: product),
+        appBar: AppBar(title: const Text('MetaMantle Store')),
+        body: const Center(child: Text('Welcome to MetaMantle!')),
       ),
     );
   }
 }
 ```
 
-### 3. Navigator & Router Integration
+---
 
-#### Standard Navigator
-Automatically track route changes with `MetaMantleNavigatorObserver`:
+## 7. Choosing an Engine
 
-```dart
-MaterialApp(
-  navigatorObservers: [
-    MetaMantleNavigatorObserver(),
-  ],
-  // ...
-);
-```
+| Requirement | Recommended Engine | Documentation Guide |
+| :--- | :--- | :--- |
+| Single-page Flutter Web apps where browser `<head>` updates are sufficient | **Engine A: Runtime (`MetaHead`)** | [Flutter Web Integration](docs/FLUTTER_INTEGRATION.md) |
+| Pre-rendering static marketing pages, blogs, or documentation for crawlers | **Engine B: Static Builder (`meta_mantle build`)** | [Static Generation Guide](docs/STATIC_GENERATION.md) |
+| Dynamic databases, real-time inventory, sub-50ms crawler responses, and zero-JS payloads | **Engine C: Native SSR Engine (`MetaMantleServerEngine`)** | [Server Rendering Guide](docs/SERVER_RENDERING.md) |
+| Hybrid server-rendered HTML document shell that embeds and bootstraps Flutter Web | **Jaspr Adapter (`MetaMantleDocument`)** | [Jaspr Web Integration](docs/JASPR_INTEGRATION.md) |
 
-#### GoRouter Integration
-To maintain a clean dependency tree without version locking, MetaMantle integrates with GoRouter via manual widget wrapping:
-
-```dart
-GoRoute(
-  path: '/products/:id',
-  builder: (context, state) => MetaHead(
-    metadata: WebMetadata(
-      title: 'Product ${state.pathParameters['id']}',
-      canonical: 'https://metamantle.alex.runs-on.dev/products/${state.pathParameters['id']}',
-    ),
-    child: ProductScreen(id: state.pathParameters['id']!),
-  ),
-);
-```
+> [!NOTE]
+> Client-side metadata injection alone is **not** server-side rendering. For search engines that do not execute JavaScript or for ultra-fast crawler discovery, use **Engine B (Static Pre-Rendering)** or **Engine C (Native SSR)**.
 
 ---
 
-## Static Route Generation (CLI)
+## 8. Working Examples
 
-Ensure search engine crawlers and social share scrapers see rich metadata on the initial HTTP response without executing JavaScript.
+The repository includes runnable, production-grade reference implementations in [`example/bin/`](example/bin/):
 
-### 1. Build your Flutter Web application
-
-```bash
-flutter build web --release
-```
-
-### 2. Configure `meta_mantle.config.json`
-
-```json
-{
-  "baseUrl": "https://metamantle.alex.runs-on.dev",
-  "siteName": "MetaMantle",
-  "titleTemplate": "%s | MetaMantle",
-  "trailingSlash": true,
-  "defaults": {
-    "robots": "index, follow",
-    "language": "en",
-    "themeColor": "#0066cc"
-  },
-  "robotsTxt": {
-    "enabled": true,
-    "rules": [
-      {
-        "userAgent": "*",
-        "allow": ["/"],
-        "disallow": ["/admin", "/checkout"]
-      }
-    ]
-  },
-  "routes": [
-    {
-      "path": "/",
-      "metadata": {
-        "title": "MetaMantle",
-        "description": "Typed metadata management and static SEO framework for Flutter Web."
-      }
-    },
-    {
-      "path": "/about",
-      "metadata": {
-        "title": "About Us",
-        "description": "Learn more about MetaMantle."
-      }
-    }
-  ],
-  "patterns": [
-    {
-      "pathPattern": "/products/:slug",
-      "dataFile": "products.json",
-      "slugField": "slug",
-      "metadataTemplate": {
-        "title": "{{name}}",
-        "description": "{{description}}",
-        "canonical": "https://metamantle.alex.runs-on.dev/products/{{slug}}/",
-        "openGraph": {
-          "type": "product",
-          "title": "{{name}}",
-          "description": "{{description}}",
-          "image": "{{image}}"
-        }
-      }
-    }
-  ]
-}
-```
-
-### 3. Generate Route HTML & SEO Assets
-
-```bash
-# Validate your configuration
-dart run meta_mantle doctor --config meta_mantle.config.json
-
-# Inspect expanded routes
-dart run meta_mantle inspect --config meta_mantle.config.json
-
-# Build static HTML, sitemap.xml, and robots.txt
-dart run meta_mantle build --config meta_mantle.config.json --strict
-```
+- **[`example/lib/main.dart`](example/lib/main.dart):** Complete Flutter Web client application with reactive `MetaHead` widgets and Navigator observers.
+- **[`example/bin/static_marketing_example.dart`](example/bin/static_marketing_example.dart):** Static marketing site generator emitting HTML, `sitemap.xml`, and `robots.txt`.
+- **[`example/bin/ecommerce_server_example.dart`](example/bin/ecommerce_server_example.dart):** E-commerce SSR server with product variants, inventory cache invalidation, and Google Merchant Center feeds.
+- **[`example/bin/jaspr_docs_example.dart`](example/bin/jaspr_docs_example.dart):** Documentation portal with version switching, search indexing, and `/llms.txt`.
+- **[`example/bin/jaspr_flutter_embed_example.dart`](example/bin/jaspr_flutter_embed_example.dart):** Hybrid Jaspr HTML shell embedding a Flutter Web canvas.
+- **[`example/bin/blog_publishing_example.dart`](example/bin/blog_publishing_example.dart):** Markdown publishing engine with RSS 2.0, Atom 1.0, and Google News sitemaps.
+- **[`example/bin/saas_multitenant_example.dart`](example/bin/saas_multitenant_example.dart):** SaaS multi-tenant host validation, custom domain resolution, and isolated caching.
 
 ---
 
-## Documentation & Live Showcase
+## 9. Documentation Index
 
-The official documentation and interactive live showcase are available at:
-👉 **[https://metamantle.alex.runs-on.dev](https://metamantle.alex.runs-on.dev)**
+Comprehensive technical documentation is maintained in [`docs/`](docs/):
 
-Explore the interactive showcase to see real-time DOM updates, dynamic title templates, and inspect the pre-rendered HTML payloads for social crawlers and search engines.
-
-### Runnable Vertical Example Applications:
-Located in [`example/bin/`](example/bin/):
-- **`example/lib/main.dart`**: Complete Flutter Web application with reactive `MetaHead` and Navigator observers.
-- **`example/bin/static_marketing_example.dart`**: High-converting static marketing landing page generator.
-- **`example/bin/ecommerce_server_example.dart`**: E-commerce SSR with product variants, inventory cache invalidation, and Google Merchant feeds.
-- **`example/bin/jaspr_docs_example.dart`**: Documentation portal with version switcher, search indexer, and `/llms.txt`.
-- **`example/bin/jaspr_flutter_embed_example.dart`**: Hybrid Jaspr HTML shell embedding a Flutter Web canvas.
-- **`example/bin/blog_publishing_example.dart`**: Markdown article publishing with RSS 2.0, Atom 1.0, and Google News sitemaps.
-- **`example/bin/saas_multitenant_example.dart`**: SaaS multi-tenant isolation, host header verification, and isolated caching.
-
-### In-Depth Documentation Guides:
-- **[Architecture Guide](docs/ARCHITECTURE.md)** — Deep dive into the tripartite architecture.
-- **[E-Commerce SEO](docs/ECOMMERCE_SEO.md)** — Product models, inventory invalidation, and Google Merchant feeds.
-- **[Landing Page SEO](docs/LANDING_PAGE_SEO.md)** — Social unfurling, FAQ schemas, and conversion optimization.
-- **[Documentation Portals](docs/DOCUMENTATION_SITES.md)** — Version canonicalization, search indexing, and /llms.txt.
-- **[Blogging & Publishing](docs/BLOGGING_AND_PUBLISHING.md)** — YAML frontmatter, syndication feeds, and Google News.
-- **[SaaS & Multi-Tenancy](docs/SAAS_AND_MULTITENANT.md)** — Host injection defense, custom domains, and cache isolation.
-- **[Jaspr Web Integration](docs/JASPR_INTEGRATION.md)** — Jaspr document shells and hybrid Flutter embedding.
-- **[Flutter Web Integration](docs/FLUTTER_INTEGRATION.md)** — Declarative widget lifecycle and WebAssembly compilation.
-- **[Structured Data Schemas](docs/STRUCTURED_DATA.md)** — 13 Schema.org JSON-LD builders with Unicode escaping.
-- **[Caching Architecture](docs/CACHING.md)** — True LRU eviction, metrics, and tag-based invalidation.
-- **[HTTP Caching & ETags](docs/HTTP_CACHING.md)** — SHA-256 ETags, stale-while-revalidate, and stale-if-error.
-- **[Universal Database Providers](docs/DATABASE_PROVIDERS.md)** — SQL, NoSQL, and REST/GraphQL data contracts.
-- **[Server Rendering (SSR)](docs/SERVER_RENDERING.md)** — Native Dart SSR engine and zero-JS crawler responses.
-- **[Static Generation Guide](docs/STATIC_GENERATION.md)** — Pre-rendering, dynamic pattern expansion, and crawler optimization.
-- **[API Reference](docs/API.md)** — Comprehensive widget, model, builder, and CLI parameters.
-- **[Security Architecture](docs/SECURITY.md)** — Host validation, SSRF prevention, and HTML sanitization.
-- **[Social Image Generation](docs/SOCIAL_IMAGE_GENERATION.md)** — Open Graph dimensions and multi-tier image cascades.
-- **[Multilingual SEO & Hreflang](docs/MULTILINGUAL_SEO.md)** — Reciprocal hreflang validation and alternate tags.
-- **[Sitemaps & Chunking](docs/SITEMAPS.md)** — Large catalog sitemap indexes and Google image extensions.
-- **[Performance & Concurrency](docs/PERFORMANCE.md)** — Single-flight coalescing and memory bounds.
-- **[Routing and Hosting Guide](docs/ROUTING_AND_HOSTING.md)** — Production deployment recipes (GitHub Pages, Vercel, Firebase, Docker).
-- **[Testing & Contract Suites](docs/TESTING.md)** — Test architecture, contract suites, and benchmarks.
-- **[CLI Tooling](docs/CLI.md)** — Command-line workflows: build, validate, inspect, doctor.
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** — Common pitfalls, tab switching, and strict validation resolution.
-- **[Migration Guide](docs/MIGRATION.md)** — Transitioning from React Helmet, Next.js Metadata, or legacy packages.
-- **[Product Evolution Audit](docs/PRODUCT_EVOLUTION_AUDIT.md)** — Architectural discrepancy audit and verification report.
-- **[Build & Verification Status](BUILD_STATUS.md)** — Tested environments, Wasm verification, and regression matrices.
+- **[Getting Started Guide](docs/GETTING_STARTED.md)** — High-level walkthrough and engine selection.
+- **[Installation Guide](docs/INSTALLATION.md)** — Dependency setup, entrypoints, and platform support.
+- **[Quick Start Guide](docs/QUICK_START.md)** — Minimal working examples across all three engines.
+- **[Architecture Deep-Dive](docs/ARCHITECTURE.md)** — Complete architectural specification.
+- **[API Reference](docs/API.md)** — Comprehensive parameter and API documentation.
+- **[E-Commerce SEO](docs/ECOMMERCE_SEO.md)** — Product models, inventory invalidation, and Merchant feeds.
+- **[Documentation Portals](docs/DOCUMENTATION_SITES.md)** — Frontmatter, search indexers, and `/llms.txt`.
+- **[Blogging & Publishing](docs/BLOGGING_AND_PUBLISHING.md)** — Article schemas, syndication feeds, and Google News.
+- **[SaaS & Multi-Tenancy](docs/SAAS_AND_MULTITENANT.md)** — Host injection defense and tenant cache partitioning.
+- **[Caching Architecture](docs/CACHING.md)** — True LRU eviction, single-flight locking, and tag invalidation.
+- **[HTTP Caching & ETags](docs/HTTP_CACHING.md)** — RFC 7232 conditional requests and origin recovery.
+- **[Database Providers](docs/DATABASE_PROVIDERS.md)** — SQL, NoSQL, memory, and REST/GraphQL data contracts.
+- **[Security Architecture](docs/SECURITY.md)** — Host validation, SSRF protection, and XSS sanitization.
+- **[Routing & Hosting](docs/ROUTING_AND_HOSTING.md)** — Deployment recipes for Firebase, Vercel, Netlify, and Docker.
+- **[CLI Tooling](docs/CLI.md)** — Build, validate, inspect, doctor, crawl, and regression commands.
+- **[API Stability Policy](docs/API_STABILITY.md)** — Public API guarantees and semantic versioning.
+- **[Integration Contract](docs/INTEGRATION_CONTRACT.md)** — Integration contract for downstream consumers and website.
+- **[Release Readiness Checklist](docs/RELEASE_READINESS.md)** — Formal quality gates for releases.
 
 ---
 
-## Security Architecture
+## 10. Contributing
 
-- **Context-Aware Escaping:** `MetadataRenderer` escapes all HTML attributes and tag bodies.
-- **XSS-Safe JSON-LD:** Structured data is serialized with Unicode character escaping for `<`, `>`, `&`, and `"` to prevent script tag breakout attacks (`</script><script>...`).
-- **URL Sanitization:** `javascript:` and `data:` schemes are strictly rejected for canonical and alternate URLs.
-- **In-Line SSRF Protection:** `RestDataProvider` and `GraphQLDataProvider` validate outbound URIs against `SsrfGuard`, blocking loopback (`127.0.0.1`), private RFC 1918 subnets, and cloud metadata (`169.254.169.254`).
-- **Response Stream Limits:** Stream accumulation uses chunk-by-chunk counting, aborting before buffering oversized payloads into memory.
-- **Tenant Host Validation:** `TenantHostValidator` blocks host header injection attacks across custom domains and wildcard subdomains, rejecting unverified hosts with HTTP 400 Bad Request.
-- **Directory Traversal Protection:** Static file paths and route strings are validated against path traversal (`..`) prior to file writing.
-- **Strict DOM Ownership:** Elements injected by the package are tagged with `data-mm-owner="meta_mantle"` and `data-mm-key`. Third-party tags and analytics scripts in `document.head` are strictly preserved.
+Contributions are welcome! Please review [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on setting up your local environment, running static analysis and automated tests, and submitting pull requests.
+
+All contributors must adhere to our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ---
 
-## License
+## 11. Security
 
-MIT License. See [LICENSE](LICENSE) for details.
+For details on our security guarantees, vulnerability reporting, and responsible disclosure process, see [SECURITY.md](SECURITY.md).
+
+---
+
+## 12. Support & Governance
+
+- **Support:** For bug reports and feature requests, see [SUPPORT.md](SUPPORT.md).
+- **Governance:** For project roles, decision-making, and release management, see [GOVERNANCE.md](GOVERNANCE.md).
+
+---
+
+## 13. License
+
+MetaMantle is open-source software licensed under the [MIT License](LICENSE).

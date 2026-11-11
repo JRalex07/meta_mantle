@@ -5,8 +5,9 @@ Complete and verify each item before publishing the official release of `meta_ma
 - [x] Configure repository (`https://github.com/JRalex07/meta_mantle`), official documentation/homepage (`https://metamantle.alex.runs-on.dev`), and issue tracker in `pubspec.yaml`.
 - [x] Configure all canonical documentation URLs to use `https://metamantle.alex.runs-on.dev`.
 - [x] Configure documentation website deployment for root base path `/` (`--base-href /`).
-- [x] Configure GitHub Pages deployment workflow (`.github/workflows/pages.yml`) including CNAME setup for `metamantle.alex.runs-on.dev`.
-- [x] Document required custom domain DNS setup (CNAME to `jralex07.github.io`) for the repository owner.
+- [x] Decouple website deployment from package repository (GitHub Pages deployment removed).
+- [x] Configure all canonical documentation URLs to use official documentation domain `https://metamantle.alex.runs-on.dev`.
+- [x] Preserve package CI workflow (`.github/workflows/ci.yml`) for analysis, testing, and dry-run validation.
 - [x] Include Git installation instructions in `README.md` (`git: url: https://github.com/JRalex07/meta_mantle.git`).
 - [x] Fix title template deduplication and verify homepage title produces clean `<title>` without duplication.
 - [x] Add regression test suite for title templates (47/47 tests passing).
@@ -26,4 +27,4 @@ Complete and verify each item before publishing the official release of `meta_ma
 - [x] Verify non-web stub compilation does not crash or throw unsupported errors.
 - [x] Run `dart pub publish --dry-run` and confirm 0 warnings.
 - [x] Confirm version consistency across `pubspec.yaml`, `README.md`, `CHANGELOG.md`, and `BUILD_STATUS.md` (`0.1.0`).
-- [ ] Obtain explicit maintainer authorization before publishing to pub.dev or deploying GitHub Pages.
+- [ ] Obtain explicit maintainer authorization before publishing to pub.dev.
