@@ -77,6 +77,15 @@ Future<void> main(List<String> arguments) async {
     ..addFlag('json',
         defaultsTo: false, help: 'Output regression report as JSON.');
 
+  parser.commands['regression']!
+    ..addFlag('help', abbr: 'h', negatable: false)
+    ..addOption('baseline',
+        mandatory: true, help: 'Path to baseline crawl/audit JSON file.')
+    ..addOption('current',
+        mandatory: true, help: 'Path to current crawl/audit JSON file.')
+    ..addFlag('json',
+        defaultsTo: false, help: 'Output regression report as JSON.');
+
   try {
     final result = parser.parse(arguments);
     if (result['help'] == true ||
@@ -107,6 +116,65 @@ Future<void> main(List<String> arguments) async {
       } else {
         stdout.writeln(report.toTerminalSummary());
       }
+      return;
+    }
+
+    // 2. regression command
+    if (command.name == 'regression') {
+      final baselinePath = command['baseline'] as String;
+      final currentPath = command['current'] as String;
+      final asJson = command['json'] as bool;
+
+      final baselineFile = File(baselinePath);
+      final currentFile = File(currentPath);
+
+      if (!await baselineFile.exists() || !await currentFile.exists()) {
+        stderr.writeln(
+            'Error: Either baseline ($baselinePath) or current ($currentPath) snapshot file does not exist.');
+        exitCode = 1;
+        return;
+      }
+
+      final baselineData =
+          json.decode(await baselineFile.readAsString()) as List;
+      final currentData = json.decode(await currentFile.readAsString()) as List;
+
+      final baselineSnapshots = {
+        for (final item in baselineData)
+          (item as Map<String, dynamic>)['url'] as String:
+              PageSeoSnapshot.fromJson(item),
+      };
+      final currentSnapshots = {
+        for (final item in currentData)
+          (item as Map<String, dynamic>)['url'] as String:
+              PageSeoSnapshot.fromJson(item),
+      };
+
+      const tester = SeoRegressionTester();
+      final findings = tester.compareSnapshots(
+        baseline: baselineSnapshots,
+        current: currentSnapshots,
+      );
+
+      if (asJson) {
+        stdout.writeln(const JsonEncoder.withIndent('  ')
+            .convert(findings.map((f) => f.toJson()).toList()));
+      } else {
+        stdout.writeln('=== MetaMantle SEO Regression Report ===\n');
+        if (findings.isNotEmpty) {
+          stderr.writeln(
+              'FAILED: ${findings.length} SEO regression(s) detected!\n');
+          for (final f in findings) {
+            stderr.writeln(
+                '  - [${f.severity}] ${f.url} (${f.field}): ${f.message}');
+          }
+        } else {
+          stdout.writeln(
+              'PASSED: Zero regressions detected across ${currentSnapshots.length} routes.');
+        }
+      }
+
+      if (findings.any((f) => f.severity == 'CRITICAL')) exitCode = 1;
       return;
     }
 
