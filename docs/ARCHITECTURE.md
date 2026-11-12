@@ -43,8 +43,14 @@ MetaMantle operates on a unified model architecture powering three complementary
 - **`RuntimeCoordinator`**: Stack-based scope manager generating monotonic tokens to prevent race conditions during page transitions.
 - **`DomAdapter`**: Browser DOM adapter using modern `package:web` and `dart:js_interop` (100% WebAssembly compatible).
 
-### 3. Static Builder Engine B (`lib/src/builder/`)
+### 3. Static Builder Engine B & Flutter Web Build Engine (`lib/src/builder/`, `lib/src/static/`)
 - **`StaticHeadBuilder`**: Injects route-specific tags into Flutter's `build/web/index.html` template.
+- **`FlutterWebBuildEngine`**: Full-pipeline Flutter Web build orchestrator (`dart run meta_mantle build-web`) managing Flutter compilation, route expansion, semantic HTML pre-rendering, and asset generation.
+- **`BootstrapAdapter`**: Injects metadata, CSS styles, semantic content containers, and client startup handshake (`window.__mantleClientReady`) into the Flutter bootstrap lifecycle without modifying framework internals.
+- **Build Modes**:
+  - **Mode A (Metadata):** Enriches HTML `<head>` while preserving standard client-side Flutter Web rendering.
+  - **Mode B (Prerender):** Injects semantic HTML snapshots (`<article>`, `<form>`, `<details>`, `<table>`, lists, headings, products) alongside Flutter bootstrap.
+  - **Mode C (Hybrid):** Combines static snapshots with client-side synchronization (`MetaMantle.markReady()`) for seamless, flicker-free hydration.
 - **`BuildManifest`**: SHA-256 content fingerprinting enabling sub-second incremental builds.
 - **Sitemaps & Robots**: Automated XML sitemap generation with chunking and reciprocal hreflang validation.
 

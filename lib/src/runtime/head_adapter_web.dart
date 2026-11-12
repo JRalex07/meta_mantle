@@ -248,6 +248,15 @@ class _WebHeadAdapter implements HeadAdapter {
     }
     _originalElements.clear();
   }
+
+  @override
+  void markReady() {
+    final prerenderRoot = web.document.getElementById('mantle-prerender-root');
+    if (prerenderRoot != null) {
+      prerenderRoot.classList.add('mantle-fade-out');
+      prerenderRoot.remove();
+    }
+  }
 }
 
 class _OriginalElementSnapshot {

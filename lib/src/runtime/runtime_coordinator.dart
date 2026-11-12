@@ -115,6 +115,12 @@ class RuntimeCoordinator {
     _adapter.clear();
   }
 
+  /// Signals that the client application has rendered its initial frame,
+  /// smoothly transitioning away the static HTML pre-rendered snapshot.
+  void markReady() {
+    _adapter.markReady();
+  }
+
   void _render() {
     _generationToken++;
     if (!_adapter.isSupported) {

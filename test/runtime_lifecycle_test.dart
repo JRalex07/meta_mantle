@@ -27,6 +27,13 @@ class RecordingHeadAdapter implements HeadAdapter {
     cleared = true;
     lastAppliedTags = null;
   }
+
+  bool readyCalled = false;
+
+  @override
+  void markReady() {
+    readyCalled = true;
+  }
 }
 
 void main() {

@@ -4,7 +4,7 @@ This document reflects the verified status of the `meta_mantle` package (version
 
 ## Current audit re-verification
 
-On 2026-11-12, `flutter test` passed **274 tests** across 35 test suites (100% pass rate); root and example analysis passed with **0 issues**; formatting passed with **0 files changed** across 139 files; universal component IR, server HTML rendering, Flutter Widget rendering, routing engine, reactive state, DOM diffing reconciler, and web accelerator benchmarks passed; JavaScript and WebAssembly example builds passed; CLI `doctor`, strict `build`, and `web` command group passed. `dart pub publish --dry-run` completed package validation with **1 warning** because the working tree is modified. Gitleaks v8.30.1 history and checkout scans are configured in CI. CloudFront invalidation is unsupported; Jaspr support is an HTML compatibility bridge; package dependency resolution requires Flutter.
+On 2026-11-12, `flutter test` passed **286 tests** across 37 test suites (100% pass rate); root and example analysis passed with **0 issues**; formatting passed with **0 files changed** across 146 files; universal component IR, server HTML rendering, Flutter Widget rendering, routing engine, reactive state, DOM diffing reconciler, web accelerator benchmarks, and Flutter Web Static Build Engine (`build-web`) passed; JavaScript and WebAssembly example builds passed; CLI `doctor`, strict `build`, `build-web`, and `web` command group passed. `dart pub publish --dry-run` completed package validation with **1 warning** because the working tree is modified. Gitleaks v8.30.1 history and checkout scans are configured in CI. CloudFront invalidation is unsupported; Jaspr support is an HTML compatibility bridge; package dependency resolution requires Flutter.
 
 ## Verified Environment
 
@@ -25,7 +25,7 @@ On 2026-11-12, `flutter test` passed **274 tests** across 35 test suites (100% p
 | `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 139 files |
 | `flutter pub get` | `.` (Root) | **PASS** | Dependencies resolved |
 | `dart analyze` | `.` (Root) | **PASS** (0 issues) | Strict analysis enabled across core, server, universal, hybrid, and example |
-| `flutter test` | `.` (Root) | **PASS** (274 passing) | 35 test suites: Universal IR, Flutter renderer, Server HTML renderer, Universal routing, DOM diffing reconciler, reactive state, Web accelerator, WAL crash recovery, sharded route store, lease renewal & heartbeat, fencing epochs, DNS rebinding, redirect SSRF, 10,000 job benchmark |
+| `flutter test` | `.` (Root) | **PASS** (286 passing) | 37 test suites: Universal IR, Flutter renderer, Server HTML renderer, Universal routing, DOM diffing reconciler, reactive state, Web accelerator, Flutter Web Build Engine (`build-web`), Content & Commerce components, WAL crash recovery, sharded route store, lease renewal & heartbeat, fencing epochs, DNS rebinding, redirect SSRF, 10,000 job benchmark |
 | `flutter pub get` | `example/` | **PASS** | Dependencies resolved |
 | `dart run example/bin/universal_store_example.dart` | `.` (Root) | **PASS** | End-to-end multi-target rendering demo (SSR, Widgets, SSG) |
 | `dart run example/bin/blog_publishing_example.dart` | `.` (Root) | **PASS** | RSS 2.0, Atom 1.0, Google News Sitemap |

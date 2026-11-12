@@ -6,7 +6,20 @@ Official release of **MetaMantle** (`meta_mantle`), the typed metadata managemen
 
 **Integration limits:** The package currently requires Flutter SDK resolution (Dart `>=3.6.0`, Flutter `>=3.27.0`). Core/server source entrypoints avoid Flutter imports, but are not independently installable with the Dart SDK alone. Database adapters require application-supplied callbacks and drivers. Jaspr helpers produce metadata descriptors/HTML strings rather than native Jaspr components. CloudFront invalidation is unsupported and returns failure until a genuine AWS API implementation is added.
 
-### Universal Dart Rendering Architecture & Flutter Web Acceleration
+### Universal Dart Rendering Architecture, Flutter Web Acceleration & Static Build Engine
+- **Flutter Web Build Engine (`dart run meta_mantle build-web`):**
+  - Integrated build engine (`lib/src/static/flutter_web_build_engine.dart`) managing Flutter Web compilation, route resolution, static semantic HTML pre-rendering, sitemap/robots generation, and `meta_mantle_report.json` output.
+  - Supported build modes: Mode A (`BuildMode.metadata`), Mode B (`BuildMode.prerender`), and Mode C (`BuildMode.hybrid`).
+  - Native bootstrap coordination via `BootstrapAdapter` (`lib/src/static/bootstrap/bootstrap_adapter.dart`) preserving template tokens (`{{flutter_js}}`, `{{flutter_build_config}}`, `flutter_bootstrap.js`).
+  - Client startup synchronization handshake (`window.__mantleClientReady` & `MetaMantle.markReady()`) preventing flash-of-unstyled-content (FOUC) and duplicate rendering during Flutter initialization.
+  - Dynamic route expansion supporting parameterized path patterns (`:id`, `:slug`) with custom async data sources via `StaticRouteManifest`.
+- **Content & Commerce Universal Components:**
+  - Added `MantleArticle` (`<article>`) for rich articles and editorial content.
+  - Added `MantleList` and `MantleListItem` (`<ul>`, `<ol>`, `<li>`) for structured list presentations.
+  - Added `MantleTextArea` (`<textarea>`) with rows, cols, and placeholder support.
+  - Added `MantleDetails` (`<details>`, `<summary>`) for semantic collapsible disclosure sections.
+  - Added `MantleProduct` with complete embedded Schema.org Microdata (`itemscope itemtype="https://schema.org/Product"`, `itemprop="name"`, `itemprop="description"`, `itemprop="offers"`, `itemprop="price"`).
+  - Added full native Flutter widget mappings in `MantleFlutterRenderer` for all new components.
 - **Incremental DOM Reconciliation & Hydration Engine:**
   - Added `MantleDiffEngine` (`lib/src/universal/ir/mantle_diff.dart`) computing minimal tree mutations (`ReplaceNodePatch`, `UpdateTextPatch`, `UpdateElementPatch`, and `MantleChildPatch` with insert, remove, patch).
   - Implemented in-place incremental DOM patching in `MantleDomRenderer.patch()`, avoiding page re-renders during state mutations.

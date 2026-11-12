@@ -11,4 +11,7 @@ class _StubHeadAdapter implements HeadAdapter {
   void apply(List<HeadTag> tags) {}
   @override
   void clear() {}
+
+  @override
+  void markReady() {}
 }

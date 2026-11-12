@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../runtime/meta_mantle.dart';
 import '../rendering/flutter_renderer.dart';
 import '../routing/mantle_route.dart';
 
@@ -27,6 +28,11 @@ class _MantleFlutterAppWidgetState extends State<MantleFlutterAppWidget> {
     super.initState();
     _currentPath = widget.app.initialPath;
     _history.add(_currentPath);
+
+    // Coordinate transition from static HTML snapshot to interactive Flutter view.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      MetaMantle.markReady();
+    });
   }
 
   void _navigateTo(String path, {Map<String, String>? queryParameters}) {

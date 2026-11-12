@@ -4,4 +4,5 @@ abstract interface class HeadAdapter {
   bool get isSupported;
   void apply(List<HeadTag> tags);
   void clear();
+  void markReady();
 }

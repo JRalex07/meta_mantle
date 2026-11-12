@@ -49,6 +49,13 @@ class MetaMantle {
     _coordinator.clear();
   }
 
+  /// Signals to the static HTML snapshot and bootstrap coordinator that the Flutter
+  /// application has rendered its initial frame and is ready for user interaction.
+  /// Transitions away the static HTML pre-render snapshot gracefully.
+  static void markReady() {
+    _coordinator.markReady();
+  }
+
   static MetaMantleConfig get config => _coordinator.config;
   static bool get isSupported => _coordinator.isSupported;
   static WebMetadata? get activeMetadata => _coordinator.activeMetadata;

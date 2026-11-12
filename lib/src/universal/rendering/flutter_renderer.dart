@@ -150,7 +150,65 @@ class _FlutterVisitor implements MantleNodeVisitor<Widget> {
       );
     }
 
-    // 8. Generic layout elements (div, section, main, header, nav, aside, etc.)
+    // 8. Multi-line Text Area
+    if (node.tag == 'textarea') {
+      final onInput = node.events['input'];
+      final initialVal = _extractTextContent(node);
+      final rows = int.tryParse(node.attributes['rows'] ?? '') ?? 4;
+      return TextFormField(
+        initialValue: initialVal.isNotEmpty ? initialVal : null,
+        maxLines: rows,
+        decoration: InputDecoration(
+          hintText: node.attributes['placeholder'],
+          border: const OutlineInputBorder(),
+        ),
+        onChanged: onInput != null
+            ? (val) => onInput(MantleEvent(type: 'input', value: val))
+            : null,
+      );
+    }
+
+    // 9. Details / Summary Accordion
+    if (node.tag == 'details') {
+      Widget? summaryWidget;
+      final contentWidgets = <Widget>[];
+      for (final child in node.children) {
+        if (child is MantleElementNode && child.tag == 'summary') {
+          summaryWidget = child.accept(this);
+        } else {
+          contentWidgets.add(child.accept(this));
+        }
+      }
+      return ExpansionTile(
+        title: summaryWidget ?? const Text('Details'),
+        initiallyExpanded: node.attributes.containsKey('open'),
+        children: contentWidgets,
+      );
+    }
+
+    // 10. List Item (li)
+    if (node.tag == 'li') {
+      final childrenWidgets = node.children.map((c) => c.accept(this)).toList();
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('• ', style: TextStyle(fontWeight: FontWeight.bold)),
+            Expanded(
+              child: childrenWidgets.length == 1
+                  ? childrenWidgets.first
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: childrenWidgets,
+                    ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 11. Generic layout elements (div, section, main, header, nav, aside, article, ul, ol, etc.)
     final childrenWidgets = node.children.map((c) => c.accept(this)).toList();
 
     // Check flex direction

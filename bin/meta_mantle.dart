@@ -9,6 +9,7 @@ import 'package:meta_mantle/meta_mantle_server.dart';
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addCommand('build')
+    ..addCommand('build-web')
     ..addCommand('validate')
     ..addCommand('inspect')
     ..addCommand('doctor')
@@ -19,6 +20,35 @@ Future<void> main(List<String> arguments) async {
     ..addCommand('regression')
     ..addCommand('web')
     ..addFlag('help', abbr: 'h', negatable: false);
+
+  parser.commands['build-web']!
+    ..addFlag('help', abbr: 'h', negatable: false)
+    ..addOption('mode',
+        defaultsTo: 'prerender',
+        allowed: ['metadata', 'prerender', 'hybrid'],
+        help: 'Build mode: metadata, prerender, or hybrid.')
+    ..addFlag('release', defaultsTo: true, help: 'Compile in release mode.')
+    ..addFlag('debug', defaultsTo: false, help: 'Compile in debug mode.')
+    ..addOption('output',
+        defaultsTo: 'build/web',
+        help: 'Output directory for generated static assets.')
+    ..addOption('base-href',
+        defaultsTo: '/', help: 'Base href for Flutter routing.')
+    ..addFlag('wasm',
+        defaultsTo: false, help: 'Compile with WebAssembly (WasmGC).')
+    ..addFlag('verbose',
+        abbr: 'v', defaultsTo: false, help: 'Enable detailed logging.')
+    ..addFlag('dry-run',
+        defaultsTo: false,
+        help: 'Simulate generation without writing files or compiling.')
+    ..addFlag('clean',
+        defaultsTo: false, help: 'Run flutter clean before building.')
+    ..addFlag('strict',
+        defaultsTo: false,
+        help: 'Fail build if any metadata or route warnings occur.')
+    ..addOption('config',
+        defaultsTo: 'meta_mantle.config.json',
+        help: 'Path to MetaMantle JSON configuration file.');
 
   parser.commands['build']!
     ..addFlag('help', abbr: 'h', negatable: false)
@@ -456,7 +486,59 @@ Future<void> main(List<String> arguments) async {
       return;
     }
 
-    // 8. build command
+    // 8. build-web command
+    if (command.name == 'build-web') {
+      final modeStr = command['mode'] as String;
+      final mode = BuildMode.fromString(modeStr);
+      final isRelease = command['release'] as bool;
+      final isDebug = command['debug'] as bool;
+      final output = command['output'] as String;
+      final baseHref = command['base-href'] as String;
+      final isWasm = command['wasm'] as bool;
+      final isVerbose = command['verbose'] as bool;
+      final isDryRun = command['dry-run'] as bool;
+      final isClean = command['clean'] as bool;
+      final isStrict = command['strict'] as bool;
+
+      final options = BuildWebOptions(
+        mode: mode,
+        release: isRelease && !isDebug,
+        debug: isDebug,
+        output: output,
+        baseHref: baseHref,
+        wasm: isWasm,
+        verbose: isVerbose,
+        dryRun: isDryRun,
+        clean: isClean,
+        strict: isStrict,
+        configPath: configPath,
+      );
+
+      final engine = const FlutterWebBuildEngine();
+      final result = await engine.build(
+        options,
+        onProgress: (msg) => stdout.writeln('  $msg'),
+      );
+
+      stdout.writeln('\n=== MetaMantle Flutter Web Build Complete ===');
+      stdout.writeln('Mode:            ${result.mode.name.toUpperCase()}');
+      stdout.writeln('Routes:          ${result.routes.length}');
+      stdout.writeln('Generated Files: ${result.generatedFiles.length}');
+      stdout.writeln('Duration:        ${result.durationMs}ms');
+      if (result.reportPath != null) {
+        stdout.writeln('Build Report:    ${result.reportPath}');
+      }
+
+      if (result.warnings.isNotEmpty) {
+        stderr.writeln('\nWarnings (${result.warnings.length}):');
+        for (final w in result.warnings) {
+          stderr.writeln('  * $w');
+        }
+      }
+      return;
+    }
+
+    // 9. legacy build command
     final input = Directory(command['input'] as String);
     final output = Directory(command['output'] as String);
     final isDryRun = command['dry-run'] as bool;
@@ -522,6 +604,7 @@ Usage:
   dart run meta_mantle <command> [options]
 
 Commands:
+  build-web    Execute Flutter Web production build and generate semantic HTML pages.
   build        Generate route-specific HTML documents from a Flutter build.
   validate     Validate the JSON route configuration.
   inspect      Display all resolved routes and metadata without writing files.

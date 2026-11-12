@@ -3,6 +3,9 @@ import '../ir/mantle_node.dart';
 import '../ir/mantle_style.dart';
 import 'mantle_component.dart';
 
+/// Alias for [MantleTextField] matching HTML input nomenclature.
+typedef MantleInput = MantleTextField;
+
 class MantleTextField extends StatelessMantleComponent {
   const MantleTextField({
     this.value = '',
