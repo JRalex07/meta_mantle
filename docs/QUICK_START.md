@@ -93,14 +93,15 @@ Inject route-specific metadata directly into Flutter's `build/web` output before
 
 ### 2. Build the Static HTML Documents:
 ```bash
-# 1. Build the Flutter Web application
-flutter build web --release
+# Option A: Unified Flutter Web Static Build Engine (compiles Flutter + pre-renders semantic HTML)
+dart run meta_mantle build-web --mode hybrid --release
 
-# 2. Inject route-specific metadata and generate sitemap.xml & robots.txt
+# Option B: Two-step build on pre-compiled web output
+flutter build web --release
 dart run meta_mantle build --config meta_mantle.config.json --strict
 ```
 
-The `build/web` directory now contains pre-rendered HTML files (`/index.html`, `/about/index.html`, `/sitemap.xml`, `/robots.txt`).
+The `build/web` directory now contains pre-rendered HTML files (`/index.html`, `/about/index.html`, `/sitemap.xml`, `/robots.txt`). In `--mode hybrid`, client-side Flutter coordination is managed automatically through `MetaMantle.markReady()`.
 
 ---
 

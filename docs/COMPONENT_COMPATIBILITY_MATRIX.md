@@ -70,6 +70,7 @@ This matrix documents the runtime rendering capabilities and level of support fo
 | Component | Flutter Target | Browser DOM Target | Server HTML Target | Status / Notes |
 | :--- | :---: | :---: | :---: | :---: |
 | `MantleTextField` | `TextFormField` | `<input type="text">` | `<input type="text">` | Supports input/change/submit |
+| `MantleTextArea` | `TextFormField(maxLines: rows)` | `<textarea rows="..." cols="...">` | `<textarea rows="..." cols="...">` | Multi-line text input |
 | `MantleCheckbox` | `Checkbox` | `<input type="checkbox">` | `<input type="checkbox">` | Checked attribute & change event |
 | `MantleSwitch` | `Switch` | `<input type="checkbox" role="switch">`| `<input type="checkbox">` | Boolean toggle |
 | `MantleSelect` | `DropdownButton` | `<select>` + `<option>` | `<select>` + `<option>` | Single selection dropdown |
@@ -89,11 +90,22 @@ This matrix documents the runtime rendering capabilities and level of support fo
 
 ---
 
-## 8. Accessibility Semantics
+## 8. Content & Commerce Components
+
+| Component | Flutter Target | Browser DOM Target | Server HTML Target | Status / Notes |
+| :--- | :---: | :---: | :---: | :--- |
+| `MantleArticle` | `Column` with styled header | `<article class="mantle-article">` | `<article itemprop="articleBody">` | Semantic article container with title, author, and date metadata |
+| `MantleList` | `Column` (bullet padding) | `<ul>` or `<ol class="mantle-list">` | `<ul>` or `<ol class="mantle-list">` | Ordered and unordered list container |
+| `MantleListItem`| Row with bullet point | `<li class="mantle-list-item">` | `<li class="mantle-list-item">` | Standard list item |
+| `MantleDetails` | `ExpansionTile` | `<details open="...">` + `<summary>` | `<details open="...">` + `<summary>` | Accessible collapsible disclosure |
+| `MantleProduct` | Card with Column & Price | `<div itemscope itemtype="Product">` | `<div itemscope itemtype="Product">` | Embedded Schema.org Product microdata with price, currency, availability |
+
+---
+
+## 9. Accessibility Semantics
 
 | Component | Flutter Target | Browser DOM Target | Server HTML Target | Status / Notes |
 | :--- | :---: | :---: | :---: | :--- |
 | `MantleSemantics` | `Semantics(label, ...)` | `aria-label`, `role`, `aria-live` | `aria-label`, `role` attributes | Accessible screen-reader support |
 | `MantleLabel` | `Text` | `<label for="...">` | `<label for="...">` | Associates input with text |
 | `MantleLandmark` | Semantics container | `<main>`, `<nav>`, `<aside>`, etc. | Semantic HTML5 landmark tags | WAI-ARIA & HTML5 standards |
-
