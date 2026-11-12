@@ -244,6 +244,41 @@ void main() {
       );
       final landmarkNode = landmark.build(context) as MantleElementNode;
       expect(landmarkNode.tag, equals('main'));
+
+      // MantleNavigation
+      const nav = MantleNavigation(
+        items: [
+          MantleNavigationItem(label: 'Home', route: '/'),
+          MantleNavigationItem(label: 'Profile', route: '/profile'),
+        ],
+        currentIndex: 1,
+      );
+      final navNode = nav.build(context) as MantleElementNode;
+      expect(navNode.tag, equals('nav'));
+      expect(navNode.attributes['role'], equals('navigation'));
+      expect(navNode.children.length, equals(2));
+      final activeItem = navNode.children[1] as MantleElementNode;
+      expect(activeItem.attributes['aria-selected'], equals('true'));
+
+      // MantleDrawer
+      const drawer = MantleDrawer(
+        isOpen: true,
+        children: [MantleText('Menu item')],
+      );
+      final drawerNode = drawer.build(context) as MantleElementNode;
+      expect(drawerNode.classes, contains('mantle-drawer-wrapper'));
+
+      // MantleTabs
+      const tabs = MantleTabs(
+        tabs: [
+          MantleTab(title: 'Tab 1', content: MantleText('Content 1')),
+          MantleTab(title: 'Tab 2', content: MantleText('Content 2')),
+        ],
+        currentIndex: 0,
+      );
+      final tabsNode = tabs.build(context) as MantleElementNode;
+      expect(tabsNode.classes, contains('mantle-tabs-container'));
+      expect(tabsNode.children.length, equals(2));
     });
   });
 }

@@ -117,5 +117,12 @@ void main() {
       context.back();
       expect(backCalled, isTrue);
     });
+
+    test('getDiscoverableRoutes extracts all non-parameterized routes for SSG',
+        () {
+      final discoverable = router.getDiscoverableRoutes();
+      expect(discoverable, containsAll(['/', '/about']));
+      expect(discoverable.contains('/products/:id'), isFalse);
+    });
   });
 }

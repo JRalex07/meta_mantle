@@ -7,6 +7,27 @@ Official release of **MetaMantle** (`meta_mantle`), the typed metadata managemen
 **Integration limits:** The package currently requires Flutter SDK resolution (Dart `>=3.6.0`, Flutter `>=3.27.0`). Core/server source entrypoints avoid Flutter imports, but are not independently installable with the Dart SDK alone. Database adapters require application-supplied callbacks and drivers. Jaspr helpers produce metadata descriptors/HTML strings rather than native Jaspr components. CloudFront invalidation is unsupported and returns failure until a genuine AWS API implementation is added.
 
 ### Universal Dart Rendering Architecture & Flutter Web Acceleration
+- **Incremental DOM Reconciliation & Hydration Engine:**
+  - Added `MantleDiffEngine` (`lib/src/universal/ir/mantle_diff.dart`) computing minimal tree mutations (`ReplaceNodePatch`, `UpdateTextPatch`, `UpdateElementPatch`, and `MantleChildPatch` with insert, remove, patch).
+  - Implemented in-place incremental DOM patching in `MantleDomRenderer.patch()`, avoiding page re-renders during state mutations.
+  - Server renderer emits deterministic hydration markers (`data-mantle-node`, `data-mantle-key`, `data-mantle-interactive`) for seamless client hydration without DOM replacement.
+- **Reactive State & Observable Store Architecture:**
+  - Added `MantleObservable<T>`, `MantleStore`, `MantleBuilder<T>`, and `MantleFutureBuilder<T>` (`lib/src/universal/state/mantle_state.dart`) for lightweight, predictable reactive state and async data loading without full-tree re-renders.
+  - Added `MantleDisposable` lifecycle contract for leak-free subscriber disposal.
+- **Expanded Navigation & Semantic Component Catalogue:**
+  - Added `MantleNavigation` (universal bottom/top navigation bar and side rail with item badges and active state).
+  - Added `MantleDrawer` (collapsible side drawer with backdrop overlay).
+  - Added `MantleTabs` (tab navigation bar with synchronized tab panels).
+  - Added `MantleValueKey<T>` subclassing `MantleKey` for type-safe element reconciliation.
+  - Flexible `MantleCheckbox` supporting optional change handlers and disabled state.
+- **Architecture Decision Records (ADRs) & Validation:**
+  - Documented ADR-0001 (Universal Dart Rendering Architecture & Jaspr/Flutter/React comparative study).
+  - Documented ADR-0002 (DOM Reconciliation and Hydration Strategy).
+  - Documented ADR-0003 (Flutter Web Acceleration Modes A & B).
+  - Authored comprehensive `docs/COMPONENT_COMPATIBILITY_MATRIX.md` and `docs/PERFORMANCE_BENCHMARKS.md`.
+- **Test Suite Expansion:**
+  - Expanded test coverage to **274 passing tests** across 35 test suites (100% pass rate).
+  - Added dedicated test suites: `test/dom_reconciler_test.dart` and `test/universal_state_test.dart`.
 - **Universal Component Model & Intermediate Representation (IR):**
   - Portable, platform-agnostic component base classes (`MantleComponent`, `StatelessMantleComponent`, `StatefulMantleComponent`, `MantleState`, `MantleContext`).
   - Strict IR tree hierarchy (`MantleNode`, `MantleElementNode`, `MantleTextNode`, `MantleFragment`, `MantleKey`, `MantleNodeVisitor`).

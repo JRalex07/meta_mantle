@@ -162,4 +162,56 @@ void main() {
     await tester.pump();
     expect(linkTapped, isTrue);
   });
+
+  testWidgets('renders select element to DropdownButton', (tester) async {
+    final selectNode = MantleElementNode(
+      tag: 'select',
+      children: [
+        const MantleElementNode(
+          tag: 'option',
+          attributes: {'value': 'opt1', 'selected': 'selected'},
+          children: [MantleTextNode('Option 1')],
+        ),
+        const MantleElementNode(
+          tag: 'option',
+          attributes: {'value': 'opt2'},
+          children: [MantleTextNode('Option 2')],
+        ),
+      ],
+    );
+
+    final widget = renderer.render(selectNode);
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
+    expect(find.byType(DropdownButton<String>), findsOneWidget);
+  });
+
+  testWidgets('renders form element to Form widget', (tester) async {
+    final formNode = MantleElementNode(
+      tag: 'form',
+      children: [
+        const MantleElementNode(
+          tag: 'input',
+          attributes: {'type': 'text', 'placeholder': 'Username'},
+        ),
+      ],
+    );
+
+    final widget = renderer.render(formNode);
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
+    expect(find.byType(Form), findsOneWidget);
+    expect(find.byType(TextFormField), findsOneWidget);
+  });
+
+  testWidgets('wraps element with Semantics widget when aria-label present',
+      (tester) async {
+    final node = MantleElementNode(
+      tag: 'div',
+      attributes: const {'aria-label': 'Accessible Region'},
+      children: [MantleTextNode('Content')],
+    );
+
+    final widget = renderer.render(node);
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
+    expect(find.byType(Semantics), findsWidgets);
+  });
 }

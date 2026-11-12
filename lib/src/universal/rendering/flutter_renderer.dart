@@ -116,7 +116,41 @@ class _FlutterVisitor implements MantleNodeVisitor<Widget> {
       );
     }
 
-    // 6. Generic layout elements (div, section, main, header, etc.)
+    // 6. Select dropdowns
+    if (node.tag == 'select') {
+      final onChange = node.events['change'];
+      final options = <DropdownMenuItem<String>>[];
+      String? selectedVal;
+      for (final child in node.children) {
+        if (child is MantleElementNode && child.tag == 'option') {
+          final val = child.attributes['value'] ?? '';
+          if (child.attributes['selected'] != null) selectedVal = val;
+          final text = _extractTextContent(child);
+          options.add(DropdownMenuItem(value: val, child: Text(text)));
+        }
+      }
+      return DropdownButton<String>(
+        value: selectedVal ?? (options.isNotEmpty ? options.first.value : null),
+        items: options,
+        onChanged: onChange != null
+            ? (val) => onChange(MantleEvent(type: 'change', value: val))
+            : null,
+      );
+    }
+
+    // 7. Forms
+    if (node.tag == 'form') {
+      final childrenWidgets = node.children.map((c) => c.accept(this)).toList();
+      return Form(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: childrenWidgets,
+        ),
+      );
+    }
+
+    // 8. Generic layout elements (div, section, main, header, nav, aside, etc.)
     final childrenWidgets = node.children.map((c) => c.accept(this)).toList();
 
     // Check flex direction
@@ -185,6 +219,15 @@ class _FlutterVisitor implements MantleNodeVisitor<Widget> {
       final onClick = node.events['click']!;
       current = GestureDetector(
         onTap: () => onClick(const MantleEvent(type: 'click')),
+        child: current,
+      );
+    }
+
+    if (node.attributes.containsKey('aria-label') ||
+        node.attributes.containsKey('role')) {
+      current = Semantics(
+        label: node.attributes['aria-label'],
+        container: true,
         child: current,
       );
     }

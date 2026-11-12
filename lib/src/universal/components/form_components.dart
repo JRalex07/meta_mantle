@@ -71,13 +71,13 @@ class MantleTextField extends StatelessMantleComponent {
 class MantleCheckbox extends StatelessMantleComponent {
   const MantleCheckbox({
     required this.value,
-    required this.onChanged,
+    this.onChanged,
     this.label,
     super.key,
   });
 
   final bool value;
-  final MantleValueCallback<bool> onChanged;
+  final MantleValueCallback<bool>? onChanged;
   final String? label;
 
   @override
@@ -86,12 +86,14 @@ class MantleCheckbox extends StatelessMantleComponent {
       'type': 'checkbox',
     };
     if (value) attributes['checked'] = 'checked';
+    if (onChanged == null) attributes['disabled'] = 'disabled';
 
-    final events = <String, MantleEventCallback>{
-      'change': (e) {
-        onChanged(e.value == true || e.value == 'true');
-      },
-    };
+    final events = <String, MantleEventCallback>{};
+    if (onChanged != null) {
+      events['change'] = (e) {
+        onChanged!(e.value == true || e.value == 'true');
+      };
+    }
 
     final inputNode = MantleElementNode(
       tag: 'input',

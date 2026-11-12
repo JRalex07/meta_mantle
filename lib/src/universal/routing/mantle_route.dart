@@ -1,6 +1,7 @@
 import '../components/mantle_component.dart';
 
 typedef MantleRouteBuilder = MantleComponent Function(MantleContext context);
+typedef MantleRouteGuard = String? Function(MantleContext context);
 
 /// Represents a single route declaration in MetaMantle's universal routing system.
 class MantleRoute {
@@ -8,12 +9,18 @@ class MantleRoute {
     required this.path,
     required this.builder,
     this.title,
+    this.guard,
+    this.children = const [],
+    this.meta = const {},
   });
 
   /// Path pattern, supporting parameterized segments like `/products/:id`.
   final String path;
   final MantleRouteBuilder builder;
   final String? title;
+  final MantleRouteGuard? guard;
+  final List<MantleRoute> children;
+  final Map<String, Object?> meta;
 
   /// Tests if this route matches [actualPath] and extracts path parameters.
   Map<String, String>? match(String actualPath) {
@@ -46,12 +53,16 @@ class MantleRouteMatch {
     required this.path,
     this.pathParameters = const {},
     this.queryParameters = const {},
+    this.redirectPath,
   });
 
   final MantleRoute route;
   final String path;
   final Map<String, String> pathParameters;
   final Map<String, String> queryParameters;
+  final String? redirectPath;
+
+  bool get isRedirect => redirectPath != null;
 
   MantleComponent build(MantleContext context) => route.builder(context);
 }
@@ -65,6 +76,17 @@ class MantleRouter {
 
   final List<MantleRoute> routes;
   final MantleRouteBuilder? notFoundBuilder;
+
+  /// Returns all static discoverable paths declared in this router (for SSG/sitemap).
+  List<String> getDiscoverableRoutes() {
+    final list = <String>[];
+    for (final r in routes) {
+      if (!r.path.contains(':') && !r.path.contains('*')) {
+        list.add(r.path);
+      }
+    }
+    return list;
+  }
 
   /// Matches [uriOrPath] against registered routes.
   MantleRouteMatch? match(String uriOrPath) {

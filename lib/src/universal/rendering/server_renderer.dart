@@ -8,11 +8,14 @@ import 'renderer_contract.dart';
 /// Server-side semantic HTML renderer for [MantleNode] trees.
 /// Produces standard, accessible HTML markup with zero client-side framework overhead.
 class MantleServerRenderer implements MantleRenderer<HtmlNode> {
-  const MantleServerRenderer();
+  const MantleServerRenderer({this.emitHydrationMarkers = true});
+
+  final bool emitHydrationMarkers;
 
   @override
   HtmlNode render(MantleNode node) {
-    return node.accept(const _ServerVisitor());
+    return node
+        .accept(_ServerVisitor(emitHydrationMarkers: emitHydrationMarkers));
   }
 
   /// Renders a [MantleNode] tree into a complete standalone HTML document with [metadata].
@@ -49,7 +52,9 @@ class MantleServerRenderer implements MantleRenderer<HtmlNode> {
 }
 
 class _ServerVisitor implements MantleNodeVisitor<HtmlNode> {
-  const _ServerVisitor();
+  const _ServerVisitor({this.emitHydrationMarkers = true});
+
+  final bool emitHydrationMarkers;
 
   @override
   HtmlNode visitElement(MantleElementNode node) {
@@ -58,6 +63,16 @@ class _ServerVisitor implements MantleNodeVisitor<HtmlNode> {
     if (node.id != null) attributes['id'] = node.id!;
     if (node.classes.isNotEmpty) {
       attributes['class'] = node.classes.join(' ');
+    }
+
+    if (emitHydrationMarkers) {
+      attributes['data-mantle-node'] = node.tag;
+      if (node.key != null) {
+        attributes['data-mantle-key'] = node.key.toString();
+      }
+      if (node.events.isNotEmpty) {
+        attributes['data-mantle-interactive'] = 'true';
+      }
     }
 
     if (node.styles.isNotEmpty) {

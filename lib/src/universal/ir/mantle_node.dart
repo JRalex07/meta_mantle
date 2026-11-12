@@ -17,6 +17,12 @@ class MantleKey {
   String toString() => 'MantleKey($value)';
 }
 
+/// A key that uses a value of a particular type to identify itself.
+class MantleValueKey<T> extends MantleKey {
+  const MantleValueKey(this.typedValue) : super('$typedValue');
+  final T typedValue;
+}
+
 /// Abstract base node in MetaMantle's universal intermediate representation.
 abstract class MantleNode {
   const MantleNode({this.key});

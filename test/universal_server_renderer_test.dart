@@ -49,7 +49,8 @@ void main() {
     expect(rendered.attributes['style'], contains('margin: 10px;'));
     expect(rendered.attributes['style'], contains('display: flex;'));
     expect(rendered.children.length, equals(1));
-    expect(rendered.toHtml(), contains('<h1>Universal Architecture</h1>'));
+    expect(rendered.toHtml(),
+        contains('data-mantle-node="h1">Universal Architecture</h1>'));
   });
 
   test('correctly handles self-closing tags like img and input', () {
@@ -59,8 +60,10 @@ void main() {
     );
     final renderedImg = renderer.render(imgNode) as ElementNode;
     expect(renderedImg.isSelfClosing, isTrue);
-    expect(renderedImg.toHtml(),
-        equals('<img src="/banner.png" alt="Site Banner" />'));
+    expect(
+        renderedImg.toHtml(),
+        equals(
+            '<img src="/banner.png" alt="Site Banner" data-mantle-node="img" />'));
 
     final inputNode = MantleElementNode(
       tag: 'input',
@@ -68,8 +71,10 @@ void main() {
     );
     final renderedInput = renderer.render(inputNode) as ElementNode;
     expect(renderedInput.isSelfClosing, isTrue);
-    expect(renderedInput.toHtml(),
-        equals('<input type="text" placeholder="Search" />'));
+    expect(
+        renderedInput.toHtml(),
+        equals(
+            '<input type="text" placeholder="Search" data-mantle-node="input" />'));
   });
 
   test('renders MantleFragment into mantle-fragment div container', () {
@@ -142,7 +147,23 @@ void main() {
             '<link rel="canonical" href="https://example.com/universal">'));
     expect(html, contains('<link rel="stylesheet" href="/styles/main.css">'));
     expect(html, contains('<script src="/scripts/app.js">'));
-    expect(html, contains('<main>'));
-    expect(html, contains('<h1>MetaMantle SSR</h1>'));
+    expect(html, contains('<main'));
+    expect(html, contains('data-mantle-node="main"'));
+    expect(html, contains('<h1'));
+    expect(html, contains('MetaMantle SSR</h1>'));
+  });
+
+  test('emits hydration markers for interactive elements and keys', () {
+    final interactive = MantleElementNode(
+      tag: 'button',
+      key: const MantleValueKey('submit-btn'),
+      events: {'click': (_) {}},
+      children: [MantleTextNode('Submit')],
+    );
+
+    final rendered = renderer.render(interactive) as ElementNode;
+    expect(rendered.attributes['data-mantle-node'], equals('button'));
+    expect(rendered.attributes['data-mantle-key'], contains('submit-btn'));
+    expect(rendered.attributes['data-mantle-interactive'], equals('true'));
   });
 }
