@@ -1,15 +1,7 @@
 import '../models/metadata.dart';
 
 /// Defines the policy tier in the 7-level inheritance hierarchy.
-enum PolicyTier {
-  global,
-  application,
-  tenant,
-  locale,
-  section,
-  route,
-  page,
-}
+enum PolicyTier { global, application, tenant, locale, section, route, page }
 
 /// A policy node declaring SEO rules, defaults, and overrides at a specific tier.
 class SeoPolicy {

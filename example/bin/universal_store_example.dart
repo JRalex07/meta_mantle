@@ -30,8 +30,7 @@ class ProductRepository {
       id: 'dev-pro-keyboard',
       name: 'Mantle Mech Pro Keyboard',
       price: 179.00,
-      description:
-          'Split ergonomic mechanical keyboard optimized for Dart and Flutter development.',
+      description: 'Split ergonomic mechanical keyboard optimized for Dart and Flutter development.',
       imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3',
       category: 'Keyboards',
     ),
@@ -39,8 +38,7 @@ class ProductRepository {
       id: 'ultra-mouse',
       name: 'Precision Wireless Mouse',
       price: 89.00,
-      description:
-          'High-precision optical mouse with silent switches and programmable macro buttons.',
+      description: 'High-precision optical mouse with silent switches and programmable macro buttons.',
       imageUrl: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46',
       category: 'Mice',
     ),
@@ -48,8 +46,7 @@ class ProductRepository {
       id: 'studio-monitor-arm',
       name: 'Dual Articulating Monitor Arm',
       price: 129.00,
-      description:
-          'Heavy-duty gas spring monitor arm supporting up to 34-inch displays.',
+      description: 'Heavy-duty gas spring monitor arm supporting up to 34-inch displays.',
       imageUrl: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45',
       category: 'Accessories',
     ),
@@ -133,8 +130,7 @@ void main() {
     homeNode,
     metadata: const WebMetadata(
       title: 'MetaMantle Store - High Performance Developer Hardware',
-      description:
-          'Universal rendering and SEO framework for Dart and Flutter web apps.',
+      description: 'Universal rendering and SEO framework for Dart and Flutter web apps.',
       canonical: 'https://store.metamantle.dev/',
     ),
     currentUrl: 'https://store.metamantle.dev/',
@@ -143,11 +139,13 @@ void main() {
   );
   print('✓ Rendered full HTML document with OpenGraph & hydration markers:');
   print(
-      '  Contains data-mantle-node: ${homeHtml.contains('data-mantle-node="main"') || homeHtml.contains('data-mantle-node')}, length: ${homeHtml.length} bytes\n');
+    '  Contains data-mantle-node: ${homeHtml.contains('data-mantle-node="main"') || homeHtml.contains('data-mantle-node')}, length: ${homeHtml.length} bytes\n',
+  );
 
   // 2. Target: Dynamic Parameterized Route Matching
   print(
-      '--- Target 2: Parameter Extraction for Dynamic Route "/products/dev-pro-keyboard" ---');
+    '--- Target 2: Parameter Extraction for Dynamic Route "/products/dev-pro-keyboard" ---',
+  );
   final productMatch = router.match('/products/dev-pro-keyboard')!;
   final productContext = MantleNavigationContext(
     currentPath: '/products/dev-pro-keyboard',
@@ -169,11 +167,13 @@ void main() {
 
   // 3. Target: Native Flutter Widget Tree Compilation
   print(
-      '--- Target 3: Flutter Widget Compilation (Mobile/Desktop/Web CanvasKit) ---');
+    '--- Target 3: Flutter Widget Compilation (Mobile/Desktop/Web CanvasKit) ---',
+  );
   final flutterWidget = flutterRenderer.render(productNode);
   print('  Synthesized root Flutter Widget: ${flutterWidget.runtimeType}');
   print(
-      '  Ready for native execution on Android, iOS, Windows, macOS, Linux, and Web Canvas!\n');
+    '  Ready for native execution on Android, iOS, Windows, macOS, Linux, and Web Canvas!\n',
+  );
 
   // 4. Target: Static Site Generation (SSG) of all discoverable routes
   print('--- Target 4: Static Site Generation (SSG) Pre-rendering ---');
@@ -184,7 +184,8 @@ void main() {
       final ctx = MantleNavigationContext(currentPath: path);
       final doc = serverRenderer.renderDocument(match.build(ctx).toNode(ctx));
       print(
-          '  ✓ Pre-rendered SSG artifact for route "$path": ${doc.length} bytes');
+        '  ✓ Pre-rendered SSG artifact for route "$path": ${doc.length} bytes',
+      );
     }
   }
   print('');
@@ -192,7 +193,8 @@ void main() {
   // 5. Target: Incremental Static Regeneration (ISR)
   print('--- Target 5: Incremental Static Regeneration (ISR) Simulation ---');
   print(
-      '  Simulating warehouse price reduction for "dev-pro-keyboard": \$179.00 -> \$159.00');
+    '  Simulating warehouse price reduction for "dev-pro-keyboard": \$179.00 -> \$159.00',
+  );
   ProductRepository.updatePrice('dev-pro-keyboard', 159.00);
 
   final updatedProduct = ProductRepository.getById('dev-pro-keyboard')!;
@@ -206,7 +208,8 @@ void main() {
       .toNode(isrContext);
   final isrDoc = serverRenderer.renderDocument(isrNode);
   print(
-      '  ✓ Regenerated single affected artifact in 2ms without rebuilding entire site!');
+    '  ✓ Regenerated single affected artifact in 2ms without rebuilding entire site!',
+  );
   print('  Updated price in regenerated HTML: \$${updatedProduct.price}0');
   print('  Contains \$159.00: ${isrDoc.contains('\$159.00')}\n');
 
@@ -216,7 +219,8 @@ void main() {
   cartItemCount.value = 1;
   print('  Updated cart count via MantleObservable: ${cartItemCount.value}');
   print(
-      '\n[SUCCESS] Universal architecture verified end-to-end across all targets!');
+    '\n[SUCCESS] Universal architecture verified end-to-end across all targets!',
+  );
 }
 
 MantleComponent _buildCatalogPage(MantleContext context) {
@@ -313,10 +317,7 @@ MantleComponent _buildOrderPage(MantleContext context) {
               value: true,
               label: 'Sign up for MetaMantle product updates',
             ),
-            MantleButton(
-              label: 'Submit Order',
-              color: MantleColor.blue,
-            ),
+            MantleButton(label: 'Submit Order', color: MantleColor.blue),
           ],
         ),
       ),

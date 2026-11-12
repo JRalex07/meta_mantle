@@ -10,8 +10,10 @@ class MantleButton extends StatelessMantleComponent {
     this.child,
     this.color = MantleColor.blue,
     this.textColor = MantleColor.white,
-    this.padding =
-        const MantleEdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    this.padding = const MantleEdgeInsets.symmetric(
+      horizontal: 16,
+      vertical: 10,
+    ),
     this.borderRadius = const MantleBorderRadius.circular(6),
     super.key,
   });
@@ -133,9 +135,7 @@ class MantleLink extends StatelessMantleComponent {
       ...style?.toCssProperties() ?? {'color': '#2196f3'},
     };
 
-    final attributes = <String, String>{
-      'href': href,
-    };
+    final attributes = <String, String>{'href': href};
     if (external) {
       attributes['target'] = '_blank';
       attributes['rel'] = 'noopener noreferrer';
@@ -167,11 +167,7 @@ class MantleLink extends StatelessMantleComponent {
 }
 
 class MantleGestureDetector extends StatelessMantleComponent {
-  const MantleGestureDetector({
-    required this.child,
-    this.onTap,
-    super.key,
-  });
+  const MantleGestureDetector({required this.child, this.onTap, super.key});
 
   final MantleComponent child;
   final MantleVoidCallback? onTap;

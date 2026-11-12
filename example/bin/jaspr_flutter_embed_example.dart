@@ -13,8 +13,7 @@ void main() {
   const document = MetaMantleDocument(
     metadata: WebMetadata(
       title: 'Interactive Dashboard | MetaMantle Analytics',
-      description:
-          'High-performance interactive financial analytics built with Flutter Web and Jaspr.',
+      description: 'High-performance interactive financial analytics built with Flutter Web and Jaspr.',
       canonical: 'https://app.metamantle.dev/dashboard/',
       openGraph: OpenGraph(
         type: OpenGraphType.website,
@@ -35,12 +34,16 @@ void main() {
     H.div([
       H.header([
         H.h1('MetaMantle Real-time Financial Dashboard'),
-        H.p('Universal hybrid Jaspr HTML shell with embedded Flutter Web canvas.'),
+        H.p(
+          'Universal hybrid Jaspr HTML shell with embedded Flutter Web canvas.',
+        ),
       ]),
       // Crawler fallback content: crawlers read this immediately without waiting for WebAssembly or Skia canvas initialization
       H.section([
         H.h2('Executive Financial Summary (Server Prerendered)'),
-        H.p('Q1 Total Volume: \$4,850,000 | Active Nodes: 1,420 | Uptime: 99.99%'),
+        H.p(
+          'Q1 Total Volume: \$4,850,000 | Active Nodes: 1,420 | Uptime: 99.99%',
+        ),
         H.table(
           headers: ['Metric', 'Current Period', 'Target'],
           rows: [
@@ -64,13 +67,17 @@ void main() {
 
   print('Generated Hybrid HTML Shell:');
   print(
-      '  Contains DOCTYPE:              ${htmlOutput.contains("<!DOCTYPE html>")}');
+    '  Contains DOCTYPE:              ${htmlOutput.contains("<!DOCTYPE html>")}',
+  );
   print(
-      '  Contains OpenGraph Image:      ${htmlOutput.contains("og/dashboard.png")}');
+    '  Contains OpenGraph Image:      ${htmlOutput.contains("og/dashboard.png")}',
+  );
   print(
-      '  Contains Prerendered Table:    ${htmlOutput.contains("Executive Financial Summary")}');
+    '  Contains Prerendered Table:    ${htmlOutput.contains("Executive Financial Summary")}',
+  );
   print(
-      '  Contains Flutter Bootstrap JS: ${htmlOutput.contains("flutter_bootstrap.js")}');
+    '  Contains Flutter Bootstrap JS: ${htmlOutput.contains("flutter_bootstrap.js")}',
+  );
   print('  HTML Output Size:              ${htmlOutput.length} bytes');
   print('========================================================');
 }

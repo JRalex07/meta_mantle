@@ -27,12 +27,14 @@ class JasprTagDescriptor {
       return '<title>${textContent ?? ''}</title>';
     }
     if (tag == 'script') {
-      final attrStr =
-          attributes.entries.map((e) => ' ${e.key}="${e.value}"').join();
+      final attrStr = attributes.entries
+          .map((e) => ' ${e.key}="${e.value}"')
+          .join();
       return '<script$attrStr>${textContent ?? ''}</script>';
     }
-    final attrStr =
-        attributes.entries.map((e) => ' ${e.key}="${e.value}"').join();
+    final attrStr = attributes.entries
+        .map((e) => ' ${e.key}="${e.value}"')
+        .join();
     return '<$tag$attrStr />';
   }
 }
@@ -68,8 +70,11 @@ class MetaMantleHead {
 
   /// Emits the raw HTML tags for direct embedding inside Jaspr HTML templates.
   String toHtmlString({String? currentUrl}) {
-    final tags =
-        renderer.render(metadata, config: config, currentUrl: currentUrl);
+    final tags = renderer.render(
+      metadata,
+      config: config,
+      currentUrl: currentUrl,
+    );
     return tags.map((t) => t.toHtml()).join('\n');
   }
 }
@@ -100,12 +105,11 @@ class MetaMantleDocument {
   final String lang;
 
   /// Renders a complete HTML5 document shell with Jaspr root container.
-  String renderDocumentShell({
-    required String bodyHtml,
-    String? currentUrl,
-  }) {
-    final headHtml = MetaMantleHead(metadata: metadata, config: config)
-        .toHtmlString(currentUrl: currentUrl);
+  String renderDocumentShell({required String bodyHtml, String? currentUrl}) {
+    final headHtml = MetaMantleHead(
+      metadata: metadata,
+      config: config,
+    ).toHtmlString(currentUrl: currentUrl);
 
     final buf = StringBuffer();
     buf.writeln('<!DOCTYPE html>');

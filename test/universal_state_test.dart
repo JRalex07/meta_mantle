@@ -1,6 +1,44 @@
 import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meta_mantle/meta_mantle_universal.dart';
+
+class _CounterComponent extends StatefulMantleComponent {
+  const _CounterComponent({required this.step, super.key});
+  final int step;
+
+  @override
+  MantleState<_CounterComponent> createState() => _CounterComponentState();
+}
+
+class _CounterComponentState extends MantleState<_CounterComponent> {
+  int count = 0;
+  int didUpdateCalls = 0;
+  bool disposed = false;
+
+  void increment() {
+    setState(() {
+      count += component.step;
+    });
+  }
+
+  @override
+  void didUpdateComponent(_CounterComponent oldComponent) {
+    super.didUpdateComponent(oldComponent);
+    didUpdateCalls++;
+  }
+
+  @override
+  void dispose() {
+    disposed = true;
+    super.dispose();
+  }
+
+  @override
+  MantleNode build(MantleContext context) {
+    return MantleTextNode('Count: $count (step: ${component.step})');
+  }
+}
 
 void main() {
   group('MantleObservable & MantleStore', () {
@@ -99,7 +137,48 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       final resolvedNode = fb.toNode(navContext) as MantleTextNode;
-      expect(resolvedNode.text, equals('Loading...'));
+      expect(resolvedNode.text, equals('Result: DataLoaded'));
     });
+
+    test(
+      'StatefulMantleComponent retains state, handles setState, and disposes',
+      () {
+        var rebuildRequested = 0;
+        final registry = MantleStateRegistry()
+          ..onNeedsRebuild = () => rebuildRequested++;
+        final context = MantleNavigationContext(
+          currentPath: '/',
+          stateRegistry: registry,
+        );
+
+        const component1 = _CounterComponent(
+          step: 2,
+          key: MantleKey('my-counter'),
+        );
+        final node1 = component1.toNode(context) as MantleTextNode;
+        expect(node1.text, equals('Count: 0 (step: 2)'));
+
+        // Retrieve state and increment
+        final state =
+            registry.getState('k_my-counter')! as _CounterComponentState;
+        expect(state.mounted, isTrue);
+        state.increment();
+        expect(rebuildRequested, equals(1));
+
+        // Re-render with new component properties (step changed to 5)
+        const component2 = _CounterComponent(
+          step: 5,
+          key: MantleKey('my-counter'),
+        );
+        final node2 = component2.toNode(context) as MantleTextNode;
+        expect(node2.text, equals('Count: 2 (step: 5)'));
+        expect(state.didUpdateCalls, equals(1));
+
+        // Dispose registry
+        registry.dispose();
+        expect(state.disposed, isTrue);
+        expect(state.mounted, isFalse);
+      },
+    );
   });
 }

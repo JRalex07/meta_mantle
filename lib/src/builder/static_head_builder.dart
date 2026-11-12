@@ -80,12 +80,14 @@ class StaticHeadBuilder {
 
   /// Inspects all resolved routes and metadata without writing files.
   Future<
-      ({
-        List<String> routes,
-        List<String> warnings,
-        List<String> sitemapUrls,
-        int dynamicPatternCount
-      })> inspectConfiguration({
+    ({
+      List<String> routes,
+      List<String> warnings,
+      List<String> sitemapUrls,
+      int dynamicPatternCount,
+    })
+  >
+  inspectConfiguration({
     required StaticHeadConfig config,
     File? configFile,
   }) async {
@@ -111,8 +113,11 @@ class StaticHeadBuilder {
         warnings.add('$path has no description.');
       }
       if (!_isNoindex(merged.robots ?? config.defaultRobots)) {
-        final canonicalUrl =
-            _canonicalForSitemap(merged.canonical, config.baseUrl, path);
+        final canonicalUrl = _canonicalForSitemap(
+          merged.canonical,
+          config.baseUrl,
+          path,
+        );
         if (canonicalUrl != null) sitemapUrls.add(canonicalUrl);
       }
     }
@@ -120,8 +125,9 @@ class StaticHeadBuilder {
     return (
       routes: List<String>.unmodifiable(seen),
       warnings: List<String>.unmodifiable(warnings),
-      sitemapUrls:
-          List<String>.unmodifiable(sitemapUrls.toSet().toList()..sort()),
+      sitemapUrls: List<String>.unmodifiable(
+        sitemapUrls.toSet().toList()..sort(),
+      ),
       dynamicPatternCount: config.patterns.length,
     );
   }
@@ -142,8 +148,9 @@ class StaticHeadBuilder {
     StaticHeadConfig config;
     try {
       config = await StaticHeadConfig.load(configFile);
-      report
-          .add('PASS: Config parsed successfully (baseUrl: ${config.baseUrl})');
+      report.add(
+        'PASS: Config parsed successfully (baseUrl: ${config.baseUrl})',
+      );
     } catch (e) {
       report.add('FAIL: Config parsing failed: $e');
       return report;
@@ -151,21 +158,25 @@ class StaticHeadBuilder {
 
     for (final pattern in config.patterns) {
       final baseDir = configFile.parent;
-      final dataFile =
-          File('${baseDir.path}${Platform.pathSeparator}${pattern.dataFile}');
+      final dataFile = File(
+        '${baseDir.path}${Platform.pathSeparator}${pattern.dataFile}',
+      );
       if (!await dataFile.exists()) {
         report.add(
-            'FAIL: Data file for pattern ${pattern.pathPattern} not found: ${dataFile.path}');
+          'FAIL: Data file for pattern ${pattern.pathPattern} not found: ${dataFile.path}',
+        );
       } else {
         report.add('PASS: Data file exists: ${pattern.dataFile}');
       }
     }
 
-    final inputIndex =
-        File('${inputDirectory.path}${Platform.pathSeparator}index.html');
+    final inputIndex = File(
+      '${inputDirectory.path}${Platform.pathSeparator}index.html',
+    );
     if (!await inputIndex.exists()) {
       report.add(
-          'FAIL: Flutter build index.html not found at ${inputIndex.path}. Did you run "flutter build web --release"?');
+        'FAIL: Flutter build index.html not found at ${inputIndex.path}. Did you run "flutter build web --release"?',
+      );
       return report;
     }
     report.add('PASS: Flutter build index.html found');
@@ -180,7 +191,8 @@ class StaticHeadBuilder {
       report.add('PASS: Flutter bootstrap initialization script detected');
     } else {
       report.add(
-          'WARN: Recognizable Flutter bootstrap marker not found in index.html');
+        'WARN: Recognizable Flutter bootstrap marker not found in index.html',
+      );
     }
 
     return report;
@@ -197,16 +209,20 @@ class StaticHeadBuilder {
     bool verbose = false,
     void Function(String message)? onProgress,
   }) async {
-    final inputIndex =
-        File('${inputDirectory.path}${Platform.pathSeparator}index.html');
+    final inputIndex = File(
+      '${inputDirectory.path}${Platform.pathSeparator}index.html',
+    );
     if (!await inputIndex.exists()) {
       throw FileSystemException(
-          'Flutter build index.html not found', inputIndex.path);
+        'Flutter build index.html not found',
+        inputIndex.path,
+      );
     }
     final sourceHtml = await inputIndex.readAsString();
     if (!sourceHtml.toLowerCase().contains('<html')) {
       throw const FormatException(
-          'index.html does not look like a complete HTML document.');
+        'index.html does not look like a complete HTML document.',
+      );
     }
     final templateProbe = html_parser.parse(sourceHtml);
     if (templateProbe.querySelector('head') == null) {
@@ -289,8 +305,11 @@ class StaticHeadBuilder {
         warnings.add('$path has no description.');
       }
       if (!_isNoindex(merged.robots ?? config.defaultRobots)) {
-        final canonicalUrl =
-            _canonicalForSitemap(merged.canonical, config.baseUrl, path);
+        final canonicalUrl = _canonicalForSitemap(
+          merged.canonical,
+          config.baseUrl,
+          path,
+        );
         if (canonicalUrl != null) sitemapUrls.add(canonicalUrl);
       }
       prepared.add((path: path, metadata: merged));
@@ -298,12 +317,14 @@ class StaticHeadBuilder {
 
     if (strict && warnings.isNotEmpty) {
       throw FormatException(
-          'Strict mode failed before writing output:\n${warnings.join('\n')}');
+        'Strict mode failed before writing output:\n${warnings.join('\n')}',
+      );
     }
 
     if (!dryRun && inputPath != outputPath) {
-      onProgress
-          ?.call('Copying build assets from $inputPath to $outputPath...');
+      onProgress?.call(
+        'Copying build assets from $inputPath to $outputPath...',
+      );
       await _copyDirectory(inputDirectory, outputDirectory);
     }
 
@@ -337,8 +358,9 @@ class StaticHeadBuilder {
     }
 
     if (config.sitemap) {
-      final sitemap =
-          File('${outputDirectory.path}${Platform.pathSeparator}sitemap.xml');
+      final sitemap = File(
+        '${outputDirectory.path}${Platform.pathSeparator}sitemap.xml',
+      );
       if (!dryRun) {
         await sitemap.parent.create(recursive: true);
         final uniqueSitemapUrls = sitemapUrls.toSet().toList()..sort();
@@ -346,14 +368,16 @@ class StaticHeadBuilder {
       }
       generated.add(sitemap);
       if (verbose) {
-        onProgress
-            ?.call('Generated sitemap.xml with ${sitemapUrls.length} entries');
+        onProgress?.call(
+          'Generated sitemap.xml with ${sitemapUrls.length} entries',
+        );
       }
     }
 
     if (config.robotsTxt) {
-      final robots =
-          File('${outputDirectory.path}${Platform.pathSeparator}robots.txt');
+      final robots = File(
+        '${outputDirectory.path}${Platform.pathSeparator}robots.txt',
+      );
       if (!dryRun) {
         await robots.parent.create(recursive: true);
         await robots.writeAsString(_robotsTxt(config), flush: true);
@@ -437,8 +461,10 @@ class StaticHeadBuilder {
           'Row $i has an invalid slug "${pattern.slugField}": $slug',
         );
       }
-      final routePath =
-          pattern.pathPattern.replaceAll(':${pattern.slugField}', slug);
+      final routePath = pattern.pathPattern.replaceAll(
+        ':${pattern.slugField}',
+        slug,
+      );
       final resolvedMetadataJson = _interpolateTemplate(
         pattern.metadataTemplate,
         row,
@@ -466,8 +492,9 @@ class StaticHeadBuilder {
 
   Object? _interpolateValue(Object? value, Map<String, Object?> row) {
     if (value is String) {
-      return value.replaceAllMapped(RegExp(r'\{\{\s*([\w.-]+)\s*\}\}'),
-          (match) {
+      return value.replaceAllMapped(RegExp(r'\{\{\s*([\w.-]+)\s*\}\}'), (
+        match,
+      ) {
         final parts = match.group(1)!.split('.');
         Object? current = row;
         for (final part in parts) {
@@ -570,13 +597,16 @@ class StaticHeadBuilder {
         uri.hasQuery ||
         uri.hasFragment) {
       throw FormatException(
-          'Route must be a local path without query/fragment: $route');
+        'Route must be a local path without query/fragment: $route',
+      );
     }
-    if (uri.pathSegments.any((segment) =>
-            segment == '..' ||
-            segment == '.' ||
-            segment.contains('/') ||
-            segment.contains('\\')) ||
+    if (uri.pathSegments.any(
+          (segment) =>
+              segment == '..' ||
+              segment == '.' ||
+              segment.contains('/') ||
+              segment.contains('\\'),
+        ) ||
         uri.path.contains('\\')) {
       throw FormatException('Route traversal is not allowed: $route');
     }
@@ -596,10 +626,12 @@ class StaticHeadBuilder {
         base.hasQuery ||
         base.hasFragment) {
       throw FormatException(
-          'baseUrl must be an HTTP(S) origin or base path without credentials, query or fragment: $baseUrl');
+        'baseUrl must be an HTTP(S) origin or base path without credentials, query or fragment: $baseUrl',
+      );
     }
-    final normalizedBase =
-        base.toString().endsWith('/') ? base : Uri.parse('${base.toString()}/');
+    final normalizedBase = base.toString().endsWith('/')
+        ? base
+        : Uri.parse('${base.toString()}/');
     final routeUri = Uri.parse(path.startsWith('/') ? path.substring(1) : path);
     return normalizedBase.resolveUri(routeUri).toString();
   }
@@ -608,17 +640,20 @@ class StaticHeadBuilder {
     if (route == '/') {
       return File('${output.path}${Platform.pathSeparator}index.html');
     }
-    final segments =
-        Uri.parse(route).pathSegments.where((part) => part.isNotEmpty);
+    final segments = Uri.parse(route).pathSegments
+        .where((part) => part.isNotEmpty);
     return File(
-        '${output.path}${Platform.pathSeparator}${segments.join(Platform.pathSeparator)}${Platform.pathSeparator}index.html');
+      '${output.path}${Platform.pathSeparator}${segments.join(Platform.pathSeparator)}${Platform.pathSeparator}index.html',
+    );
   }
 
   void _inject(dom.Element head, dom.Document document, List<HeadTag> tags) {
     final desiredKeys = tags.map((tag) => tag.key).toSet();
     for (final existing in head.querySelectorAll(
-        '[data-mm-owner="meta_mantle"], [data-fwh-owner="flutter_web_head"]')) {
-      final key = existing.attributes['data-mm-key'] ??
+      '[data-mm-owner="meta_mantle"], [data-fwh-owner="flutter_web_head"]',
+    )) {
+      final key =
+          existing.attributes['data-mm-key'] ??
           existing.attributes['data-fwh-key'];
       if (!desiredKeys.contains(key)) {
         existing.remove();
@@ -633,31 +668,32 @@ class StaticHeadBuilder {
 
       final element =
           _findExisting(head, tag) ?? document.createElement(tag.tagName);
-      final wasOwned = element.attributes['data-mm-owner'] == 'meta_mantle' ||
+      final wasOwned =
+          element.attributes['data-mm-owner'] == 'meta_mantle' ||
           element.attributes['data-fwh-owner'] == 'flutter_web_head';
       if (wasOwned) {
         element.attributes.clear();
       } else {
         final managedAttributes = switch (tag.tagName) {
           'meta' => const {
-              'name',
-              'property',
-              'http-equiv',
-              'content',
-              'charset'
-            },
+            'name',
+            'property',
+            'http-equiv',
+            'content',
+            'charset',
+          },
           'link' => const {
-              'rel',
-              'href',
-              'hreflang',
-              'type',
-              'sizes',
-              'media',
-              'as',
-              'crossorigin',
-              'referrerpolicy',
-              'integrity'
-            },
+            'rel',
+            'href',
+            'hreflang',
+            'type',
+            'sizes',
+            'media',
+            'as',
+            'crossorigin',
+            'referrerpolicy',
+            'integrity',
+          },
           'script' => const {'type'},
           _ => const <String>{},
         };
@@ -681,8 +717,10 @@ class StaticHeadBuilder {
 
   dom.Element? _findExisting(dom.Element head, HeadTag tag) {
     for (final candidate in head.querySelectorAll(
-        '[data-mm-owner="meta_mantle"], [data-fwh-owner="flutter_web_head"]')) {
-      final key = candidate.attributes['data-mm-key'] ??
+      '[data-mm-owner="meta_mantle"], [data-fwh-owner="flutter_web_head"]',
+    )) {
+      final key =
+          candidate.attributes['data-mm-key'] ??
           candidate.attributes['data-fwh-key'];
       if (key == tag.key) return candidate;
     }
@@ -691,10 +729,10 @@ class StaticHeadBuilder {
       final identity = tag.attributes['name'] != null
           ? 'name'
           : tag.attributes['property'] != null
-              ? 'property'
-              : tag.attributes['http-equiv'] != null
-                  ? 'http-equiv'
-                  : null;
+          ? 'property'
+          : tag.attributes['http-equiv'] != null
+          ? 'http-equiv'
+          : null;
       if (identity == null) return null;
       final value = tag.attributes[identity];
       for (final element in head.querySelectorAll('meta')) {
@@ -739,8 +777,10 @@ class StaticHeadBuilder {
 
   Future<void> _copyDirectory(Directory source, Directory destination) async {
     await destination.create(recursive: true);
-    await for (final entity
-        in source.list(recursive: false, followLinks: false)) {
+    await for (final entity in source.list(
+      recursive: false,
+      followLinks: false,
+    )) {
       final name = entity.path
           .split(RegExp(r'[\\/]'))
           .where((part) => part.isNotEmpty)

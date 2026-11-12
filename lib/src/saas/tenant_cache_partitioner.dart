@@ -29,8 +29,10 @@ class TenantCachePartitioner {
   }
 
   /// Generates tenant-specific cache tags to attach to [CacheEntry].
-  Set<String> tenantTags(String tenantId,
-      [List<String> additionalTags = const []]) {
+  Set<String> tenantTags(
+    String tenantId, [
+    List<String> additionalTags = const [],
+  ]) {
     return {
       'tenant:$tenantId',
       for (final t in additionalTags) 'tenant:$tenantId:$t',

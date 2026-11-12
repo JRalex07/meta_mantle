@@ -23,61 +23,63 @@ void main() {
       }
     });
 
-    test('recovers safely from corrupted journal tail (partial write)',
-        () async {
-      final queueDir = Directory('${temp.path}/queue');
-      final queue1 = FileRegenerationQueue(queueDir);
+    test(
+      'recovers safely from corrupted journal tail (partial write)',
+      () async {
+        final queueDir = Directory('${temp.path}/queue');
+        final queue1 = FileRegenerationQueue(queueDir);
 
-      await queue1.enqueue(
-        siteId: 'site-1',
-        tenantId: 'tenant-1',
-        path: '/page-1',
-        routeId: 'pages',
-        tags: const [],
-        idempotencyKey: 'page-1',
-        now: DateTime.utc(2026, 1, 1),
-      );
-      await queue1.enqueue(
-        siteId: 'site-1',
-        tenantId: 'tenant-1',
-        path: '/page-2',
-        routeId: 'pages',
-        tags: const [],
-        idempotencyKey: 'page-2',
-        now: DateTime.utc(2026, 1, 1),
-      );
+        await queue1.enqueue(
+          siteId: 'site-1',
+          tenantId: 'tenant-1',
+          path: '/page-1',
+          routeId: 'pages',
+          tags: const [],
+          idempotencyKey: 'page-1',
+          now: DateTime.utc(2026, 1, 1),
+        );
+        await queue1.enqueue(
+          siteId: 'site-1',
+          tenantId: 'tenant-1',
+          path: '/page-2',
+          routeId: 'pages',
+          tags: const [],
+          idempotencyKey: 'page-2',
+          now: DateTime.utc(2026, 1, 1),
+        );
 
-      // Simulate a crash during append: append a corrupted, incomplete JSON line
-      final journalFile = File('${queueDir.path}/.queue.journal');
-      expect(await journalFile.exists(), isTrue);
-      await journalFile.writeAsString(
-        '{"op":"enqueue","id":"corrupted-job","job":{"id":"corrupted', // truncated JSON
-        mode: FileMode.append,
-        flush: true,
-      );
+        // Simulate a crash during append: append a corrupted, incomplete JSON line
+        final journalFile = File('${queueDir.path}/.queue.journal');
+        expect(await journalFile.exists(), isTrue);
+        await journalFile.writeAsString(
+          '{"op":"enqueue","id":"corrupted-job","job":{"id":"corrupted', // truncated JSON
+          mode: FileMode.append,
+          flush: true,
+        );
 
-      // Now create a new queue instance pointing to the same directory
-      final queue2 = FileRegenerationQueue(queueDir);
-      final report = await queue2.recover();
+        // Now create a new queue instance pointing to the same directory
+        final queue2 = FileRegenerationQueue(queueDir);
+        final report = await queue2.recover();
 
-      expect(report.corruptedEntriesDiscarded, greaterThanOrEqualTo(1));
-      expect(report.activePendingCount, 2);
+        expect(report.corruptedEntriesDiscarded, greaterThanOrEqualTo(1));
+        expect(report.activePendingCount, 2);
 
-      // Ensure the uncorrupted jobs are claimable and ordered
-      final claim1 = await queue2.claimNext(
-        now: DateTime.utc(2026, 1, 1),
-        lease: const Duration(minutes: 5),
-      );
-      expect(claim1, isNotNull);
-      expect(claim1!.path, '/page-1');
+        // Ensure the uncorrupted jobs are claimable and ordered
+        final claim1 = await queue2.claimNext(
+          now: DateTime.utc(2026, 1, 1),
+          lease: const Duration(minutes: 5),
+        );
+        expect(claim1, isNotNull);
+        expect(claim1!.path, '/page-1');
 
-      final claim2 = await queue2.claimNext(
-        now: DateTime.utc(2026, 1, 1),
-        lease: const Duration(minutes: 5),
-      );
-      expect(claim2, isNotNull);
-      expect(claim2!.path, '/page-2');
-    });
+        final claim2 = await queue2.claimNext(
+          now: DateTime.utc(2026, 1, 1),
+          lease: const Duration(minutes: 5),
+        );
+        expect(claim2, isNotNull);
+        expect(claim2!.path, '/page-2');
+      },
+    );
 
     test('discovers and reconciles unindexed job files on disk', () async {
       final queueDir = Directory('${temp.path}/queue');
@@ -113,8 +115,10 @@ void main() {
         availableAt: DateTime.utc(2026, 1, 1),
       );
       final orphanFile = File('${jobsDir.path}/orphan-1.job.json');
-      await orphanFile.writeAsString(jsonEncode(orphanJob.toJson()),
-          flush: true);
+      await orphanFile.writeAsString(
+        jsonEncode(orphanJob.toJson()),
+        flush: true,
+      );
 
       // Re-open queue and run recovery
       final queue2 = FileRegenerationQueue(queueDir);
@@ -137,8 +141,7 @@ void main() {
       expect(claimedPaths, containsAll({'/indexed', '/orphan'}));
     });
 
-    test('snapshot compaction recovery: survives partial temporary snapshot',
-        () async {
+    test('snapshot compaction recovery: survives partial temporary snapshot', () async {
       final queueDir = Directory('${temp.path}/queue');
       final queue = FileRegenerationQueue(queueDir);
 
@@ -158,8 +161,9 @@ void main() {
       expect(await snapFile.exists(), isTrue);
 
       // Simulate an interrupted checkpoint by leaving an incomplete .tmp file
-      final tempSnap =
-          File('${queueDir.path}/indexes/snapshot.json.partial.tmp');
+      final tempSnap = File(
+        '${queueDir.path}/indexes/snapshot.json.partial.tmp',
+      );
       await tempSnap.writeAsString('{"invalid": true,', flush: true);
 
       // Reopen queue and verify valid snapshot was read unaffected by temp file

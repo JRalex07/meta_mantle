@@ -44,8 +44,9 @@ class DocVersionPolicy {
           .substring(basePath.length)
           .replaceAll(RegExp(r'^/+'), '');
     }
-    final segments =
-        relativePath.isEmpty ? <String>[] : relativePath.split('/');
+    final segments = relativePath.isEmpty
+        ? <String>[]
+        : relativePath.split('/');
 
     // Identify which version segment is present
     String? matchedVersion;
@@ -58,8 +59,9 @@ class DocVersionPolicy {
       }
     }
 
-    final currentUrl =
-        relativePath.isEmpty ? '$cleanBase/' : '$cleanBase/$relativePath/';
+    final currentUrl = relativePath.isEmpty
+        ? '$cleanBase/'
+        : '$cleanBase/$relativePath/';
 
     if (matchedVersion == null) {
       // Unversioned doc route -> assume latest
@@ -80,8 +82,9 @@ class DocVersionPolicy {
         ? '$cleanBase/$latestVersion/'
         : '$cleanBase/$latestVersion/$pathWithoutVersion/';
 
-    final canonicalUrl =
-        (canonicalizeToLatest && !isLatest) ? latestPath : currentUrl;
+    final canonicalUrl = (canonicalizeToLatest && !isLatest)
+        ? latestPath
+        : currentUrl;
 
     final robots = (!isLatest && noindexOlderVersions)
         ? RobotsDirective.noindexFollow

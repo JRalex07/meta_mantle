@@ -66,12 +66,7 @@ class MantleElementNode extends MantleNode {
 
 /// Represents plain or styled text in the intermediate representation.
 class MantleTextNode extends MantleNode {
-  const MantleTextNode(
-    this.text, {
-    this.style,
-    this.tag = 'span',
-    super.key,
-  });
+  const MantleTextNode(this.text, {this.style, this.tag = 'span', super.key});
 
   final String text;
   final MantleTextStyle? style;

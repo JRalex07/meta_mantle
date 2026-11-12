@@ -5,12 +5,12 @@ import 'package:meta_mantle/meta_mantle_server.dart';
 
 void main() {
   group('DNS Rebinding & Stateful Resolver Security Tests', () {
-    test(
-        'stateful resolver simulation: socket pinning ensures connection targets ONLY validated IP',
-        () async {
+    test('stateful resolver simulation: socket pinning ensures connection targets ONLY validated IP', () async {
       // Start a mock server representing the legitimate public origin
-      final publicServer =
-          await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final publicServer = await HttpServer.bind(
+        InternetAddress.loopbackIPv4,
+        0,
+      );
       var publicServerHit = 0;
       final sub1 = publicServer.listen((req) {
         publicServerHit++;
@@ -22,8 +22,10 @@ void main() {
       });
 
       // Start an internal "victim" server (simulating localhost / internal metadata)
-      final internalVictimServer =
-          await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final internalVictimServer = await HttpServer.bind(
+        InternetAddress.loopbackIPv4,
+        0,
+      );
       var victimServerHit = 0;
       final sub2 = internalVictimServer.listen((req) {
         victimServerHit++;
@@ -78,30 +80,36 @@ void main() {
       final uri = Uri.parse('http://malicious-rebind.com/api');
       expect(
         () => guard.validateUri(uri),
-        throwsA(isA<SecurityException>().having(
-          (e) => e.message,
-          'message',
-          contains('private network address'),
-        )),
+        throwsA(
+          isA<SecurityException>().having(
+            (e) => e.message,
+            'message',
+            contains('private network address'),
+          ),
+        ),
       );
     });
 
-    test('SsrfGuard blocks IPv4-mapped IPv6 cloud metadata addresses',
-        () async {
-      final guard = SsrfGuard(
-        resolver: (host) async => [InternetAddress('::ffff:169.254.169.254')],
-      );
+    test(
+      'SsrfGuard blocks IPv4-mapped IPv6 cloud metadata addresses',
+      () async {
+        final guard = SsrfGuard(
+          resolver: (host) async => [InternetAddress('::ffff:169.254.169.254')],
+        );
 
-      final uri = Uri.parse('http://cloud-rebind.com/latest/meta-data');
-      expect(
-        () => guard.validateUri(uri),
-        throwsA(isA<SecurityException>().having(
-          (e) => e.message,
-          'message',
-          contains('private network address'),
-        )),
-      );
-    });
+        final uri = Uri.parse('http://cloud-rebind.com/latest/meta-data');
+        expect(
+          () => guard.validateUri(uri),
+          throwsA(
+            isA<SecurityException>().having(
+              (e) => e.message,
+              'message',
+              contains('private network address'),
+            ),
+          ),
+        );
+      },
+    );
 
     test('SsrfGuard blocks internal redirect to cloud metadata', () async {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
@@ -123,11 +131,13 @@ void main() {
       try {
         await expectLater(
           provider.load(RouteDataContext(path: '/test')),
-          throwsA(isA<SecurityException>().having(
-            (e) => e.message,
-            'message',
-            contains('cloud metadata endpoints is strictly blocked'),
-          )),
+          throwsA(
+            isA<SecurityException>().having(
+              (e) => e.message,
+              'message',
+              contains('cloud metadata endpoints is strictly blocked'),
+            ),
+          ),
         );
       } finally {
         await sub.cancel();
@@ -135,43 +145,47 @@ void main() {
       }
     });
 
-    test('SsrfGuard rejects disallowed protocols and userinfo in URLs',
-        () async {
-      const guard = SsrfGuard();
+    test(
+      'SsrfGuard rejects disallowed protocols and userinfo in URLs',
+      () async {
+        const guard = SsrfGuard();
 
-      expect(
-        () => guard.validateUri(Uri.parse('ftp://example.com/file')),
-        throwsA(isA<SecurityException>()),
-      );
-      expect(
-        () => guard.validateUri(Uri.parse('gopher://example.com/')),
-        throwsA(isA<SecurityException>()),
-      );
-      expect(
-        () => guard.validateUri(Uri.parse('http://admin:secret@example.com/')),
-        throwsA(isA<SecurityException>()),
-      );
-      expect(
-        () => guard.validateUri(Uri.parse('http://example.com/#fragment')),
-        throwsA(isA<SecurityException>()),
-      );
-    });
+        expect(
+          () => guard.validateUri(Uri.parse('ftp://example.com/file')),
+          throwsA(isA<SecurityException>()),
+        );
+        expect(
+          () => guard.validateUri(Uri.parse('gopher://example.com/')),
+          throwsA(isA<SecurityException>()),
+        );
+        expect(
+          () =>
+              guard.validateUri(Uri.parse('http://admin:secret@example.com/')),
+          throwsA(isA<SecurityException>()),
+        );
+        expect(
+          () => guard.validateUri(Uri.parse('http://example.com/#fragment')),
+          throwsA(isA<SecurityException>()),
+        );
+      },
+    );
 
     test(
-        'RestDataProvider and GraphQLDataProvider use pinned client by default',
-        () {
-      final rest = RestDataProvider<int>(
-        urlBuilder: (_) => 'https://api.example.com/count',
-        mapper: (_) => 1,
-      );
-      expect(rest.client, isNotNull);
+      'RestDataProvider and GraphQLDataProvider use pinned client by default',
+      () {
+        final rest = RestDataProvider<int>(
+          urlBuilder: (_) => 'https://api.example.com/count',
+          mapper: (_) => 1,
+        );
+        expect(rest.client, isNotNull);
 
-      final graphql = GraphQLDataProvider<int>(
-        endpoint: Uri.parse('https://api.example.com/graphql'),
-        queryBuilder: (_) => 'query { count }',
-        mapper: (_) => 1,
-      );
-      expect(graphql.client, isNotNull);
-    });
+        final graphql = GraphQLDataProvider<int>(
+          endpoint: Uri.parse('https://api.example.com/graphql'),
+          queryBuilder: (_) => 'query { count }',
+          mapper: (_) => 1,
+        );
+        expect(graphql.client, isNotNull);
+      },
+    );
   });
 }

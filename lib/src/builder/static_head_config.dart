@@ -88,21 +88,25 @@ class StaticHeadConfig {
     for (final value in rawPatterns) {
       if (value is! Map) {
         throw const FormatException(
-            'Every route pattern must be a JSON object.');
+          'Every route pattern must be a JSON object.',
+        );
       }
-      patterns
-          .add(StaticRoutePattern.fromJson(Map<String, Object?>.from(value)));
+      patterns.add(
+        StaticRoutePattern.fromJson(Map<String, Object?>.from(value)),
+      );
     }
 
     final defaultsJson = json['defaults'];
     if (defaultsJson != null && defaultsJson is! Map) {
       throw const FormatException(
-          'Config field "defaults" must be a JSON object.');
+        'Config field "defaults" must be a JSON object.',
+      );
     }
     final baseUrl = json['baseUrl'];
     if (baseUrl is! String || baseUrl.trim().isEmpty) {
       throw const FormatException(
-          'Config field "baseUrl" must be a non-empty string.');
+        'Config field "baseUrl" must be a non-empty string.',
+      );
     }
 
     return StaticHeadConfig(
@@ -171,7 +175,8 @@ class StaticRoutePattern {
     final template = json['metadataTemplate'];
     if (template is! Map) {
       throw FormatException(
-          'Pattern ${json['pathPattern']} needs metadataTemplate.');
+        'Pattern ${json['pathPattern']} needs metadataTemplate.',
+      );
     }
     return StaticRoutePattern(
       pathPattern: json['pathPattern'] as String,

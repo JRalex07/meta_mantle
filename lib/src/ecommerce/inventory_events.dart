@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import '../cache/cache_store.dart';
 
 /// Base class for all e-commerce inventory and catalog events.
@@ -18,9 +19,9 @@ sealed class ProductInventoryEvent {
 
   /// Returns the route paths that should be invalidated.
   List<String> affectedRoutePaths() => [
-        '/products/$slug',
-        if (categorySlug != null) '/categories/$categorySlug',
-      ];
+    '/products/$slug',
+    if (categorySlug != null) '/categories/$categorySlug',
+  ];
 }
 
 class ProductCreated extends ProductInventoryEvent {
@@ -32,9 +33,9 @@ class ProductCreated extends ProductInventoryEvent {
 
   @override
   List<String> affectedCacheTags() => [
-        'catalog',
-        if (categorySlug != null) 'category:$categorySlug',
-      ];
+    'catalog',
+    if (categorySlug != null) 'category:$categorySlug',
+  ];
 }
 
 class ProductUpdated extends ProductInventoryEvent {
@@ -46,10 +47,10 @@ class ProductUpdated extends ProductInventoryEvent {
 
   @override
   List<String> affectedCacheTags() => [
-        'product:$productId',
-        'product:$slug',
-        if (categorySlug != null) 'category:$categorySlug',
-      ];
+    'product:$productId',
+    'product:$slug',
+    if (categorySlug != null) 'category:$categorySlug',
+  ];
 }
 
 class ProductDeleted extends ProductInventoryEvent {
@@ -61,11 +62,11 @@ class ProductDeleted extends ProductInventoryEvent {
 
   @override
   List<String> affectedCacheTags() => [
-        'catalog',
-        'product:$productId',
-        'product:$slug',
-        if (categorySlug != null) 'category:$categorySlug',
-      ];
+    'catalog',
+    'product:$productId',
+    'product:$slug',
+    if (categorySlug != null) 'category:$categorySlug',
+  ];
 }
 
 class PriceChanged extends ProductInventoryEvent {
@@ -82,11 +83,11 @@ class PriceChanged extends ProductInventoryEvent {
 
   @override
   List<String> affectedCacheTags() => [
-        'product:$productId',
-        'product:$slug',
-        'prices',
-        if (categorySlug != null) 'category:$categorySlug',
-      ];
+    'product:$productId',
+    'product:$slug',
+    'prices',
+    if (categorySlug != null) 'category:$categorySlug',
+  ];
 }
 
 class InventoryChanged extends ProductInventoryEvent {
@@ -101,10 +102,10 @@ class InventoryChanged extends ProductInventoryEvent {
 
   @override
   List<String> affectedCacheTags() => [
-        'product:$productId',
-        'product:$slug',
-        'inventory',
-      ];
+    'product:$productId',
+    'product:$slug',
+    'inventory',
+  ];
 }
 
 class ProductSlugChanged extends ProductInventoryEvent {
@@ -119,19 +120,19 @@ class ProductSlugChanged extends ProductInventoryEvent {
 
   @override
   List<String> affectedCacheTags() => [
-        'catalog',
-        'product:$productId',
-        'product:$slug',
-        'product:$newSlug',
-        if (categorySlug != null) 'category:$categorySlug',
-      ];
+    'catalog',
+    'product:$productId',
+    'product:$slug',
+    'product:$newSlug',
+    if (categorySlug != null) 'category:$categorySlug',
+  ];
 
   @override
   List<String> affectedRoutePaths() => [
-        '/products/$slug',
-        '/products/$newSlug',
-        if (categorySlug != null) '/categories/$categorySlug',
-      ];
+    '/products/$slug',
+    '/products/$newSlug',
+    if (categorySlug != null) '/categories/$categorySlug',
+  ];
 }
 
 /// Dispatches catalog events and executes granular tag-based cache invalidation.

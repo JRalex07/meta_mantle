@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../runtime/meta_mantle.dart';
 import '../rendering/flutter_renderer.dart';
@@ -77,9 +77,7 @@ class _MantleFlutterAppWidgetState extends State<MantleFlutterAppWidget> {
     return MaterialApp(
       title: widget.app.title,
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        body: SafeArea(child: contentWidget),
-      ),
+      home: Scaffold(body: SafeArea(child: contentWidget)),
     );
   }
 }

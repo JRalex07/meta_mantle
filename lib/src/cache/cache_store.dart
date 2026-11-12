@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import '../models/metadata.dart';
 
 /// Cached representation of a rendered page, its metadata snapshot, and headers.
@@ -73,7 +74,8 @@ class CacheEntry {
   bool isExpired([DateTime? now]) {
     final current = (now ?? DateTime.now().toUtc());
     final age = current.difference(createdAt);
-    final maxAge = ttl +
+    final maxAge =
+        ttl +
         (staleWhileRevalidate ?? Duration.zero) +
         (staleIfError ?? Duration.zero);
     return age > maxAge;

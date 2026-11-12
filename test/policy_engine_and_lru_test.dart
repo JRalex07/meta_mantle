@@ -3,8 +3,10 @@ import 'package:meta_mantle/meta_mantle_server.dart';
 
 class _FailingLockProvider implements DistributedLockProvider {
   @override
-  Future<String?> acquire(String resource,
-      {Duration ttl = const Duration(seconds: 10)}) async {
+  Future<String?> acquire(
+    String resource, {
+    Duration ttl = const Duration(seconds: 10),
+  }) async {
     return null; // Always fails to acquire
   }
 
@@ -14,129 +16,132 @@ class _FailingLockProvider implements DistributedLockProvider {
 
 void main() {
   group('True LRU Cache & Distributed Locking Tests', () {
-    test('MemoryCacheStore implements true access-order LRU eviction',
-        () async {
-      final store = MemoryCacheStore(maxEntries: 3);
+    test(
+      'MemoryCacheStore implements true access-order LRU eviction',
+      () async {
+        final store = MemoryCacheStore(maxEntries: 3);
 
-      final entryA = CacheEntry(
-        html: '<html>A</html>',
-        metadata: const WebMetadata(title: 'A'),
-        createdAt: DateTime.now().toUtc(),
-        ttl: const Duration(minutes: 5),
-      );
-      final entryB = CacheEntry(
-        html: '<html>B</html>',
-        metadata: const WebMetadata(title: 'B'),
-        createdAt: DateTime.now().toUtc(),
-        ttl: const Duration(minutes: 5),
-      );
-      final entryC = CacheEntry(
-        html: '<html>C</html>',
-        metadata: const WebMetadata(title: 'C'),
-        createdAt: DateTime.now().toUtc(),
-        ttl: const Duration(minutes: 5),
-      );
-      final entryD = CacheEntry(
-        html: '<html>D</html>',
-        metadata: const WebMetadata(title: 'D'),
-        createdAt: DateTime.now().toUtc(),
-        ttl: const Duration(minutes: 5),
-      );
+        final entryA = CacheEntry(
+          html: '<html>A</html>',
+          metadata: const WebMetadata(title: 'A'),
+          createdAt: DateTime.now().toUtc(),
+          ttl: const Duration(minutes: 5),
+        );
+        final entryB = CacheEntry(
+          html: '<html>B</html>',
+          metadata: const WebMetadata(title: 'B'),
+          createdAt: DateTime.now().toUtc(),
+          ttl: const Duration(minutes: 5),
+        );
+        final entryC = CacheEntry(
+          html: '<html>C</html>',
+          metadata: const WebMetadata(title: 'C'),
+          createdAt: DateTime.now().toUtc(),
+          ttl: const Duration(minutes: 5),
+        );
+        final entryD = CacheEntry(
+          html: '<html>D</html>',
+          metadata: const WebMetadata(title: 'D'),
+          createdAt: DateTime.now().toUtc(),
+          ttl: const Duration(minutes: 5),
+        );
 
-      // Insert A, B, C (Store full: [A, B, C])
-      await store.put('keyA', entryA);
-      await store.put('keyB', entryB);
-      await store.put('keyC', entryC);
+        // Insert A, B, C (Store full: [A, B, C])
+        await store.put('keyA', entryA);
+        await store.put('keyB', entryB);
+        await store.put('keyC', entryC);
 
-      // Access keyA! In True LRU, accessing A moves A to the tail ([B, C, A])
-      final hitA = await store.get('keyA');
-      expect(hitA, isNotNull);
-      expect(hitA!.html, equals('<html>A</html>'));
+        // Access keyA! In True LRU, accessing A moves A to the tail ([B, C, A])
+        final hitA = await store.get('keyA');
+        expect(hitA, isNotNull);
+        expect(hitA!.html, equals('<html>A</html>'));
 
-      // Now insert D. If FIFO, A would be evicted. But in True LRU, B is the least recently used!
-      await store.put('keyD', entryD);
+        // Now insert D. If FIFO, A would be evicted. But in True LRU, B is the least recently used!
+        await store.put('keyD', entryD);
 
-      // B must be evicted
-      expect(await store.get('keyB'), isNull);
-      // A, C, D must still exist!
-      expect(await store.get('keyA'), isNotNull);
-      expect(await store.get('keyC'), isNotNull);
-      expect(await store.get('keyD'), isNotNull);
+        // B must be evicted
+        expect(await store.get('keyB'), isNull);
+        // A, C, D must still exist!
+        expect(await store.get('keyA'), isNotNull);
+        expect(await store.get('keyC'), isNotNull);
+        expect(await store.get('keyD'), isNotNull);
 
-      expect(store.evictions, equals(1));
-      expect(store.hitRatio, greaterThan(0.0));
-    });
+        expect(store.evictions, equals(1));
+        expect(store.hitRatio, greaterThan(0.0));
+      },
+    );
 
     test(
-        'SingleFlightCoordinator throws DistributedLockException on lock failure',
-        () async {
-      final coordinator = SingleFlightCoordinator(
-        distributedLock: _FailingLockProvider(),
-      );
+      'SingleFlightCoordinator throws DistributedLockException on lock failure',
+      () async {
+        final coordinator = SingleFlightCoordinator(
+          distributedLock: _FailingLockProvider(),
+        );
 
-      expect(
-        coordinator.run('test-resource', () async => 'success'),
-        throwsA(isA<DistributedLockException>()),
-      );
-    });
+        expect(
+          coordinator.run('test-resource', () async => 'success'),
+          throwsA(isA<DistributedLockException>()),
+        );
+      },
+    );
 
     test(
-        'ServerEngine serves STALE-IF-ERROR fallback when origin re-render fails',
-        () async {
-      final cacheStore = MemoryCacheStore(maxEntries: 100);
-      var failOrigin = false;
+      'ServerEngine serves STALE-IF-ERROR fallback when origin re-render fails',
+      () async {
+        final cacheStore = MemoryCacheStore(maxEntries: 100);
+        var failOrigin = false;
 
-      final route = MetaRoute<String>(
-        pattern: '/flaky-product',
-        dataProvider: MockCallbackProvider<String>((ctx) async {
-          if (failOrigin) {
-            throw StateError('Database connection dropped!');
-          }
-          return DataProviderResult<String>.found(
-            'Fresh Product Data',
-            etag: 'w/"v1"',
-          );
-        }),
-        metadataBuilder: (data, ctx) => WebMetadata(title: data),
-        htmlBuilder: (data, ctx) => [H.h1(data)],
-        cachePolicy: const CachePolicy(
-          ttl: Duration(milliseconds: 40),
-          staleWhileRevalidate: Duration(milliseconds: 60),
-          staleIfError: Duration(hours: 1),
-        ),
-      );
+        final route = MetaRoute<String>(
+          pattern: '/flaky-product',
+          dataProvider: MockCallbackProvider<String>((ctx) async {
+            if (failOrigin) {
+              throw StateError('Database connection dropped!');
+            }
+            return DataProviderResult<String>.found(
+              'Fresh Product Data',
+              etag: 'w/"v1"',
+            );
+          }),
+          metadataBuilder: (data, ctx) => WebMetadata(title: data),
+          htmlBuilder: (data, ctx) => [H.h1(data)],
+          cachePolicy: const CachePolicy(
+            ttl: Duration(milliseconds: 40),
+            staleWhileRevalidate: Duration(milliseconds: 60),
+            staleIfError: Duration(hours: 1),
+          ),
+        );
 
-      final engine = MetaMantleServerEngine(
-        routes: [route],
-        cacheStore: cacheStore,
-      );
+        final engine = MetaMantleServerEngine(
+          routes: [route],
+          cacheStore: cacheStore,
+        );
 
-      final req = ServerRequest(
-        method: 'GET',
-        uri: Uri.parse('https://example.com/flaky-product'),
-      );
+        final req = ServerRequest(
+          method: 'GET',
+          uri: Uri.parse('https://example.com/flaky-product'),
+        );
 
-      // 1. Initial fresh request (MISS)
-      final res1 = await engine.handleRequest(req);
-      expect(res1.statusCode, equals(200));
-      expect(res1.headers['X-MetaMantle-Cache'], equals('MISS'));
-      expect(res1.body, contains('<h1>Fresh Product Data</h1>'));
+        // 1. Initial fresh request (MISS)
+        final res1 = await engine.handleRequest(req);
+        expect(res1.statusCode, equals(200));
+        expect(res1.headers['X-MetaMantle-Cache'], equals('MISS'));
+        expect(res1.body, contains('<h1>Fresh Product Data</h1>'));
 
-      // Wait for both TTL (40ms) and SWR (60ms) to expire (> 100ms)
-      await Future<void>.delayed(const Duration(milliseconds: 130));
+        // Wait for both TTL (40ms) and SWR (60ms) to expire (> 100ms)
+        await Future<void>.delayed(const Duration(milliseconds: 130));
 
-      // 2. Simulate origin failure
-      failOrigin = true;
+        // 2. Simulate origin failure
+        failOrigin = true;
 
-      // 3. Stale-If-Error request must gracefully serve stale content instead of 500 error!
-      final res2 = await engine.handleRequest(req);
-      expect(res2.statusCode, equals(200));
-      expect(res2.headers['X-MetaMantle-Cache'], equals('STALE-IF-ERROR'));
-      expect(res2.body, contains('<h1>Fresh Product Data</h1>'));
-    });
+        // 3. Stale-If-Error request must gracefully serve stale content instead of 500 error!
+        final res2 = await engine.handleRequest(req);
+        expect(res2.statusCode, equals(200));
+        expect(res2.headers['X-MetaMantle-Cache'], equals('STALE-IF-ERROR'));
+        expect(res2.body, contains('<h1>Fresh Product Data</h1>'));
+      },
+    );
 
-    test('ServerEngine isolates cache keys across tenants, hosts, and locales',
-        () async {
+    test('ServerEngine isolates cache keys across tenants, hosts, and locales', () async {
       final cacheStore = MemoryCacheStore(maxEntries: 100);
 
       final route = MetaRoute<String>(
@@ -162,10 +167,7 @@ void main() {
       final reqTenant1 = ServerRequest(
         method: 'GET',
         uri: Uri.parse('https://example.com/localized-page'),
-        headers: {
-          'x-tenant-id': 'tenant-alpha',
-          'accept-language': 'en',
-        },
+        headers: {'x-tenant-id': 'tenant-alpha', 'accept-language': 'en'},
       );
       final resTenant1 = await engine.handleRequest(reqTenant1);
       expect(resTenant1.body, contains('Rendered for tenant-alpha in en'));
@@ -174,10 +176,7 @@ void main() {
       final reqTenant2 = ServerRequest(
         method: 'GET',
         uri: Uri.parse('https://example.com/localized-page'),
-        headers: {
-          'x-tenant-id': 'tenant-beta',
-          'accept-language': 'fr',
-        },
+        headers: {'x-tenant-id': 'tenant-beta', 'accept-language': 'fr'},
       );
       final resTenant2 = await engine.handleRequest(reqTenant2);
       expect(resTenant2.body, contains('Rendered for tenant-beta in fr'));
@@ -208,9 +207,7 @@ void main() {
         defaultDescription: 'Shop our curated collection',
       );
 
-      const pageMetadata = WebMetadata(
-        title: 'Wireless Headphones',
-      );
+      const pageMetadata = WebMetadata(title: 'Wireless Headphones');
 
       final resolved = resolver.resolve(
         global: globalPolicy,
@@ -269,7 +266,7 @@ void main() {
 class MockCallbackProvider<T> implements MetaMantleDataProvider<T> {
   const MockCallbackProvider(this.callback);
   final Future<DataProviderResult<T>> Function(RouteDataContext context)
-      callback;
+  callback;
 
   @override
   Future<DataProviderResult<T>> load(RouteDataContext context) =>

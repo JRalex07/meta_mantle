@@ -14,8 +14,12 @@ void main() {
     });
 
     test('MantleEdgeInsets CSS padding and margin mapping', () {
-      const insets =
-          MantleEdgeInsets.only(left: 10, top: 20, right: 15, bottom: 25);
+      const insets = MantleEdgeInsets.only(
+        left: 10,
+        top: 20,
+        right: 15,
+        bottom: 25,
+      );
       expect(insets.toCssPadding(), equals('20.0px 15.0px 25.0px 10.0px'));
       expect(insets.toCssMargin(), equals('20.0px 15.0px 25.0px 10.0px'));
       expect(insets.left, equals(10.0));
@@ -43,8 +47,10 @@ void main() {
         blurRadius: 8,
         spreadRadius: 2,
       );
-      expect(shadow.toCss(),
-          equals('0.0px 4.0px 8.0px 2.0px rgba(0, 0, 0, 0.502)'));
+      expect(
+        shadow.toCss(),
+        equals('0.0px 4.0px 8.0px 2.0px rgba(0, 0, 0, 0.502)'),
+      );
     });
 
     test('MantleTextStyle properties and CSS generation', () {
@@ -100,17 +106,15 @@ void main() {
         tag: 'section',
         children: [
           MantleTextNode('Title'),
-          MantleFragment([
-            MantleTextNode('Item 1'),
-          ]),
+          MantleFragment([MantleTextNode('Item 1')]),
         ],
       );
 
       tree.accept(visitor);
       expect(
-          visited,
-          equals(
-              ['element:section', 'text:Title', 'fragment:1', 'text:Item 1']));
+        visited,
+        equals(['element:section', 'text:Title', 'fragment:1', 'text:Item 1']),
+      );
     });
   });
 
@@ -157,8 +161,9 @@ void main() {
         spans: [
           MantleTextSpan(text: 'Hello '),
           MantleTextSpan(
-              text: 'bold',
-              style: MantleTextStyle(fontWeight: MantleFontWeight.bold)),
+            text: 'bold',
+            style: MantleTextStyle(fontWeight: MantleFontWeight.bold),
+          ),
         ],
       );
       final richNode = richText.build(context) as MantleElementNode;
@@ -168,7 +173,10 @@ void main() {
 
     test('Media components build valid IR nodes', () {
       const img = MantleImage(
-          src: 'https://example.com/logo.png', alt: 'Company Logo', width: 120);
+        src: 'https://example.com/logo.png',
+        alt: 'Company Logo',
+        width: 120,
+      );
       final imgNode = img.build(context) as MantleElementNode;
       expect(imgNode.tag, equals('img'));
       expect(imgNode.attributes['src'], equals('https://example.com/logo.png'));
@@ -193,7 +201,10 @@ void main() {
       expect(clicked, isTrue);
 
       const link = MantleLink(
-          href: 'https://example.com', label: 'Docs', external: true);
+        href: 'https://example.com',
+        label: 'Docs',
+        external: true,
+      );
       final linkNode = link.build(context) as MantleElementNode;
       expect(linkNode.tag, equals('a'));
       expect(linkNode.attributes['href'], equals('https://example.com'));
@@ -210,14 +221,12 @@ void main() {
       expect(inputNode.tag, equals('input'));
       expect(inputNode.attributes['placeholder'], equals('Enter username'));
       inputNode.events['input']!(
-          const MantleEvent(type: 'input', value: 'john_doe'));
+        const MantleEvent(type: 'input', value: 'john_doe'),
+      );
       expect(changed, equals('john_doe'));
 
       final select = MantleSelect<String>(
-        options: const {
-          'us': 'United States',
-          'in': 'India',
-        },
+        options: const {'us': 'United States', 'in': 'India'},
         value: 'in',
         onChanged: (_) {},
       );
@@ -310,6 +319,9 @@ class _TestVisitor implements MantleNodeVisitor<void> {
 }
 
 class _MockMantleContext implements MantleContext {
+  @override
+  final MantleStateRegistry stateRegistry = MantleStateRegistry();
+
   @override
   String get currentPath => '/';
 

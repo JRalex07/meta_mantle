@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:meta_mantle/meta_mantle_universal.dart';
 
 void main() {
@@ -14,43 +14,46 @@ void main() {
   });
 
   testWidgets(
-      'renders MantleElementNode (h1) to Flutter Text widget with styling',
-      (tester) async {
-    final node = MantleElementNode(
-      tag: 'h1',
-      styles: const {'font-size': '24.0px', 'font-weight': '700'},
-      children: [MantleTextNode('Headline Text')],
-    );
-    final widget = renderer.render(node);
+    'renders MantleElementNode (h1) to Flutter Text widget with styling',
+    (tester) async {
+      final node = MantleElementNode(
+        tag: 'h1',
+        styles: const {'font-size': '24.0px', 'font-weight': '700'},
+        children: [MantleTextNode('Headline Text')],
+      );
+      final widget = renderer.render(node);
 
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
-    expect(find.text('Headline Text'), findsOneWidget);
-    final textWidget = tester.widget<Text>(find.text('Headline Text'));
-    expect(textWidget.style?.fontSize, equals(24.0));
-    expect(textWidget.style?.fontWeight, equals(FontWeight.bold));
-  });
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
+      expect(find.text('Headline Text'), findsOneWidget);
+      final textWidget = tester.widget<Text>(find.text('Headline Text'));
+      expect(textWidget.style?.fontSize, equals(24.0));
+      expect(textWidget.style?.fontWeight, equals(FontWeight.bold));
+    },
+  );
 
   testWidgets(
-      'renders MantleElementNode (button) to Flutter ElevatedButton with callback',
-      (tester) async {
-    var clicked = false;
-    final node = MantleElementNode(
-      tag: 'button',
-      events: {'click': (_) => clicked = true},
-      children: [MantleTextNode('Click Me')],
-    );
-    final widget = renderer.render(node);
+    'renders MantleElementNode (button) to Flutter ElevatedButton with callback',
+    (tester) async {
+      var clicked = false;
+      final node = MantleElementNode(
+        tag: 'button',
+        events: {'click': (_) => clicked = true},
+        children: [MantleTextNode('Click Me')],
+      );
+      final widget = renderer.render(node);
 
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
-    expect(find.widgetWithText(ElevatedButton, 'Click Me'), findsOneWidget);
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
+      expect(find.widgetWithText(ElevatedButton, 'Click Me'), findsOneWidget);
 
-    await tester.tap(find.byType(ElevatedButton));
-    await tester.pump();
-    expect(clicked, isTrue);
-  });
+      await tester.tap(find.byType(ElevatedButton));
+      await tester.pump();
+      expect(clicked, isTrue);
+    },
+  );
 
-  testWidgets('renders MantleElementNode (flex row) to Flutter Row widget',
-      (tester) async {
+  testWidgets('renders MantleElementNode (flex row) to Flutter Row widget', (
+    tester,
+  ) async {
     final node = MantleElementNode(
       tag: 'div',
       styles: const {
@@ -58,10 +61,7 @@ void main() {
         'flex-direction': 'row',
         'justify-content': 'center',
       },
-      children: [
-        MantleTextNode('Item 1'),
-        MantleTextNode('Item 2'),
-      ],
+      children: [MantleTextNode('Item 1'), MantleTextNode('Item 2')],
     );
     final widget = renderer.render(node);
 
@@ -72,66 +72,66 @@ void main() {
   });
 
   testWidgets(
-      'renders MantleElementNode (flex column) to Flutter Column widget',
-      (tester) async {
-    final node = MantleElementNode(
-      tag: 'div',
-      styles: const {
-        'display': 'flex',
-        'flex-direction': 'column',
-      },
-      children: [
-        MantleTextNode('Col 1'),
-        MantleTextNode('Col 2'),
-      ],
-    );
-    final widget = renderer.render(node);
+    'renders MantleElementNode (flex column) to Flutter Column widget',
+    (tester) async {
+      final node = MantleElementNode(
+        tag: 'div',
+        styles: const {'display': 'flex', 'flex-direction': 'column'},
+        children: [MantleTextNode('Col 1'), MantleTextNode('Col 2')],
+      );
+      final widget = renderer.render(node);
 
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
-    expect(find.byType(Column), findsOneWidget);
-    expect(find.text('Col 1'), findsOneWidget);
-    expect(find.text('Col 2'), findsOneWidget);
-  });
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
+      expect(find.byType(Column), findsOneWidget);
+      expect(find.text('Col 1'), findsOneWidget);
+      expect(find.text('Col 2'), findsOneWidget);
+    },
+  );
 
-  testWidgets('renders MantleElementNode (input text) to Flutter TextFormField',
-      (tester) async {
-    String? enteredText;
-    final node = MantleElementNode(
-      tag: 'input',
-      attributes: const {'placeholder': 'Enter email'},
-      events: {'input': (e) => enteredText = e.value as String?},
-    );
-    final widget = renderer.render(node);
+  testWidgets(
+    'renders MantleElementNode (input text) to Flutter TextFormField',
+    (tester) async {
+      String? enteredText;
+      final node = MantleElementNode(
+        tag: 'input',
+        attributes: const {'placeholder': 'Enter email'},
+        events: {'input': (e) => enteredText = e.value as String?},
+      );
+      final widget = renderer.render(node);
 
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
-    expect(find.byType(TextFormField), findsOneWidget);
-    expect(find.text('Enter email'), findsOneWidget); // placeholder / hint
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
+      expect(find.byType(TextFormField), findsOneWidget);
+      expect(find.text('Enter email'), findsOneWidget); // placeholder / hint
 
-    await tester.enterText(find.byType(TextFormField), 'test@example.com');
-    await tester.pump();
-    expect(enteredText, equals('test@example.com'));
-  });
+      await tester.enterText(find.byType(TextFormField), 'test@example.com');
+      await tester.pump();
+      expect(enteredText, equals('test@example.com'));
+    },
+  );
 
-  testWidgets('renders MantleElementNode (input checkbox) to Flutter Checkbox',
-      (tester) async {
-    bool? isChecked = false;
-    final node = MantleElementNode(
-      tag: 'input',
-      attributes: const {'type': 'checkbox'},
-      events: {'change': (e) => isChecked = e.value as bool?},
-    );
-    final widget = renderer.render(node);
+  testWidgets(
+    'renders MantleElementNode (input checkbox) to Flutter Checkbox',
+    (tester) async {
+      bool? isChecked = false;
+      final node = MantleElementNode(
+        tag: 'input',
+        attributes: const {'type': 'checkbox'},
+        events: {'change': (e) => isChecked = e.value as bool?},
+      );
+      final widget = renderer.render(node);
 
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
-    expect(find.byType(Checkbox), findsOneWidget);
+      await tester.pumpWidget(MaterialApp(home: Scaffold(body: widget)));
+      expect(find.byType(Checkbox), findsOneWidget);
 
-    await tester.tap(find.byType(Checkbox));
-    await tester.pump();
-    expect(isChecked, isTrue);
-  });
+      await tester.tap(find.byType(Checkbox));
+      await tester.pump();
+      expect(isChecked, isTrue);
+    },
+  );
 
-  testWidgets('renders MantleFragment to Flutter Column containing children',
-      (tester) async {
+  testWidgets('renders MantleFragment to Flutter Column containing children', (
+    tester,
+  ) async {
     final fragment = MantleFragment([
       MantleTextNode('Frag A'),
       MantleTextNode('Frag B'),
@@ -143,8 +143,9 @@ void main() {
     expect(find.text('Frag B'), findsOneWidget);
   });
 
-  testWidgets('renders MantleElementNode (a link) to Flutter InkWell',
-      (tester) async {
+  testWidgets('renders MantleElementNode (a link) to Flutter InkWell', (
+    tester,
+  ) async {
     var linkTapped = false;
     final node = MantleElementNode(
       tag: 'a',
@@ -202,8 +203,9 @@ void main() {
     expect(find.byType(TextFormField), findsOneWidget);
   });
 
-  testWidgets('wraps element with Semantics widget when aria-label present',
-      (tester) async {
+  testWidgets('wraps element with Semantics widget when aria-label present', (
+    tester,
+  ) async {
     final node = MantleElementNode(
       tag: 'div',
       attributes: const {'aria-label': 'Accessible Region'},

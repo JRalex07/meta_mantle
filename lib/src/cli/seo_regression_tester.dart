@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:html/parser.dart' as html_parser;
 
 /// Represents an audited SEO metadata snapshot for a single page.
@@ -37,9 +38,12 @@ class PageSeoSnapshot {
         .querySelector('meta[name="description"]')
         ?.attributes['content']
         ?.trim();
-    final canonical =
-        doc.querySelector('link[rel="canonical"]')?.attributes['href']?.trim();
-    final robots = doc
+    final canonical = doc
+        .querySelector('link[rel="canonical"]')
+        ?.attributes['href']
+        ?.trim();
+    final robots =
+        doc
             .querySelector('meta[name="robots"]')
             ?.attributes['content']
             ?.trim() ??
@@ -98,18 +102,18 @@ class PageSeoSnapshot {
   }
 
   Map<String, dynamic> toJson() => {
-        'url': url,
-        'title': title,
-        'description': description,
-        'canonical': canonical,
-        'robots': robots,
-        'ogTitle': ogTitle,
-        'ogDescription': ogDescription,
-        'ogImage': ogImage,
-        'twitterCard': twitterCard,
-        'jsonLdTypes': jsonLdTypes,
-        'missingAltImages': missingAltImages,
-      };
+    'url': url,
+    'title': title,
+    'description': description,
+    'canonical': canonical,
+    'robots': robots,
+    'ogTitle': ogTitle,
+    'ogDescription': ogDescription,
+    'ogImage': ogImage,
+    'twitterCard': twitterCard,
+    'jsonLdTypes': jsonLdTypes,
+    'missingAltImages': missingAltImages,
+  };
 
   factory PageSeoSnapshot.fromJson(Map<String, dynamic> json) =>
       PageSeoSnapshot(
@@ -123,8 +127,9 @@ class PageSeoSnapshot {
         ogImage: json['ogImage'] as String?,
         twitterCard: json['twitterCard'] as String?,
         jsonLdTypes: List<String>.from(json['jsonLdTypes'] as List? ?? []),
-        missingAltImages:
-            List<String>.from(json['missingAltImages'] as List? ?? []),
+        missingAltImages: List<String>.from(
+          json['missingAltImages'] as List? ?? [],
+        ),
       );
 }
 
@@ -147,13 +152,13 @@ class SeoRegressionFinding {
   final String message;
 
   Map<String, dynamic> toJson() => {
-        'url': url,
-        'field': field,
-        'severity': severity,
-        'baseline': baselineValue,
-        'current': currentValue,
-        'message': message,
-      };
+    'url': url,
+    'field': field,
+    'severity': severity,
+    'baseline': baselineValue,
+    'current': currentValue,
+    'message': message,
+  };
 }
 
 /// Compares builds and live crawls against baselines to catch accidental SEO regressions.

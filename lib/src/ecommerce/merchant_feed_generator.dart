@@ -28,25 +28,32 @@ class MerchantFeedGenerator {
       buf.writeln('      <g:id>${_escape(p.id)}</g:id>');
       buf.writeln('      <g:title>${_escape(p.name)}</g:title>');
       buf.writeln(
-          '      <g:description>${_escape(p.description)}</g:description>');
+        '      <g:description>${_escape(p.description)}</g:description>',
+      );
       buf.writeln('      <g:link>${_escape(productUrl)}</g:link>');
       if (p.images.isNotEmpty) {
         buf.writeln(
-            '      <g:image_link>${_escape(p.images.first)}</g:image_link>');
+          '      <g:image_link>${_escape(p.images.first)}</g:image_link>',
+        );
         for (final extraImg in p.images.skip(1)) {
           buf.writeln(
-              '      <g:additional_image_link>${_escape(extraImg)}</g:additional_image_link>');
+            '      <g:additional_image_link>${_escape(extraImg)}</g:additional_image_link>',
+          );
         }
       }
       buf.writeln(
-          '      <g:condition>${_merchantCondition(p.condition)}</g:condition>');
+        '      <g:condition>${_merchantCondition(p.condition)}</g:condition>',
+      );
       buf.writeln(
-          '      <g:availability>${_merchantAvailability(p.availability)}</g:availability>');
+        '      <g:availability>${_merchantAvailability(p.availability)}</g:availability>',
+      );
       buf.writeln(
-          '      <g:price>${p.price.toStringAsFixed(2)} ${p.currency}</g:price>');
+        '      <g:price>${p.price.toStringAsFixed(2)} ${p.currency}</g:price>',
+      );
       if (p.salePrice != null) {
         buf.writeln(
-            '      <g:sale_price>${p.salePrice!.toStringAsFixed(2)} ${p.currency}</g:sale_price>');
+          '      <g:sale_price>${p.salePrice!.toStringAsFixed(2)} ${p.currency}</g:sale_price>',
+        );
       }
       if (p.brand != null) {
         buf.writeln('      <g:brand>${_escape(p.brand!)}</g:brand>');
@@ -59,14 +66,17 @@ class MerchantFeedGenerator {
       }
       if (p.category != null) {
         buf.writeln(
-            '      <g:google_product_category>${_escape(p.category!)}</g:google_product_category>');
+          '      <g:google_product_category>${_escape(p.category!)}</g:google_product_category>',
+        );
       }
       if (p.shipping != null) {
         buf.writeln('      <g:shipping>');
         buf.writeln(
-            '        <g:country>${_escape(p.shipping!.shippingDestination)}</g:country>');
+          '        <g:country>${_escape(p.shipping!.shippingDestination)}</g:country>',
+        );
         buf.writeln(
-            '        <g:price>${p.shipping!.shippingRate.toStringAsFixed(2)} ${p.shipping!.currency}</g:price>');
+          '        <g:price>${p.shipping!.shippingRate.toStringAsFixed(2)} ${p.shipping!.currency}</g:price>',
+        );
         buf.writeln('      </g:shipping>');
       }
       buf.writeln('    </item>');

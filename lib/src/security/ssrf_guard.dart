@@ -39,7 +39,8 @@ class SsrfGuard {
     io.connectionFactory = (uri, proxyHost, proxyPort) async {
       if (proxyHost != null || proxyPort != null) {
         throw const SecurityException(
-            'Outbound proxy connections are disabled for SSRF protection.');
+          'Outbound proxy connections are disabled for SSRF protection.',
+        );
       }
       final candidates = await resolveAndValidate(uri);
       return Socket.startConnect(candidates.first, uri.port);
@@ -61,12 +62,14 @@ class SsrfGuard {
     final scheme = uri.scheme.toLowerCase();
     if (scheme != 'http' && scheme != 'https') {
       throw SecurityException(
-          'Disallowed protocol: "$scheme". Only HTTP and HTTPS are permitted.');
+        'Disallowed protocol: "$scheme". Only HTTP and HTTPS are permitted.',
+      );
     }
 
     if (uri.userInfo.isNotEmpty || uri.hasFragment) {
       throw const SecurityException(
-          'Target URL must not contain user info or a fragment.');
+        'Target URL must not contain user info or a fragment.',
+      );
     }
     final host = uri.host.trim().toLowerCase().replaceFirst(RegExp(r'\.$'), '');
     if (host.isEmpty) {
@@ -78,13 +81,15 @@ class SsrfGuard {
         host == 'metadata.google.internal' ||
         host.endsWith('.metadata.google.internal')) {
       throw SecurityException(
-          'Access to cloud metadata endpoints is strictly blocked: $host');
+        'Access to cloud metadata endpoints is strictly blocked: $host',
+      );
     }
 
     // 3. Hostname allowlist check
     if (allowedHosts.isNotEmpty && !allowedHosts.contains(host)) {
       throw SecurityException(
-          'Host "$host" is not present in the allowed outbound host whitelist.');
+        'Host "$host" is not present in the allowed outbound host whitelist.',
+      );
     }
 
     // 4. Resolve IP addresses and inspect against private ranges
@@ -98,18 +103,21 @@ class SsrfGuard {
       for (final addr in addresses) {
         if (addr.isLoopback && !allowLocalhostInDev) {
           throw SecurityException(
-              'Target resolves to a loopback address: ${addr.address}');
+            'Target resolves to a loopback address: ${addr.address}',
+          );
         }
 
         if (addr.isLinkLocal) {
           throw SecurityException(
-              'Target resolves to a link-local address: ${addr.address}');
+            'Target resolves to a link-local address: ${addr.address}',
+          );
         }
 
         if (_isForbiddenAddress(addr) &&
             !(allowLocalhostInDev && addr.isLoopback)) {
           throw SecurityException(
-              'Target resolves to a private network address: ${addr.address}');
+            'Target resolves to a private network address: ${addr.address}',
+          );
         }
       }
       return List.unmodifiable(addresses);
@@ -146,7 +154,8 @@ class SsrfGuard {
     } else if (address.type == InternetAddressType.IPv6) {
       // IPv4-mapped IPv6 addresses must inherit the IPv4 private-range checks.
       final raw = address.rawAddress;
-      final isIpv4Mapped = raw.take(10).every((byte) => byte == 0) &&
+      final isIpv4Mapped =
+          raw.take(10).every((byte) => byte == 0) &&
           raw[10] == 0xff &&
           raw[11] == 0xff;
       if (isIpv4Mapped) {

@@ -14,8 +14,9 @@ class MantleServerRenderer implements MantleRenderer<HtmlNode> {
 
   @override
   HtmlNode render(MantleNode node) {
-    return node
-        .accept(_ServerVisitor(emitHydrationMarkers: emitHydrationMarkers));
+    return node.accept(
+      _ServerVisitor(emitHydrationMarkers: emitHydrationMarkers),
+    );
   }
 
   /// Renders a [MantleNode] tree into a complete standalone HTML document with [metadata].
@@ -35,11 +36,7 @@ class MantleServerRenderer implements MantleRenderer<HtmlNode> {
           attributes: {'rel': 'stylesheet', 'href': s},
         ),
       for (final s in scriptUrls)
-        HeadTag(
-          key: 'js-$s',
-          tagName: 'script',
-          attributes: {'src': s},
-        ),
+        HeadTag(key: 'js-$s', tagName: 'script', attributes: {'src': s}),
     ];
 
     final doc = HtmlDocument(

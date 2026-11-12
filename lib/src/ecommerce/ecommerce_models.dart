@@ -1,20 +1,10 @@
 import '../models/metadata.dart';
 
 /// Item availability state.
-enum ItemAvailability {
-  inStock,
-  outOfStock,
-  preOrder,
-  backOrder,
-  discontinued,
-}
+enum ItemAvailability { inStock, outOfStock, preOrder, backOrder, discontinued }
 
 /// Item physical condition.
-enum ItemCondition {
-  newCondition,
-  refurbishedCondition,
-  usedCondition,
-}
+enum ItemCondition { newCondition, refurbishedCondition, usedCondition }
 
 /// Shipping cost and destination specification.
 class ShippingDetails {
@@ -31,25 +21,25 @@ class ShippingDetails {
   final int deliveryTimeDays;
 
   Map<String, dynamic> toJsonLd() => {
-        '@type': 'OfferShippingDetails',
-        'shippingRate': {
-          '@type': 'MonetaryAmount',
-          'value': shippingRate.toStringAsFixed(2),
-          'currency': currency,
-        },
-        'shippingDestination': {
-          '@type': 'DefinedRegion',
-          'addressCountry': shippingDestination,
-        },
-        'deliveryTime': {
-          '@type': 'ShippingDeliveryTime',
-          'transitTime': {
-            '@type': 'QuantitativeValue',
-            'maxValue': deliveryTimeDays,
-            'unitCode': 'DAY',
-          },
-        },
-      };
+    '@type': 'OfferShippingDetails',
+    'shippingRate': {
+      '@type': 'MonetaryAmount',
+      'value': shippingRate.toStringAsFixed(2),
+      'currency': currency,
+    },
+    'shippingDestination': {
+      '@type': 'DefinedRegion',
+      'addressCountry': shippingDestination,
+    },
+    'deliveryTime': {
+      '@type': 'ShippingDeliveryTime',
+      'transitTime': {
+        '@type': 'QuantitativeValue',
+        'maxValue': deliveryTimeDays,
+        'unitCode': 'DAY',
+      },
+    },
+  };
 }
 
 /// Merchant return policy specification.
@@ -68,12 +58,12 @@ class ReturnPolicy {
   final String returnFees;
 
   Map<String, dynamic> toJsonLd() => {
-        '@type': 'MerchantReturnPolicy',
-        'returnPolicyCategory': returnPolicyCategory,
-        'merchantReturnDays': merchantReturnDays,
-        'returnMethod': returnMethod,
-        'returnFees': returnFees,
-      };
+    '@type': 'MerchantReturnPolicy',
+    'returnPolicyCategory': returnPolicyCategory,
+    'merchantReturnDays': merchantReturnDays,
+    'returnMethod': returnMethod,
+    'returnFees': returnFees,
+  };
 }
 
 /// Customer review and aggregate rating.
@@ -91,12 +81,12 @@ class ProductRating {
   final double worstRating;
 
   Map<String, dynamic> toJsonLd() => {
-        '@type': 'AggregateRating',
-        'ratingValue': ratingValue.toStringAsFixed(1),
-        'reviewCount': reviewCount,
-        'bestRating': bestRating.toStringAsFixed(1),
-        'worstRating': worstRating.toStringAsFixed(1),
-      };
+    '@type': 'AggregateRating',
+    'ratingValue': ratingValue.toStringAsFixed(1),
+    'reviewCount': reviewCount,
+    'bestRating': bestRating.toStringAsFixed(1),
+    'worstRating': worstRating.toStringAsFixed(1),
+  };
 }
 
 /// E-commerce product variant (e.g. Size/Color SKU).
@@ -120,13 +110,13 @@ class ProductVariant {
   final String? image;
 
   Map<String, dynamic> toJsonLd(String currency) => {
-        '@type': 'Offer',
-        'sku': sku,
-        'price': (salePrice ?? price).toStringAsFixed(2),
-        'priceCurrency': currency,
-        'availability': _availabilitySchema(availability),
-        if (image != null) 'image': image,
-      };
+    '@type': 'Offer',
+    'sku': sku,
+    'price': (salePrice ?? price).toStringAsFixed(2),
+    'priceCurrency': currency,
+    'availability': _availabilitySchema(availability),
+    if (image != null) 'image': image,
+  };
 
   static String _availabilitySchema(ItemAvailability a) {
     switch (a) {
@@ -211,10 +201,7 @@ class ProductItem {
             'itemCondition': _conditionSchema(condition),
             'url': productUrl,
             if (seller != null)
-              'seller': {
-                '@type': 'Organization',
-                'name': seller,
-              },
+              'seller': {'@type': 'Organization', 'name': seller},
             if (shipping != null) 'shippingDetails': shipping!.toJsonLd(),
             if (returnPolicy != null)
               'hasMerchantReturnPolicy': returnPolicy!.toJsonLd(),
@@ -227,11 +214,7 @@ class ProductItem {
       'description': description,
       'url': productUrl,
       if (images.isNotEmpty) 'image': images,
-      if (brand != null)
-        'brand': {
-          '@type': 'Brand',
-          'name': brand,
-        },
+      if (brand != null) 'brand': {'@type': 'Brand', 'name': brand},
       if (sku != null) 'sku': sku,
       if (gtin != null) 'gtin': gtin,
       if (category != null) 'category': category,

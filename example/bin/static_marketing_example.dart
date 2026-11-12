@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
+
 import 'package:meta_mantle/meta_mantle_server.dart';
 import 'package:meta_mantle/src/builder/static_head_builder.dart';
 import 'package:meta_mantle/src/builder/static_head_config.dart';
@@ -35,8 +36,7 @@ void main() async {
         path: '/',
         metadata: WebMetadata(
           title: 'Enterprise Head Management for Flutter Web',
-          description:
-              'Eliminate blank social previews, crawler indexing drops, and head desynchronization.',
+          description: 'Eliminate blank social previews, crawler indexing drops, and head desynchronization.',
           canonical: 'https://metamantle.dev/',
           openGraph: const OpenGraph(
             type: OpenGraphType.website,
@@ -49,10 +49,7 @@ void main() async {
             site: '@MetaMantle',
           ),
           jsonLd: [
-            JsonLd.website(
-              name: 'MetaMantle',
-              url: 'https://metamantle.dev',
-            ),
+            JsonLd.website(name: 'MetaMantle', url: 'https://metamantle.dev'),
           ],
         ),
       ),
@@ -82,13 +79,11 @@ void main() async {
             JsonLd.faqPage([
               (
                 question: 'Does Flutter Web work with Googlebot?',
-                answer:
-                    'Yes, but MetaMantle provides static prerendering and SSR for instant indexing without client execution delays.',
+                answer: 'Yes, but MetaMantle provides static prerendering and SSR for instant indexing without client execution delays.',
               ),
               (
                 question: 'Can I use MetaMantle with Jaspr and Dart Shelf?',
-                answer:
-                    'Yes, MetaMantle includes first-class universal adapters for Shelf and Jaspr.',
+                answer: 'Yes, MetaMantle includes first-class universal adapters for Shelf and Jaspr.',
               ),
             ]),
           ],
@@ -109,11 +104,13 @@ void main() async {
   print('Generated Files Count: ${result.generatedFiles.length}');
   print('Routes Processed:      ${result.routes}');
   print(
-      'Warnings:              ${result.warnings.isEmpty ? "None" : result.warnings}');
+    'Warnings:              ${result.warnings.isEmpty ? "None" : result.warnings}',
+  );
 
   for (final file in result.generatedFiles) {
     print(
-        ' - Generated: ${file.path.split(Platform.pathSeparator).last} (${await file.length()} bytes)');
+      ' - Generated: ${file.path.split(Platform.pathSeparator).last} (${await file.length()} bytes)',
+    );
   }
 
   // Cleanup temporary demo directories

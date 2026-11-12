@@ -4,18 +4,20 @@ class MantleColor {
   const MantleColor(this.value);
 
   const MantleColor.fromARGB(int a, int r, int g, int b)
-      : value = (((a & 0xff) << 24) |
-                ((r & 0xff) << 16) |
-                ((g & 0xff) << 8) |
-                (b & 0xff)) &
-            0xFFFFFFFF;
+    : value =
+          (((a & 0xff) << 24) |
+              ((r & 0xff) << 16) |
+              ((g & 0xff) << 8) |
+              (b & 0xff)) &
+          0xFFFFFFFF;
 
   MantleColor.fromRGBO(int r, int g, int b, double opacity)
-      : value = ((((opacity * 0xff).round() & 0xff) << 24) |
-                ((r & 0xff) << 16) |
-                ((g & 0xff) << 8) |
-                (b & 0xff)) &
-            0xFFFFFFFF;
+    : value =
+          ((((opacity * 0xff).round() & 0xff) << 24) |
+              ((r & 0xff) << 16) |
+              ((g & 0xff) << 8) |
+              (b & 0xff)) &
+          0xFFFFFFFF;
 
   final int value;
 
@@ -57,16 +59,16 @@ class MantleColor {
 
 class MantleEdgeInsets {
   const MantleEdgeInsets.all(double value)
-      : left = value,
-        top = value,
-        right = value,
-        bottom = value;
+    : left = value,
+      top = value,
+      right = value,
+      bottom = value;
 
   const MantleEdgeInsets.symmetric({double vertical = 0, double horizontal = 0})
-      : left = horizontal,
-        top = vertical,
-        right = horizontal,
-        bottom = vertical;
+    : left = horizontal,
+      top = vertical,
+      right = horizontal,
+      bottom = vertical;
 
   const MantleEdgeInsets.only({
     this.left = 0,
@@ -100,10 +102,10 @@ class MantleEdgeInsets {
 
 class MantleBorderRadius {
   const MantleBorderRadius.all(double radius)
-      : topLeft = radius,
-        topRight = radius,
-        bottomLeft = radius,
-        bottomRight = radius;
+    : topLeft = radius,
+      topRight = radius,
+      bottomLeft = radius,
+      bottomRight = radius;
 
   const MantleBorderRadius.circular(double radius) : this.all(radius);
 
@@ -126,10 +128,7 @@ class MantleBorderRadius {
 }
 
 class MantleBorder {
-  const MantleBorder.all({
-    this.color = MantleColor.black,
-    this.width = 1.0,
-  });
+  const MantleBorder.all({this.color = MantleColor.black, this.width = 1.0});
 
   final MantleColor color;
   final double width;
@@ -169,30 +168,11 @@ enum MantleMainAxisAlignment {
   spaceEvenly,
 }
 
-enum MantleCrossAxisAlignment {
-  start,
-  end,
-  center,
-  stretch,
-  baseline,
-}
+enum MantleCrossAxisAlignment { start, end, center, stretch, baseline }
 
-enum MantleFontWeight {
-  w100,
-  w200,
-  w300,
-  normal,
-  w500,
-  w600,
-  bold,
-  w800,
-  w900,
-}
+enum MantleFontWeight { w100, w200, w300, normal, w500, w600, bold, w800, w900 }
 
-enum MantleFontStyle {
-  normal,
-  italic,
-}
+enum MantleFontStyle { normal, italic }
 
 class MantleTextStyle {
   const MantleTextStyle({

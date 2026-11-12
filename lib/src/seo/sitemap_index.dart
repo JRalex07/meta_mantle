@@ -21,9 +21,7 @@ class SitemapUrlEntry {
 
 /// Generates XML sitemaps and sitemap indexes according to the sitemaps.org protocol.
 class SitemapGenerator {
-  const SitemapGenerator({
-    this.maxUrlsPerSitemap = 50000,
-  });
+  const SitemapGenerator({this.maxUrlsPerSitemap = 50000});
 
   final int maxUrlsPerSitemap;
 
@@ -33,7 +31,8 @@ class SitemapGenerator {
     buf.writeln('<?xml version="1.0" encoding="UTF-8"?>');
     buf.writeln('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"');
     buf.writeln(
-        '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"');
+      '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"',
+    );
     buf.writeln('        xmlns:xhtml="http://www.w3.org/1999/xhtml">');
 
     for (final entry in entries) {
@@ -51,7 +50,8 @@ class SitemapGenerator {
 
       if (entry.priority != null) {
         buf.writeln(
-            '    <priority>${entry.priority!.toStringAsFixed(1)}</priority>');
+          '    <priority>${entry.priority!.toStringAsFixed(1)}</priority>',
+        );
       }
 
       for (final alt in entry.alternates) {
@@ -89,7 +89,8 @@ class SitemapGenerator {
 
     indexBuf.writeln('<?xml version="1.0" encoding="UTF-8"?>');
     indexBuf.writeln(
-        '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+      '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    );
 
     for (var i = 0; i < sitemapCount; i++) {
       final startIndex = i * maxUrlsPerSitemap;

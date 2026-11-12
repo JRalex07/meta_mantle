@@ -9,7 +9,7 @@ MetaMantle's runtime engine allows Flutter developers to manage browser `<head>`
 The `WebHead` widget dynamically pushes metadata changes into the browser DOM during widget mounting and lifecycle updates.
 
 ```dart
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:meta_mantle/meta_mantle.dart';
 
 class ProductDetailPage extends StatelessWidget {

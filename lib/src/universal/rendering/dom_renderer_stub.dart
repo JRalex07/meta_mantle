@@ -19,6 +19,7 @@ class MantleHydrator {
 
   void hydrate(Object rootElement, MantleNode node) {
     throw UnsupportedError(
-        'MantleHydrator is only supported in browser environments.');
+      'MantleHydrator is only supported in browser environments.',
+    );
   }
 }

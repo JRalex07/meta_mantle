@@ -16,8 +16,10 @@ void main() {
   test('renders styled MantleTextNode into styled span element', () {
     final textNode = MantleTextNode(
       'Styled Server Text',
-      style:
-          const MantleTextStyle(fontSize: 18.0, color: MantleColor(0xFF0055AA)),
+      style: const MantleTextStyle(
+        fontSize: 18.0,
+        color: MantleColor(0xFF0055AA),
+      ),
     );
     final rendered = renderer.render(textNode);
 
@@ -49,8 +51,10 @@ void main() {
     expect(rendered.attributes['style'], contains('margin: 10px;'));
     expect(rendered.attributes['style'], contains('display: flex;'));
     expect(rendered.children.length, equals(1));
-    expect(rendered.toHtml(),
-        contains('data-mantle-node="h1">Universal Architecture</h1>'));
+    expect(
+      rendered.toHtml(),
+      contains('data-mantle-node="h1">Universal Architecture</h1>'),
+    );
   });
 
   test('correctly handles self-closing tags like img and input', () {
@@ -61,9 +65,11 @@ void main() {
     final renderedImg = renderer.render(imgNode) as ElementNode;
     expect(renderedImg.isSelfClosing, isTrue);
     expect(
-        renderedImg.toHtml(),
-        equals(
-            '<img src="/banner.png" alt="Site Banner" data-mantle-node="img" />'));
+      renderedImg.toHtml(),
+      equals(
+        '<img src="/banner.png" alt="Site Banner" data-mantle-node="img" />',
+      ),
+    );
 
     final inputNode = MantleElementNode(
       tag: 'input',
@@ -72,9 +78,11 @@ void main() {
     final renderedInput = renderer.render(inputNode) as ElementNode;
     expect(renderedInput.isSelfClosing, isTrue);
     expect(
-        renderedInput.toHtml(),
-        equals(
-            '<input type="text" placeholder="Search" data-mantle-node="input" />'));
+      renderedInput.toHtml(),
+      equals(
+        '<input type="text" placeholder="Search" data-mantle-node="input" />',
+      ),
+    );
   });
 
   test('renders MantleFragment into mantle-fragment div container', () {
@@ -90,23 +98,22 @@ void main() {
   });
 
   test(
-      'escapes malicious HTML characters in text and attributes (XSS prevention)',
-      () {
-    final xssNode = MantleElementNode(
-      tag: 'div',
-      attributes: const {'data-info': 'foo" onclick="alert(1)'},
-      children: [MantleTextNode('<script>alert("hacked")</script>')],
-    );
-    final html = renderer.render(xssNode).toHtml();
+    'escapes malicious HTML characters in text and attributes (XSS prevention)',
+    () {
+      final xssNode = MantleElementNode(
+        tag: 'div',
+        attributes: const {'data-info': 'foo" onclick="alert(1)'},
+        children: [MantleTextNode('<script>alert("hacked")</script>')],
+      );
+      final html = renderer.render(xssNode).toHtml();
 
-    expect(html, isNot(contains('<script>')));
-    expect(html, contains('&lt;script&gt;'));
-    expect(html, isNot(contains('onclick="alert(1)"')));
-  });
+      expect(html, isNot(contains('<script>')));
+      expect(html, contains('&lt;script&gt;'));
+      expect(html, isNot(contains('onclick="alert(1)"')));
+    },
+  );
 
-  test(
-      'renderDocument generates complete, production-ready HTML document with metadata',
-      () {
+  test('renderDocument generates complete, production-ready HTML document with metadata', () {
     final root = MantleElementNode(
       tag: 'main',
       children: [
@@ -117,7 +124,7 @@ void main() {
         MantleElementNode(
           tag: 'p',
           children: [
-            MantleTextNode('Universal rendering for Dart and Flutter.')
+            MantleTextNode('Universal rendering for Dart and Flutter.'),
           ],
         ),
       ],
@@ -138,13 +145,15 @@ void main() {
     expect(html, startsWith('<!DOCTYPE html>'));
     expect(html, contains('<title>MetaMantle SSR Page</title>'));
     expect(
-        html,
-        contains(
-            '<meta name="description" content="Server-side rendered universal components">'));
+      html,
+      contains(
+        '<meta name="description" content="Server-side rendered universal components">',
+      ),
+    );
     expect(
-        html,
-        contains(
-            '<link rel="canonical" href="https://example.com/universal">'));
+      html,
+      contains('<link rel="canonical" href="https://example.com/universal">'),
+    );
     expect(html, contains('<link rel="stylesheet" href="/styles/main.css">'));
     expect(html, contains('<script src="/scripts/app.js">'));
     expect(html, contains('<main'));

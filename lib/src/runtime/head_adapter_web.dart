@@ -39,7 +39,8 @@ class _WebHeadAdapter implements HeadAdapter {
     for (var i = owned.length - 1; i >= 0; i--) {
       final element = owned.item(i) as web.Element?;
       if (element == null) continue;
-      final key = element.getAttribute(_keyAttribute) ??
+      final key =
+          element.getAttribute(_keyAttribute) ??
           element.getAttribute(_legacyKeyAttribute);
       if (key != null && !desiredKeys.contains(key)) {
         final original = _originalElements.remove(key);
@@ -104,10 +105,10 @@ class _WebHeadAdapter implements HeadAdapter {
       final keyAttribute = tag.attributes.containsKey('name')
           ? 'name'
           : tag.attributes.containsKey('property')
-              ? 'property'
-              : tag.attributes.containsKey('http-equiv')
-                  ? 'http-equiv'
-                  : null;
+          ? 'property'
+          : tag.attributes.containsKey('http-equiv')
+          ? 'http-equiv'
+          : null;
       if (keyAttribute == null) return null;
       final value = tag.attributes[keyAttribute];
       final nodes = web.document.querySelectorAll('head meta');
@@ -161,17 +162,17 @@ class _WebHeadAdapter implements HeadAdapter {
     final managedAttributes = switch (tag.tagName) {
       'meta' => const {'name', 'property', 'http-equiv', 'content', 'charset'},
       'link' => const {
-          'rel',
-          'href',
-          'hreflang',
-          'type',
-          'sizes',
-          'media',
-          'as',
-          'crossorigin',
-          'referrerpolicy',
-          'integrity'
-        },
+        'rel',
+        'href',
+        'hreflang',
+        'type',
+        'sizes',
+        'media',
+        'as',
+        'crossorigin',
+        'referrerpolicy',
+        'integrity',
+      },
       'script' => const {'type'},
       _ => const <String>{},
     };
@@ -210,8 +211,9 @@ class _WebHeadAdapter implements HeadAdapter {
       final attribute = attributes.item(i);
       if (attribute != null) element.removeAttribute(attribute.name);
     }
-    snapshot.attributes
-        .forEach((name, value) => element.setAttribute(name, value));
+    snapshot.attributes.forEach(
+      (name, value) => element.setAttribute(name, value),
+    );
     element.textContent = snapshot.textContent ?? '';
   }
 

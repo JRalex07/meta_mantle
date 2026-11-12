@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../ir/mantle_events.dart';
 import '../ir/mantle_node.dart';
@@ -23,8 +23,16 @@ class _FlutterVisitor implements MantleNodeVisitor<Widget> {
   @override
   Widget visitElement(MantleElementNode node) {
     // 1. Text elements (h1-h6, p, label)
-    if (const {'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'label'}
-        .contains(node.tag)) {
+    if (const {
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'p',
+      'label',
+    }.contains(node.tag)) {
       final textContent = _extractTextContent(node);
       final style = _parseTextStyle(node.styles);
       return Text(textContent, style: style);
@@ -36,10 +44,7 @@ class _FlutterVisitor implements MantleNodeVisitor<Widget> {
       final childrenWidgets = node.children.map((c) => c.accept(this)).toList();
       final childWidget = childrenWidgets.length == 1
           ? childrenWidgets.first
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: childrenWidgets,
-            );
+          : Row(mainAxisSize: MainAxisSize.min, children: childrenWidgets);
 
       final bgColor = _parseColor(node.styles['background-color']);
       final textColor = _parseColor(node.styles['color']);
@@ -52,7 +57,8 @@ class _FlutterVisitor implements MantleNodeVisitor<Widget> {
           backgroundColor: bgColor,
           foregroundColor: textColor,
           shape: RoundedRectangleBorder(
-            borderRadius: _parseBorderRadius(node.styles['border-radius']) ??
+            borderRadius:
+                _parseBorderRadius(node.styles['border-radius']) ??
                 BorderRadius.zero,
           ),
         ),
@@ -208,6 +214,31 @@ class _FlutterVisitor implements MantleNodeVisitor<Widget> {
       );
     }
 
+    // 11. Tables
+    if (node.tag == 'table') {
+      final rows = <TableRow>[];
+      for (final child in node.children) {
+        if (child is MantleElementNode &&
+            (child.tag == 'tbody' || child.tag == 'thead')) {
+          for (final tr in child.children) {
+            if (tr is MantleElementNode && tr.tag == 'tr') {
+              rows.add(_buildTableRow(tr));
+            }
+          }
+        } else if (child is MantleElementNode && child.tag == 'tr') {
+          rows.add(_buildTableRow(child));
+        }
+      }
+      return Table(
+        border: TableBorder.all(color: Colors.grey.shade400),
+        children: rows.isNotEmpty
+            ? rows
+            : [
+                const TableRow(children: [SizedBox.shrink()]),
+              ],
+      );
+    }
+
     // 11. Generic layout elements (div, section, main, header, nav, aside, article, ul, ol, etc.)
     final childrenWidgets = node.children.map((c) => c.accept(this)).toList();
 
@@ -260,10 +291,7 @@ class _FlutterVisitor implements MantleNodeVisitor<Widget> {
       height: height,
       padding: padding,
       margin: margin,
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: borderRadius,
-      ),
+      decoration: BoxDecoration(color: bgColor, borderRadius: borderRadius),
       child: childrenWidgets.length == 1
           ? childrenWidgets.first
           : Column(
@@ -299,8 +327,9 @@ class _FlutterVisitor implements MantleNodeVisitor<Widget> {
     if (node.style != null) {
       style = TextStyle(
         fontSize: node.style!.fontSize,
-        color:
-            node.style!.color != null ? Color(node.style!.color!.value) : null,
+        color: node.style!.color != null
+            ? Color(node.style!.color!.value)
+            : null,
         fontWeight: _mapFontWeight(node.style!.fontWeight),
         fontStyle: node.style!.fontStyle == MantleFontStyle.italic
             ? FontStyle.italic
@@ -380,29 +409,29 @@ class _FlutterVisitor implements MantleNodeVisitor<Widget> {
   }
 
   BoxFit _parseBoxFit(String? val) => switch (val) {
-        'cover' => BoxFit.cover,
-        'contain' => BoxFit.contain,
-        'fill' => BoxFit.fill,
-        _ => BoxFit.cover,
-      };
+    'cover' => BoxFit.cover,
+    'contain' => BoxFit.contain,
+    'fill' => BoxFit.fill,
+    _ => BoxFit.cover,
+  };
 
   MainAxisAlignment _parseMainAlignment(String? val) => switch (val) {
-        'flex-start' => MainAxisAlignment.start,
-        'flex-end' => MainAxisAlignment.end,
-        'center' => MainAxisAlignment.center,
-        'space-between' => MainAxisAlignment.spaceBetween,
-        'space-around' => MainAxisAlignment.spaceAround,
-        'space-evenly' => MainAxisAlignment.spaceEvenly,
-        _ => MainAxisAlignment.start,
-      };
+    'flex-start' => MainAxisAlignment.start,
+    'flex-end' => MainAxisAlignment.end,
+    'center' => MainAxisAlignment.center,
+    'space-between' => MainAxisAlignment.spaceBetween,
+    'space-around' => MainAxisAlignment.spaceAround,
+    'space-evenly' => MainAxisAlignment.spaceEvenly,
+    _ => MainAxisAlignment.start,
+  };
 
   CrossAxisAlignment _parseCrossAlignment(String? val) => switch (val) {
-        'flex-start' => CrossAxisAlignment.start,
-        'flex-end' => CrossAxisAlignment.end,
-        'center' => CrossAxisAlignment.center,
-        'stretch' => CrossAxisAlignment.stretch,
-        _ => CrossAxisAlignment.start,
-      };
+    'flex-start' => CrossAxisAlignment.start,
+    'flex-end' => CrossAxisAlignment.end,
+    'center' => CrossAxisAlignment.center,
+    'stretch' => CrossAxisAlignment.stretch,
+    _ => CrossAxisAlignment.start,
+  };
 
   TextStyle? _parseTextStyle(Map<String, String> styles) {
     final color = _parseColor(styles['color']);
@@ -412,21 +441,42 @@ class _FlutterVisitor implements MantleNodeVisitor<Widget> {
       fontSize: fontSize,
       fontWeight:
           styles.containsKey('font-weight') && styles['font-weight'] == '700'
-              ? FontWeight.bold
-              : FontWeight.normal,
+          ? FontWeight.bold
+          : FontWeight.normal,
     );
   }
 
   FontWeight? _mapFontWeight(MantleFontWeight? weight) => switch (weight) {
-        MantleFontWeight.w100 => FontWeight.w100,
-        MantleFontWeight.w200 => FontWeight.w200,
-        MantleFontWeight.w300 => FontWeight.w300,
-        MantleFontWeight.normal => FontWeight.normal,
-        MantleFontWeight.w500 => FontWeight.w500,
-        MantleFontWeight.w600 => FontWeight.w600,
-        MantleFontWeight.bold => FontWeight.bold,
-        MantleFontWeight.w800 => FontWeight.w800,
-        MantleFontWeight.w900 => FontWeight.w900,
-        null => null,
-      };
+    MantleFontWeight.w100 => FontWeight.w100,
+    MantleFontWeight.w200 => FontWeight.w200,
+    MantleFontWeight.w300 => FontWeight.w300,
+    MantleFontWeight.normal => FontWeight.normal,
+    MantleFontWeight.w500 => FontWeight.w500,
+    MantleFontWeight.w600 => FontWeight.w600,
+    MantleFontWeight.bold => FontWeight.bold,
+    MantleFontWeight.w800 => FontWeight.w800,
+    MantleFontWeight.w900 => FontWeight.w900,
+    null => null,
+  };
+
+  TableRow _buildTableRow(MantleElementNode tr) {
+    final cells = <Widget>[];
+    for (final cell in tr.children) {
+      if (cell is MantleElementNode && (cell.tag == 'td' || cell.tag == 'th')) {
+        cells.add(
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: cell.children.isNotEmpty
+                ? cell.children.first.accept(this)
+                : const SizedBox.shrink(),
+          ),
+        );
+      } else {
+        cells.add(cell.accept(this));
+      }
+    }
+    return TableRow(
+      children: cells.isNotEmpty ? cells : [const SizedBox.shrink()],
+    );
+  }
 }

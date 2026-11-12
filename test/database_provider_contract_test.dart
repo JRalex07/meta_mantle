@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart' as http_testing;
@@ -19,27 +20,31 @@ class SampleProduct {
 }
 
 void main() {
-  test('rejects unsafe SQL identifiers before invoking the query callback',
-      () async {
-    var called = false;
-    final provider = RelationalDatabaseAdapter<String>(
-      tableName: 'products; DROP TABLE users',
-      queryRunner: (sql, parameters) async {
-        called = true;
-        return null;
-      },
-      rowMapper: (row) => '',
-    );
+  test(
+    'rejects unsafe SQL identifiers before invoking the query callback',
+    () async {
+      var called = false;
+      final provider = RelationalDatabaseAdapter<String>(
+        tableName: 'products; DROP TABLE users',
+        queryRunner: (sql, parameters) async {
+          called = true;
+          return null;
+        },
+        rowMapper: (row) => '',
+      );
 
-    await expectLater(
-      provider.load(RouteDataContext(
-        path: '/products/item',
-        parameters: {'slug': 'item'},
-      )),
-      throwsArgumentError,
-    );
-    expect(called, isFalse);
-  });
+      await expectLater(
+        provider.load(
+          RouteDataContext(
+            path: '/products/item',
+            parameters: {'slug': 'item'},
+          ),
+        ),
+        throwsArgumentError,
+      );
+      expect(called, isFalse);
+    },
+  );
 
   group('Universal Database Provider Contract Tests', () {
     void runStandardProviderContractTests({
@@ -185,72 +190,77 @@ void main() {
         };
       },
       markDeleted: () async {
-        docStore['basmati-rice'] = {
-          'is_deleted': true,
-        };
+        docStore['basmati-rice'] = {'is_deleted': true};
       },
     );
 
     // 4. REST Data Provider Contract Verification
     test(
-        'RestDataProvider parses JSON response and handles 404/410 status codes',
-        () async {
-      final mockClient = http_testing.MockClient((req) async {
-        if (req.url.path.endsWith('/basmati-rice')) {
-          return http.Response(
-            json.encode({
-              'id': '1',
-              'slug': 'basmati-rice',
-              'name': 'Premium Basmati Rice',
-              'price': 24.99,
-            }),
-            200,
-            headers: {
-              'Content-Type': 'application/json',
-              'ETag': 'w/"rest-1"',
-            },
-          );
-        } else if (req.url.path.endsWith('/missing')) {
-          return http.Response('Not Found', 404);
-        } else if (req.url.path.endsWith('/deleted')) {
-          return http.Response('Gone', 410);
-        }
-        return http.Response('Error', 500);
-      });
+      'RestDataProvider parses JSON response and handles 404/410 status codes',
+      () async {
+        final mockClient = http_testing.MockClient((req) async {
+          if (req.url.path.endsWith('/basmati-rice')) {
+            return http.Response(
+              json.encode({
+                'id': '1',
+                'slug': 'basmati-rice',
+                'name': 'Premium Basmati Rice',
+                'price': 24.99,
+              }),
+              200,
+              headers: {
+                'Content-Type': 'application/json',
+                'ETag': 'w/"rest-1"',
+              },
+            );
+          } else if (req.url.path.endsWith('/missing')) {
+            return http.Response('Not Found', 404);
+          } else if (req.url.path.endsWith('/deleted')) {
+            return http.Response('Gone', 410);
+          }
+          return http.Response('Error', 500);
+        });
 
-      final restProvider = RestDataProvider<SampleProduct>(
-        client: mockClient,
-        urlBuilder: (ctx) =>
-            'http://localhost:8080/items/${ctx.parameters['slug']}',
-        ssrfGuard: const SsrfGuard(allowLocalhostInDev: true),
-        mapper: (json) => SampleProduct(
-          id: json['id'] as String,
-          slug: json['slug'] as String,
-          name: json['name'] as String,
-          price: (json['price'] as num).toDouble(),
-        ),
-      );
+        final restProvider = RestDataProvider<SampleProduct>(
+          client: mockClient,
+          urlBuilder: (ctx) =>
+              'http://localhost:8080/items/${ctx.parameters['slug']}',
+          ssrfGuard: const SsrfGuard(allowLocalhostInDev: true),
+          mapper: (json) => SampleProduct(
+            id: json['id'] as String,
+            slug: json['slug'] as String,
+            name: json['name'] as String,
+            price: (json['price'] as num).toDouble(),
+          ),
+        );
 
-      final found = await restProvider.load(RouteDataContext(
-        path: '/items/basmati-rice',
-        parameters: {'slug': 'basmati-rice'},
-      ));
-      expect(found.isFound, isTrue);
-      expect(found.data!.name, equals('Premium Basmati Rice'));
-      expect(found.etag, equals('w/"rest-1"'));
+        final found = await restProvider.load(
+          RouteDataContext(
+            path: '/items/basmati-rice',
+            parameters: {'slug': 'basmati-rice'},
+          ),
+        );
+        expect(found.isFound, isTrue);
+        expect(found.data!.name, equals('Premium Basmati Rice'));
+        expect(found.etag, equals('w/"rest-1"'));
 
-      final missing = await restProvider.load(RouteDataContext(
-        path: '/items/missing',
-        parameters: {'slug': 'missing'},
-      ));
-      expect(missing.isFound, isFalse);
-      expect(missing.isDeleted, isFalse);
+        final missing = await restProvider.load(
+          RouteDataContext(
+            path: '/items/missing',
+            parameters: {'slug': 'missing'},
+          ),
+        );
+        expect(missing.isFound, isFalse);
+        expect(missing.isDeleted, isFalse);
 
-      final deleted = await restProvider.load(RouteDataContext(
-        path: '/items/deleted',
-        parameters: {'slug': 'deleted'},
-      ));
-      expect(deleted.isDeleted, isTrue);
-    });
+        final deleted = await restProvider.load(
+          RouteDataContext(
+            path: '/items/deleted',
+            parameters: {'slug': 'deleted'},
+          ),
+        );
+        expect(deleted.isDeleted, isTrue);
+      },
+    );
   });
 }

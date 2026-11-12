@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -34,9 +35,7 @@ void main() {
       engine = MetaMantleServerEngine(routes: [route]);
     });
 
-    test(
-        'Matching If-None-Match returns 304 with ETag, Last-Modified, and Cache-Control',
-        () async {
+    test('Matching If-None-Match returns 304 with ETag, Last-Modified, and Cache-Control', () async {
       final req = ServerRequest(
         method: 'GET',
         uri: Uri.parse('http://example.com/items/item'),
@@ -51,8 +50,7 @@ void main() {
       expect(res.headers['Cache-Control'], contains('max-age=600'));
     });
 
-    test('Weak ETag comparison matches regardless of W/ prefix or case',
-        () async {
+    test('Weak ETag comparison matches regardless of W/ prefix or case', () async {
       // Client sends without W/ prefix -> should still match weak tag on server
       final req1 = ServerRequest(
         method: 'GET',
@@ -81,9 +79,7 @@ void main() {
       expect(res3.statusCode, equals(304));
     });
 
-    test(
-        'RFC 7232 Precedence: If-None-Match present and non-matching MUST ignore If-Modified-Since',
-        () async {
+    test('RFC 7232 Precedence: If-None-Match present and non-matching MUST ignore If-Modified-Since', () async {
       // ETag is different ("wrong-etag"), but If-Modified-Since is in the future.
       // Under RFC 7232, the request MUST NOT return 304; it MUST return 200 with fresh body!
       final req = ServerRequest(
@@ -96,25 +92,28 @@ void main() {
       );
 
       final res = await engine.handleRequest(req);
-      expect(res.statusCode, equals(200),
-          reason: 'Non-matching If-None-Match must ignore If-Modified-Since');
+      expect(
+        res.statusCode,
+        equals(200),
+        reason: 'Non-matching If-None-Match must ignore If-Modified-Since',
+      );
       expect(res.body, contains('Test Item'));
     });
 
-    test('If-Modified-Since without If-None-Match returns 304 when unmodified',
-        () async {
-      final req = ServerRequest(
-        method: 'GET',
-        uri: Uri.parse('http://example.com/items/item'),
-        headers: {
-          'if-modified-since': fixedDate.toIso8601String(),
-        },
-      );
+    test(
+      'If-Modified-Since without If-None-Match returns 304 when unmodified',
+      () async {
+        final req = ServerRequest(
+          method: 'GET',
+          uri: Uri.parse('http://example.com/items/item'),
+          headers: {'if-modified-since': fixedDate.toIso8601String()},
+        );
 
-      final res = await engine.handleRequest(req);
-      expect(res.statusCode, equals(304));
-      expect(res.body, isEmpty);
-    });
+        final res = await engine.handleRequest(req);
+        expect(res.statusCode, equals(304));
+        expect(res.body, isEmpty);
+      },
+    );
 
     test('HEAD request returns 200 with headers but empty body', () async {
       final req = ServerRequest(
@@ -131,44 +130,46 @@ void main() {
   });
 
   group('SSRF Protection & Response Streaming Security Tests', () {
-    test('REST redirects are manually validated before the next request',
-        () async {
-      final validated = <Uri>[];
-      final requests = <http.BaseRequest>[];
-      final guard = _RecordingSsrfGuard(validated);
-      final client = MockClient.streaming((request, _) async {
-        requests.add(request);
-        if (requests.length == 1) {
+    test(
+      'REST redirects are manually validated before the next request',
+      () async {
+        final validated = <Uri>[];
+        final requests = <http.BaseRequest>[];
+        final guard = _RecordingSsrfGuard(validated);
+        final client = MockClient.streaming((request, _) async {
+          requests.add(request);
+          if (requests.length == 1) {
+            return http.StreamedResponse(
+              const Stream<List<int>>.empty(),
+              302,
+              headers: {'location': 'https://api.example.test/next'},
+            );
+          }
           return http.StreamedResponse(
-            const Stream<List<int>>.empty(),
-            302,
-            headers: {'location': 'https://api.example.test/next'},
+            Stream.value(utf8.encode('{"ok":true}')),
+            200,
+            headers: {'content-type': 'application/json'},
           );
-        }
-        return http.StreamedResponse(
-          Stream.value(utf8.encode('{"ok":true}')),
-          200,
-          headers: {'content-type': 'application/json'},
+        });
+        final provider = RestDataProvider<Map<String, dynamic>>(
+          urlBuilder: (_) => 'https://api.example.test/start',
+          mapper: (json) => json as Map<String, dynamic>,
+          client: client,
+          ssrfGuard: guard,
+          maxRetries: 0,
         );
-      });
-      final provider = RestDataProvider<Map<String, dynamic>>(
-        urlBuilder: (_) => 'https://api.example.test/start',
-        mapper: (json) => json as Map<String, dynamic>,
-        client: client,
-        ssrfGuard: guard,
-        maxRetries: 0,
-      );
 
-      await provider.load(RouteDataContext(path: '/test'));
+        await provider.load(RouteDataContext(path: '/test'));
 
-      expect(validated, [
-        Uri.parse('https://api.example.test/start'),
-        Uri.parse('https://api.example.test/next'),
-      ]);
-      expect(requests, hasLength(2));
-      expect(requests.every((request) => !request.followRedirects), isTrue);
-      expect(requests[1].url.path, '/next');
-    });
+        expect(validated, [
+          Uri.parse('https://api.example.test/start'),
+          Uri.parse('https://api.example.test/next'),
+        ]);
+        expect(requests, hasLength(2));
+        expect(requests.every((request) => !request.followRedirects), isTrue);
+        expect(requests[1].url.path, '/next');
+      },
+    );
 
     test('REST redirect limit is enforced', () async {
       var requestCount = 0;
@@ -190,22 +191,25 @@ void main() {
 
       await expectLater(
         provider.load(RouteDataContext(path: '/test')),
-        throwsA(isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          contains('maximum of 5 redirects'),
-        )),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            contains('maximum of 5 redirects'),
+          ),
+        ),
       );
       expect(requestCount, 6);
     });
 
     test('REST redirect destination is rejected by the SSRF guard', () async {
-      final client =
-          MockClient.streaming((request, _) async => http.StreamedResponse(
-                const Stream<List<int>>.empty(),
-                302,
-                headers: {'location': 'http://127.0.0.1/admin'},
-              ));
+      final client = MockClient.streaming(
+        (request, _) async => http.StreamedResponse(
+          const Stream<List<int>>.empty(),
+          302,
+          headers: {'location': 'http://127.0.0.1/admin'},
+        ),
+      );
       final provider = RestDataProvider<Map<String, dynamic>>(
         urlBuilder: (_) => 'https://api.example.test/start',
         mapper: (json) => json as Map<String, dynamic>,
@@ -220,46 +224,54 @@ void main() {
       );
     });
 
-    test('cross-origin redirects do not forward authorization or cookies',
-        () async {
-      final requests = <http.BaseRequest>[];
-      final client = MockClient.streaming((request, _) async {
-        requests.add(request);
-        if (requests.length == 1) {
+    test(
+      'cross-origin redirects do not forward authorization or cookies',
+      () async {
+        final requests = <http.BaseRequest>[];
+        final client = MockClient.streaming((request, _) async {
+          requests.add(request);
+          if (requests.length == 1) {
+            return http.StreamedResponse(
+              const Stream<List<int>>.empty(),
+              302,
+              headers: {'location': 'https://other.example.test/data'},
+            );
+          }
           return http.StreamedResponse(
-            const Stream<List<int>>.empty(),
-            302,
-            headers: {'location': 'https://other.example.test/data'},
+            Stream.value(utf8.encode('{"ok":true}')),
+            200,
+            headers: {'content-type': 'application/json'},
           );
-        }
-        return http.StreamedResponse(
-          Stream.value(utf8.encode('{"ok":true}')),
-          200,
-          headers: {'content-type': 'application/json'},
+        });
+        final provider = RestDataProvider<Map<String, dynamic>>(
+          urlBuilder: (_) => 'https://api.example.test/start',
+          mapper: (json) => json as Map<String, dynamic>,
+          client: client,
+          headers: {
+            'Authorization': 'Bearer test-value',
+            'Cookie': 'session=test-value',
+            'X-Api-Key': 'test-value',
+          },
+          ssrfGuard: _RecordingSsrfGuard([]),
+          maxRetries: 0,
         );
-      });
-      final provider = RestDataProvider<Map<String, dynamic>>(
-        urlBuilder: (_) => 'https://api.example.test/start',
-        mapper: (json) => json as Map<String, dynamic>,
-        client: client,
-        headers: {
-          'Authorization': 'Bearer test-value',
-          'Cookie': 'session=test-value',
-          'X-Api-Key': 'test-value',
-        },
-        ssrfGuard: _RecordingSsrfGuard([]),
-        maxRetries: 0,
-      );
 
-      await provider.load(RouteDataContext(path: '/test'));
+        await provider.load(RouteDataContext(path: '/test'));
 
-      expect(requests[1].headers.keys.map((key) => key.toLowerCase()),
-          isNot(contains('authorization')));
-      expect(requests[1].headers.keys.map((key) => key.toLowerCase()),
-          isNot(contains('cookie')));
-      expect(requests[1].headers.keys.map((key) => key.toLowerCase()),
-          isNot(contains('x-api-key')));
-    });
+        expect(
+          requests[1].headers.keys.map((key) => key.toLowerCase()),
+          isNot(contains('authorization')),
+        );
+        expect(
+          requests[1].headers.keys.map((key) => key.toLowerCase()),
+          isNot(contains('cookie')),
+        );
+        expect(
+          requests[1].headers.keys.map((key) => key.toLowerCase()),
+          isNot(contains('x-api-key')),
+        );
+      },
+    );
 
     test('GraphQL redirects are disabled and rejected', () async {
       var followRedirects = true;
@@ -281,18 +293,18 @@ void main() {
 
       await expectLater(
         provider.load(RouteDataContext(path: '/test')),
-        throwsA(isA<http.ClientException>().having(
-          (error) => error.message,
-          'message',
-          contains('redirects are not followed'),
-        )),
+        throwsA(
+          isA<http.ClientException>().having(
+            (error) => error.message,
+            'message',
+            contains('redirects are not followed'),
+          ),
+        ),
       );
       expect(followRedirects, isFalse);
     });
 
-    test(
-        'RestDataProvider blocks loopback addresses before making network requests',
-        () async {
+    test('RestDataProvider blocks loopback addresses before making network requests', () async {
       final provider = RestDataProvider<Map<String, dynamic>>(
         urlBuilder: (ctx) => 'http://127.0.0.1:8080/internal-api',
         mapper: (json) => json as Map<String, dynamic>,
@@ -300,30 +312,36 @@ void main() {
 
       expect(
         () => provider.load(RouteDataContext(path: '/test')),
-        throwsA(isA<SecurityException>().having(
-          (e) => e.message,
-          'message',
-          contains('loopback address'),
-        )),
+        throwsA(
+          isA<SecurityException>().having(
+            (e) => e.message,
+            'message',
+            contains('loopback address'),
+          ),
+        ),
       );
     });
 
-    test('RestDataProvider blocks cloud metadata endpoints (169.254.169.254)',
-        () async {
-      final provider = RestDataProvider<Map<String, dynamic>>(
-        urlBuilder: (ctx) => 'http://169.254.169.254/latest/meta-data/',
-        mapper: (json) => json as Map<String, dynamic>,
-      );
+    test(
+      'RestDataProvider blocks cloud metadata endpoints (169.254.169.254)',
+      () async {
+        final provider = RestDataProvider<Map<String, dynamic>>(
+          urlBuilder: (ctx) => 'http://169.254.169.254/latest/meta-data/',
+          mapper: (json) => json as Map<String, dynamic>,
+        );
 
-      expect(
-        () => provider.load(RouteDataContext(path: '/test')),
-        throwsA(isA<SecurityException>().having(
-          (e) => e.message,
-          'message',
-          contains('cloud metadata'),
-        )),
-      );
-    });
+        expect(
+          () => provider.load(RouteDataContext(path: '/test')),
+          throwsA(
+            isA<SecurityException>().having(
+              (e) => e.message,
+              'message',
+              contains('cloud metadata'),
+            ),
+          ),
+        );
+      },
+    );
 
     test('SsrfGuard blocks IPv4-mapped IPv6 loopback addresses', () async {
       expect(
@@ -335,43 +353,44 @@ void main() {
     });
 
     test(
-        'RestDataProvider stream limit aborts before buffering oversized payload',
-        () async {
-      // Mock client that emits oversized chunks
-      final mockClient = MockClient.streaming((request, stream) async {
-        final bigChunk = List.filled(1024 * 1024, 65); // 1MB chunks
-        final controller = StreamController<List<int>>();
-        // Send 10 chunks (10MB total)
-        for (var i = 0; i < 10; i++) {
-          controller.add(bigChunk);
-        }
-        controller.close();
-        return http.StreamedResponse(
-          controller.stream,
-          200,
-          headers: {'content-type': 'application/json'},
+      'RestDataProvider stream limit aborts before buffering oversized payload',
+      () async {
+        // Mock client that emits oversized chunks
+        final mockClient = MockClient.streaming((request, stream) async {
+          final bigChunk = List.filled(1024 * 1024, 65); // 1MB chunks
+          final controller = StreamController<List<int>>();
+          // Send 10 chunks (10MB total)
+          for (var i = 0; i < 10; i++) {
+            controller.add(bigChunk);
+          }
+          controller.close();
+          return http.StreamedResponse(
+            controller.stream,
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        });
+
+        final provider = RestDataProvider<Map<String, dynamic>>(
+          urlBuilder: (ctx) => 'http://localhost:8080/data',
+          mapper: (json) => json as Map<String, dynamic>,
+          client: mockClient,
+          maxResponseSizeBytes: 2 * 1024 * 1024, // 2MB limit
+          ssrfGuard: const SsrfGuard(allowLocalhostInDev: true),
         );
-      });
 
-      final provider = RestDataProvider<Map<String, dynamic>>(
-        urlBuilder: (ctx) => 'http://localhost:8080/data',
-        mapper: (json) => json as Map<String, dynamic>,
-        client: mockClient,
-        maxResponseSizeBytes: 2 * 1024 * 1024, // 2MB limit
-        ssrfGuard: const SsrfGuard(
-          allowLocalhostInDev: true,
-        ),
-      );
-
-      expect(
-        () => provider.load(RouteDataContext(path: '/test')),
-        throwsA(isA<StateError>().having(
-          (e) => e.message,
-          'message',
-          contains('exceeded maximum allowed size'),
-        )),
-      );
-    });
+        expect(
+          () => provider.load(RouteDataContext(path: '/test')),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains('exceeded maximum allowed size'),
+            ),
+          ),
+        );
+      },
+    );
   });
 
   group('Multi-Tenant Host Security Integration Tests', () {
@@ -422,43 +441,49 @@ void main() {
       expect(res.body, contains('Missing Host header'));
     });
 
-    test('Rejects unauthorized/spoofed Host header with HTTP 400 Bad Request',
-        () async {
-      final req = ServerRequest(
-        method: 'GET',
-        uri: Uri.parse('http://attacker.com/dashboard'),
-        headers: {'host': 'attacker-controlled.com'},
-      );
+    test(
+      'Rejects unauthorized/spoofed Host header with HTTP 400 Bad Request',
+      () async {
+        final req = ServerRequest(
+          method: 'GET',
+          uri: Uri.parse('http://attacker.com/dashboard'),
+          headers: {'host': 'attacker-controlled.com'},
+        );
 
-      final res = await multiTenantEngine.handleRequest(req);
-      expect(res.statusCode, equals(400));
-      expect(res.body, contains('Unauthorized or unregistered Host header'));
-    });
+        final res = await multiTenantEngine.handleRequest(req);
+        expect(res.statusCode, equals(400));
+        expect(res.body, contains('Unauthorized or unregistered Host header'));
+      },
+    );
 
-    test('Valid host resolves tenant and ignores untrusted x-tenant-id header',
-        () async {
-      final req = ServerRequest(
-        method: 'GET',
-        uri: Uri.parse('http://acme.portal.dev/dashboard'),
-        headers: {
-          'host': 'acme.portal.dev',
-          'x-tenant-id': 'globex-inc', // Attacker trying to spoof globex
-        },
-      );
+    test(
+      'Valid host resolves tenant and ignores untrusted x-tenant-id header',
+      () async {
+        final req = ServerRequest(
+          method: 'GET',
+          uri: Uri.parse('http://acme.portal.dev/dashboard'),
+          headers: {
+            'host': 'acme.portal.dev',
+            'x-tenant-id': 'globex-inc', // Attacker trying to spoof globex
+          },
+        );
 
-      final res = await multiTenantEngine.handleRequest(req);
-      expect(res.statusCode, equals(200));
-      expect(res.headers['X-MetaMantle-Cache'], equals('MISS'));
+        final res = await multiTenantEngine.handleRequest(req);
+        expect(res.statusCode, equals(200));
+        expect(res.headers['X-MetaMantle-Cache'], equals('MISS'));
 
-      // Verify that cache key was created under acme-corp, not spoofed globex-inc
-      final acmeKey = multiTenantEngine.cache;
-      final cachedEntry = await acmeKey.get(
-        '[acme-corp|acme.portal.dev|en|USD]:/dashboard:/dashboard?',
-      );
-      expect(cachedEntry, isNotNull,
-          reason:
-              'Cache key must be partitioned by validated host tenant, not spoofed header');
-    });
+        // Verify that cache key was created under acme-corp, not spoofed globex-inc
+        final acmeKey = multiTenantEngine.cache;
+        final cachedEntry = await acmeKey.get(
+          '[acme-corp|acme.portal.dev|en|USD]:/dashboard:/dashboard?',
+        );
+        expect(
+          cachedEntry,
+          isNotNull,
+          reason: 'Cache key must be partitioned by validated host tenant, not spoofed header',
+        );
+      },
+    );
   });
 }
 

@@ -20,11 +20,7 @@ enum WebVitalName {
 }
 
 /// Google performance threshold rating.
-enum MetricRating {
-  good,
-  needsImprovement,
-  poor,
-}
+enum MetricRating { good, needsImprovement, poor }
 
 /// A privacy-preserving observation of a single Web Vital metric.
 class WebVitalSample {
@@ -53,12 +49,12 @@ class WebVitalSample {
   }
 
   Map<String, dynamic> toJson() => {
-        'name': name.name.toUpperCase(),
-        'value': value,
-        'path': path,
-        'timestamp': timestamp.toUtc().toIso8601String(),
-        if (connectionType != null) 'connectionType': connectionType,
-      };
+    'name': name.name.toUpperCase(),
+    'value': value,
+    'path': path,
+    'timestamp': timestamp.toUtc().toIso8601String(),
+    if (connectionType != null) 'connectionType': connectionType,
+  };
 }
 
 /// Statistical summary for a specific Web Vital metric across recorded samples.
@@ -84,15 +80,15 @@ class MetricSummary {
   final MetricRating rating;
 
   Map<String, dynamic> toJson() => {
-        'metric': name.name.toUpperCase(),
-        'sampleCount': sampleCount,
-        'p75': double.parse(p75.toStringAsFixed(3)),
-        'p90': double.parse(p90.toStringAsFixed(3)),
-        'p95': double.parse(p95.toStringAsFixed(3)),
-        'min': double.parse(min.toStringAsFixed(3)),
-        'max': double.parse(max.toStringAsFixed(3)),
-        'rating': rating.name,
-      };
+    'metric': name.name.toUpperCase(),
+    'sampleCount': sampleCount,
+    'p75': double.parse(p75.toStringAsFixed(3)),
+    'p90': double.parse(p90.toStringAsFixed(3)),
+    'p95': double.parse(p95.toStringAsFixed(3)),
+    'min': double.parse(min.toStringAsFixed(3)),
+    'max': double.parse(max.toStringAsFixed(3)),
+    'rating': rating.name,
+  };
 }
 
 /// Aggregates and calculates Core Web Vitals percentiles according to Google standards.
@@ -208,8 +204,9 @@ class CoreWebVitalsCollector {
     final summaries = summarize();
     final jsonMap = {
       'generatedAt': DateTime.now().toUtc().toIso8601String(),
-      'metrics':
-          summaries.map((k, v) => MapEntry(k.name.toUpperCase(), v.toJson())),
+      'metrics': summaries.map(
+        (k, v) => MapEntry(k.name.toUpperCase(), v.toJson()),
+      ),
     };
     return const JsonEncoder.withIndent('  ').convert(jsonMap);
   }

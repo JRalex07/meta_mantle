@@ -23,32 +23,55 @@ Future<void> main(List<String> arguments) async {
 
   parser.commands['build-web']!
     ..addFlag('help', abbr: 'h', negatable: false)
-    ..addOption('mode',
-        defaultsTo: 'prerender',
-        allowed: ['metadata', 'prerender', 'hybrid'],
-        help: 'Build mode: metadata, prerender, or hybrid.')
+    ..addOption(
+      'mode',
+      defaultsTo: 'prerender',
+      allowed: ['metadata', 'prerender', 'hybrid'],
+      help: 'Build mode: metadata, prerender, or hybrid.',
+    )
     ..addFlag('release', defaultsTo: true, help: 'Compile in release mode.')
     ..addFlag('debug', defaultsTo: false, help: 'Compile in debug mode.')
-    ..addOption('output',
-        defaultsTo: 'build/web',
-        help: 'Output directory for generated static assets.')
-    ..addOption('base-href',
-        defaultsTo: '/', help: 'Base href for Flutter routing.')
-    ..addFlag('wasm',
-        defaultsTo: false, help: 'Compile with WebAssembly (WasmGC).')
-    ..addFlag('verbose',
-        abbr: 'v', defaultsTo: false, help: 'Enable detailed logging.')
-    ..addFlag('dry-run',
-        defaultsTo: false,
-        help: 'Simulate generation without writing files or compiling.')
-    ..addFlag('clean',
-        defaultsTo: false, help: 'Run flutter clean before building.')
-    ..addFlag('strict',
-        defaultsTo: false,
-        help: 'Fail build if any metadata or route warnings occur.')
-    ..addOption('config',
-        defaultsTo: 'meta_mantle.config.json',
-        help: 'Path to MetaMantle JSON configuration file.');
+    ..addOption(
+      'output',
+      defaultsTo: 'build/web',
+      help: 'Output directory for generated static assets.',
+    )
+    ..addOption(
+      'base-href',
+      defaultsTo: '/',
+      help: 'Base href for Flutter routing.',
+    )
+    ..addFlag(
+      'wasm',
+      defaultsTo: false,
+      help: 'Compile with WebAssembly (WasmGC).',
+    )
+    ..addFlag(
+      'verbose',
+      abbr: 'v',
+      defaultsTo: false,
+      help: 'Enable detailed logging.',
+    )
+    ..addFlag(
+      'dry-run',
+      defaultsTo: false,
+      help: 'Simulate generation without writing files or compiling.',
+    )
+    ..addFlag(
+      'clean',
+      defaultsTo: false,
+      help: 'Run flutter clean before building.',
+    )
+    ..addFlag(
+      'strict',
+      defaultsTo: false,
+      help: 'Fail build if any metadata or route warnings occur.',
+    )
+    ..addOption(
+      'config',
+      defaultsTo: 'meta_mantle.config.json',
+      help: 'Path to MetaMantle JSON configuration file.',
+    );
 
   parser.commands['build']!
     ..addFlag('help', abbr: 'h', negatable: false)
@@ -76,13 +99,17 @@ Future<void> main(List<String> arguments) async {
 
   parser.commands['inspect-url']!
     ..addFlag('help', abbr: 'h', negatable: false)
-    ..addOption('url',
-        mandatory: true,
-        help: 'Target URL to inspect without running JavaScript.')
+    ..addOption(
+      'url',
+      mandatory: true,
+      help: 'Target URL to inspect without running JavaScript.',
+    )
     ..addFlag('json', defaultsTo: false, help: 'Output report as JSON.')
-    ..addFlag('allow-localhost',
-        defaultsTo: true,
-        help: 'Allow loopback/localhost requests for local development.');
+    ..addFlag(
+      'allow-localhost',
+      defaultsTo: true,
+      help: 'Allow loopback/localhost requests for local development.',
+    );
 
   parser.commands['crawl']!
     ..addFlag('help', abbr: 'h', negatable: false)
@@ -101,12 +128,21 @@ Future<void> main(List<String> arguments) async {
 
   parser.commands['regression']!
     ..addFlag('help', abbr: 'h', negatable: false)
-    ..addOption('baseline',
-        mandatory: true, help: 'Path to baseline crawl/audit JSON file.')
-    ..addOption('current',
-        mandatory: true, help: 'Path to current crawl/audit JSON file.')
-    ..addFlag('json',
-        defaultsTo: false, help: 'Output regression report as JSON.');
+    ..addOption(
+      'baseline',
+      mandatory: true,
+      help: 'Path to baseline crawl/audit JSON file.',
+    )
+    ..addOption(
+      'current',
+      mandatory: true,
+      help: 'Path to current crawl/audit JSON file.',
+    )
+    ..addFlag(
+      'json',
+      defaultsTo: false,
+      help: 'Output regression report as JSON.',
+    );
 
   final webParser = parser.commands['web']!
     ..addCommand('analyze')
@@ -134,14 +170,20 @@ Future<void> main(List<String> arguments) async {
 
   try {
     final result = parser.parse(arguments);
-    if (result['help'] == true ||
-        result.command == null ||
-        result.command!['help'] == true) {
+    if (result['help'] == true || result.command == null) {
       stdout.writeln(_usage(parser));
       return;
     }
 
     final command = result.command!;
+    if (command['help'] == true) {
+      final subParser = parser.commands[command.name];
+      stdout.writeln('Usage: dart run meta_mantle ${command.name} [options]\n');
+      if (subParser != null) {
+        stdout.writeln(subParser.usage);
+      }
+      return;
+    }
 
     // 1. inspect-url command
     if (command.name == 'inspect-url') {
@@ -158,7 +200,8 @@ Future<void> main(List<String> arguments) async {
         final report = await inspector.inspectUrl(targetUrl);
         if (asJson) {
           stdout.writeln(
-              const JsonEncoder.withIndent('  ').convert(report.toJson()));
+            const JsonEncoder.withIndent('  ').convert(report.toJson()),
+          );
         } else {
           stdout.writeln(report.toTerminalSummary());
         }
@@ -179,7 +222,8 @@ Future<void> main(List<String> arguments) async {
 
       if (!await baselineFile.exists() || !await currentFile.exists()) {
         stderr.writeln(
-            'Error: Either baseline ($baselinePath) or current ($currentPath) snapshot file does not exist.');
+          'Error: Either baseline ($baselinePath) or current ($currentPath) snapshot file does not exist.',
+        );
         exitCode = 1;
         return;
       }
@@ -206,20 +250,25 @@ Future<void> main(List<String> arguments) async {
       );
 
       if (asJson) {
-        stdout.writeln(const JsonEncoder.withIndent('  ')
-            .convert(findings.map((f) => f.toJson()).toList()));
+        stdout.writeln(
+          const JsonEncoder.withIndent('  ')
+              .convert(findings.map((f) => f.toJson()).toList()),
+        );
       } else {
         stdout.writeln('=== MetaMantle SEO Regression Report ===\n');
         if (findings.isNotEmpty) {
           stderr.writeln(
-              'FAILED: ${findings.length} SEO regression(s) detected!\n');
+            'FAILED: ${findings.length} SEO regression(s) detected!\n',
+          );
           for (final f in findings) {
             stderr.writeln(
-                '  - [${f.severity}] ${f.url} (${f.field}): ${f.message}');
+              '  - [${f.severity}] ${f.url} (${f.field}): ${f.message}',
+            );
           }
         } else {
           stdout.writeln(
-              'PASSED: Zero regressions detected across ${currentSnapshots.length} routes.');
+            'PASSED: Zero regressions detected across ${currentSnapshots.length} routes.',
+          );
         }
       }
 
@@ -243,21 +292,27 @@ Future<void> main(List<String> arguments) async {
 
         if (asJson) {
           stdout.writeln(
-              const JsonEncoder.withIndent('  ').convert(report.toMap()));
+            const JsonEncoder.withIndent('  ').convert(report.toMap()),
+          );
         } else {
           stdout.writeln(
-              '=== Flutter Web Acceleration & Optimization Report ===\n');
+            '=== Flutter Web Acceleration & Optimization Report ===\n',
+          );
           stdout.writeln(
-              'Project Type:      ${report.isFlutterProject ? "Flutter App" : "Standard Dart/Web"}');
+            'Project Type:      ${report.isFlutterProject ? "Flutter App" : "Standard Dart/Web"}',
+          );
           stdout.writeln(
-              'Wasm Supported:    ${report.supportsWasm ? "Yes" : "No"}');
+            'Wasm Supported:    ${report.supportsWasm ? "Yes" : "No"}',
+          );
           stdout.writeln(
-              'Modern Bootstrap:  ${report.usesModernBootstrap ? "Yes (flutter_bootstrap.js)" : "No (legacy flutter.js)"}');
+            'Modern Bootstrap:  ${report.usesModernBootstrap ? "Yes (flutter_bootstrap.js)" : "No (legacy flutter.js)"}',
+          );
           stdout.writeln('Findings:          ${report.findings.length}\n');
 
           for (final f in report.findings) {
             stdout.writeln(
-                '[${f.severity.toUpperCase()}] [${f.category}] ${f.title}');
+              '[${f.severity.toUpperCase()}] [${f.category}] ${f.title}',
+            );
             stdout.writeln('  ${f.description}');
             if (f.suggestedFix != null) {
               stdout.writeln('  Suggested Fix: ${f.suggestedFix}');
@@ -288,7 +343,8 @@ Future<void> main(List<String> arguments) async {
         stdout.writeln('=== Recommended Flutter Web Build Command ===\n');
         stdout.writeln('  $cmd\n');
         stdout.writeln(
-            'Recommended Deployment Response Headers (for Skwasm/Wasm):');
+          'Recommended Deployment Response Headers (for Skwasm/Wasm):',
+        );
         accelerator.getRecommendedServerHeaders().forEach((k, v) {
           stdout.writeln('  $k: $v');
         });
@@ -369,13 +425,15 @@ Future<void> main(List<String> arguments) async {
         if (await dataFile.exists()) {
           final decoded = json.decode(await dataFile.readAsString()) as List;
           stdout.writeln(
-              'Expanded dynamic pattern: ${pattern.pathPattern} (${decoded.length} items)');
+            'Expanded dynamic pattern: ${pattern.pathPattern} (${decoded.length} items)',
+          );
         }
       }
       stdout.writeln('\n=== MetaMantle Route Inspector ===');
       stdout.writeln('Base URL: ${parsedConfig.baseUrl}');
-      stdout
-          .writeln('Configured explicit routes: ${parsedConfig.routes.length}');
+      stdout.writeln(
+        'Configured explicit routes: ${parsedConfig.routes.length}',
+      );
       for (final r in parsedConfig.routes) {
         stdout.writeln('  ${r.path}');
       }
@@ -440,10 +498,12 @@ Future<void> main(List<String> arguments) async {
       } else {
         stdout.writeln('=== MetaMantle SEO Audit Report ===');
         stdout.writeln(
-            'Site Name:       ${parsedConfig.siteName ?? "(unnamed)"}');
+          'Site Name:       ${parsedConfig.siteName ?? "(unnamed)"}',
+        );
         stdout.writeln('Base URL:        ${parsedConfig.baseUrl}');
         stdout.writeln(
-            'Strict Quality:  ${warnings.isEmpty ? "PASS" : "FAIL (${warnings.length} warning(s))"}');
+          'Strict Quality:  ${warnings.isEmpty ? "PASS" : "FAIL (${warnings.length} warning(s))"}',
+        );
         if (warnings.isNotEmpty) {
           stdout.writeln('\nRemediations:');
           for (final w in warnings) {
@@ -470,7 +530,8 @@ Future<void> main(List<String> arguments) async {
           try {
             final res = await inspector.inspectUrl(fullUrl);
             stdout.writeln(
-                '  [${res.statusCode}] ${res.url} - ${res.title ?? "(NO TITLE)"}');
+              '  [${res.statusCode}] ${res.url} - ${res.title ?? "(NO TITLE)"}',
+            );
             if (res.statusCode >= 400) failCount++;
           } catch (e) {
             stderr.writeln('  [ERR] $fullUrl: $e');
@@ -548,8 +609,9 @@ Future<void> main(List<String> arguments) async {
     if (command['no-sitemap'] == true || command['no-robots'] == true) {
       effectiveConfig = parsedConfig.copyWith(
         sitemap: command['no-sitemap'] == true ? false : parsedConfig.sitemap,
-        robotsTxt:
-            command['no-robots'] == true ? false : parsedConfig.robotsTxt,
+        robotsTxt: command['no-robots'] == true
+            ? false
+            : parsedConfig.robotsTxt,
       );
     }
 
@@ -572,7 +634,8 @@ Future<void> main(List<String> arguments) async {
 
     final actionLabel = isDryRun ? 'Would generate' : 'Generated';
     stdout.writeln(
-        '$actionLabel ${buildResult.generatedFiles.length} files for ${buildResult.routes.length} routes.');
+      '$actionLabel ${buildResult.generatedFiles.length} files for ${buildResult.routes.length} routes.',
+    );
     for (final warning in buildResult.warnings) {
       stderr.writeln('WARNING: $warning');
     }
@@ -588,7 +651,8 @@ Future<void> main(List<String> arguments) async {
     exitCode = 2;
   } on FileSystemException catch (error) {
     stderr.writeln(
-        'File error: ${error.message} (${error.path ?? 'unknown path'})');
+      'File error: ${error.message} (${error.path ?? 'unknown path'})',
+    );
     exitCode = 2;
   } catch (error, stack) {
     stderr.writeln('Unexpected error: $error');
@@ -597,7 +661,8 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-String _usage(ArgParser parser) => """
+String _usage(ArgParser parser) =>
+    """
 MetaMantle CLI
 
 Usage:

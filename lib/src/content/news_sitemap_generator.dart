@@ -31,7 +31,8 @@ class NewsSitemapGenerator {
     buf.writeln('<?xml version="1.0" encoding="UTF-8"?>');
     buf.writeln('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"');
     buf.writeln(
-        '        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">');
+      '        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">',
+    );
 
     for (final article in articles) {
       buf.writeln('  <url>');
@@ -39,24 +40,30 @@ class NewsSitemapGenerator {
       buf.writeln('    <news:news>');
       buf.writeln('      <news:publication>');
       buf.writeln(
-          '        <news:name>${_escape(article.publicationName)}</news:name>');
+        '        <news:name>${_escape(article.publicationName)}</news:name>',
+      );
       buf.writeln(
-          '        <news:language>${_escape(article.publicationLanguage)}</news:language>');
+        '        <news:language>${_escape(article.publicationLanguage)}</news:language>',
+      );
       buf.writeln('      </news:publication>');
       buf.writeln(
-          '      <news:publication_date>${article.publicationDate.toUtc().toIso8601String()}</news:publication_date>');
+        '      <news:publication_date>${article.publicationDate.toUtc().toIso8601String()}</news:publication_date>',
+      );
       buf.writeln('      <news:title>${_escape(article.title)}</news:title>');
       if (article.genres != null) {
         buf.writeln(
-            '      <news:genres>${_escape(article.genres!)}</news:genres>');
+          '      <news:genres>${_escape(article.genres!)}</news:genres>',
+        );
       }
       if (article.keywords.isNotEmpty) {
         buf.writeln(
-            '      <news:keywords>${_escape(article.keywords.join(", "))}</news:keywords>');
+          '      <news:keywords>${_escape(article.keywords.join(", "))}</news:keywords>',
+        );
       }
       if (article.stockTickers.isNotEmpty) {
         buf.writeln(
-            '      <news:stock_tickers>${_escape(article.stockTickers.join(", "))}</news:stock_tickers>');
+          '      <news:stock_tickers>${_escape(article.stockTickers.join(", "))}</news:stock_tickers>',
+        );
       }
       buf.writeln('    </news:news>');
       buf.writeln('  </url>');

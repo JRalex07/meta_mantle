@@ -17,9 +17,7 @@ void main() {
       await temp.delete(recursive: true);
     });
 
-    test(
-        'regenerating one page never copies or rewrites unrelated generated HTML objects',
-        () async {
+    test('regenerating one page never copies or rewrites unrelated generated HTML objects', () async {
       final generator = HybridStaticGenerator(store: store);
 
       // 1. Initial build: 5 distinct pages
@@ -43,8 +41,9 @@ void main() {
       }
 
       // Record file stats for all objects in .objects
-      final objectsDir =
-          Directory('${store.root.path}${Platform.pathSeparator}.objects');
+      final objectsDir = Directory(
+        '${store.root.path}${Platform.pathSeparator}.objects',
+      );
       expect(await objectsDir.exists(), isTrue);
 
       final initialStats = <String, DateTime>{};
@@ -94,92 +93,97 @@ void main() {
       expect(unchangedCount, 5);
     });
 
-    test('rollbackTo restores previous generation publication atomically',
-        () async {
-      final generator = HybridStaticGenerator(store: store);
+    test(
+      'rollbackTo restores previous generation publication atomically',
+      () async {
+        final generator = HybridStaticGenerator(store: store);
 
-      // Version 1
-      await generator.generateFixedPages([
-        FixedRouteSource(
-          routeId: 'pages',
-          path: '/home',
-          render: () async => const GeneratedRouteDocument(
-            html: '<!doctype html><body>Version 1 Home</body>',
+        // Version 1
+        await generator.generateFixedPages([
+          FixedRouteSource(
+            routeId: 'pages',
+            path: '/home',
+            render: () async => const GeneratedRouteDocument(
+              html: '<!doctype html><body>Version 1 Home</body>',
+            ),
           ),
-        ),
-      ]);
-      final v1 = await store.activeVersion;
+        ]);
+        final v1 = await store.activeVersion;
 
-      // Version 2
-      await generator.generateFixedPages([
-        FixedRouteSource(
-          routeId: 'pages',
-          path: '/home',
-          render: () async => const GeneratedRouteDocument(
-            html: '<!doctype html><body>Version 2 Home</body>',
+        // Version 2
+        await generator.generateFixedPages([
+          FixedRouteSource(
+            routeId: 'pages',
+            path: '/home',
+            render: () async => const GeneratedRouteDocument(
+              html: '<!doctype html><body>Version 2 Home</body>',
+            ),
           ),
-        ),
-      ]);
-      final v2 = await store.activeVersion;
-      expect(v1, isNot(v2));
-      expect(await store.read('/home'), contains('Version 2 Home'));
+        ]);
+        final v2 = await store.activeVersion;
+        expect(v1, isNot(v2));
+        expect(await store.read('/home'), contains('Version 2 Home'));
 
-      // Rollback to v1
-      await store.rollbackTo(v1!);
-      expect(await store.activeVersion, v1);
-      expect(await store.read('/home'), contains('Version 1 Home'));
-    });
+        // Rollback to v1
+        await store.rollbackTo(v1!);
+        expect(await store.activeVersion, v1);
+        expect(await store.read('/home'), contains('Version 1 Home'));
+      },
+    );
 
     test(
-        'garbage collection deletes unreferenced objects older than grace period',
-        () async {
-      final generator = HybridStaticGenerator(store: store);
+      'garbage collection deletes unreferenced objects older than grace period',
+      () async {
+        final generator = HybridStaticGenerator(store: store);
 
-      // Version 1
-      await generator.generateFixedPages([
-        FixedRouteSource(
-          routeId: 'pages',
-          path: '/page',
-          render: () async => const GeneratedRouteDocument(
-            html: '<!doctype html><body>Old unreferenced object</body>',
+        // Version 1
+        await generator.generateFixedPages([
+          FixedRouteSource(
+            routeId: 'pages',
+            path: '/page',
+            render: () async => const GeneratedRouteDocument(
+              html: '<!doctype html><body>Old unreferenced object</body>',
+            ),
           ),
-        ),
-      ]);
+        ]);
 
-      // Version 2 (replaces content of /page)
-      await generator.generateFixedPages([
-        FixedRouteSource(
-          routeId: 'pages',
-          path: '/page',
-          render: () async => const GeneratedRouteDocument(
-            html: '<!doctype html><body>New active object</body>',
+        // Version 2 (replaces content of /page)
+        await generator.generateFixedPages([
+          FixedRouteSource(
+            routeId: 'pages',
+            path: '/page',
+            render: () async => const GeneratedRouteDocument(
+              html: '<!doctype html><body>New active object</body>',
+            ),
           ),
-        ),
-      ]);
+        ]);
 
-      // Run garbage collection with 0 grace period and retaining only 1 version (active)
-      final report = await store.garbageCollect(
-        retentionGracePeriod: Duration.zero,
-        maxRetainedVersions: 1,
-      );
+        // Run garbage collection with 0 grace period and retaining only 1 version (active)
+        final report = await store.garbageCollect(
+          retentionGracePeriod: Duration.zero,
+          maxRetainedVersions: 1,
+        );
 
-      expect(report.retainedVersions, 1);
-      expect(report.deletedObjects, greaterThanOrEqualTo(1));
-      expect(report.reclaimedBytes, greaterThan(0));
+        expect(report.retainedVersions, 1);
+        expect(report.deletedObjects, greaterThanOrEqualTo(1));
+        expect(report.reclaimedBytes, greaterThan(0));
 
-      // Active page is still readable and intact
-      expect(await store.read('/page'), contains('New active object'));
-    });
+        // Active page is still readable and intact
+        expect(await store.read('/page'), contains('New active object'));
+      },
+    );
 
-    test('storage capabilities report accurate local filesystem guarantees',
-        () {
-      final caps = store.capabilities;
-      expect(caps.supportsImmutableObjects, isTrue);
-      expect(caps.supportsAtomicPublication, isTrue);
-      expect(caps.supportsRollback, isTrue);
-      expect(caps.supportsGarbageCollection, isTrue);
-      expect(caps.supportsDistributedLeases, isFalse);
-    });
+    test(
+      'storage capabilities report accurate local filesystem guarantees',
+      () {
+        final caps = store.capabilities;
+        expect(caps.supportsImmutableObjects, isTrue);
+        expect(caps.supportsAtomicPublication, isTrue);
+        expect(caps.supportsRollback, isTrue);
+        expect(caps.supportsGarbageCollection, isTrue);
+        expect(caps.supportsDistributedLeases, isFalse);
+      },
+    );
   });
 
   group('Regeneration Queue Indexing, Batching & Benchmark Tests', () {
@@ -195,29 +199,31 @@ void main() {
       await temp.delete(recursive: true);
     });
 
-    test('idempotency lookup is O(1) and coalesces duplicate requests',
-        () async {
-      final first = await queue.enqueue(
-        siteId: 'site-1',
-        tenantId: 'tenant-1',
-        path: '/items/item-100',
-        routeId: 'items',
-        tags: const ['catalog'],
-        idempotencyKey: 'key-100',
-      );
+    test(
+      'idempotency lookup is O(1) and coalesces duplicate requests',
+      () async {
+        final first = await queue.enqueue(
+          siteId: 'site-1',
+          tenantId: 'tenant-1',
+          path: '/items/item-100',
+          routeId: 'items',
+          tags: const ['catalog'],
+          idempotencyKey: 'key-100',
+        );
 
-      final second = await queue.enqueue(
-        siteId: 'site-1',
-        tenantId: 'tenant-1',
-        path: '/items/item-100',
-        routeId: 'items',
-        tags: const ['catalog'],
-        idempotencyKey: 'key-100',
-      );
+        final second = await queue.enqueue(
+          siteId: 'site-1',
+          tenantId: 'tenant-1',
+          path: '/items/item-100',
+          routeId: 'items',
+          tags: const ['catalog'],
+          idempotencyKey: 'key-100',
+        );
 
-      expect(second.id, first.id);
-      expect(second.path, first.path);
-    });
+        expect(second.id, first.id);
+        expect(second.path, first.path);
+      },
+    );
 
     test('batch enqueueAll schedules multiple jobs atomically', () async {
       final requests = List.generate(
@@ -239,90 +245,94 @@ void main() {
       final replayed = await queue.enqueueAll(requests);
       expect(replayed.length, 100);
       expect(
-          replayed.map((j) => j.id).toList(), jobs.map((j) => j.id).toList());
+        replayed.map((j) => j.id).toList(),
+        jobs.map((j) => j.id).toList(),
+      );
 
       final metrics = await queue.metrics();
       expect(metrics.totalJobs, 100);
       expect(metrics.queuedJobs, 100);
     });
 
-    test('cleanupCompleted deletes finished jobs and frees idempotency keys',
-        () async {
-      final job = await queue.enqueue(
-        siteId: 'site-1',
-        tenantId: 'tenant-1',
-        path: '/done',
-        routeId: 'r',
-        tags: const [],
-        idempotencyKey: 'cleanup-test',
-      );
+    test(
+      'cleanupCompleted deletes finished jobs and frees idempotency keys',
+      () async {
+        final job = await queue.enqueue(
+          siteId: 'site-1',
+          tenantId: 'tenant-1',
+          path: '/done',
+          routeId: 'r',
+          tags: const [],
+          idempotencyKey: 'cleanup-test',
+        );
 
-      final claimed = await queue.claimNext();
-      expect(claimed!.id, job.id);
-      await queue.complete(claimed.id, leaseToken: claimed.leaseToken!);
+        final claimed = await queue.claimNext();
+        expect(claimed!.id, job.id);
+        await queue.complete(claimed.id, leaseToken: claimed.leaseToken!);
 
-      final deletedCount = await queue.cleanupCompleted(maxAge: Duration.zero);
-      expect(deletedCount, 1);
+        final deletedCount = await queue.cleanupCompleted(
+          maxAge: Duration.zero,
+        );
+        expect(deletedCount, 1);
 
-      final metrics = await queue.metrics();
-      expect(metrics.totalJobs, 0);
-    });
-
-    test('rebuildIndexes recovers queue state after corrupted or missing index',
-        () async {
-      final job = await queue.enqueue(
-        siteId: 'site-1',
-        tenantId: 'tenant-1',
-        path: '/recover-me',
-        routeId: 'r',
-        tags: const [],
-        idempotencyKey: 'recover-key',
-      );
-
-      // Simulate index corruption by deleting the index directory
-      final indexDir =
-          Directory('${temp.path}${Platform.pathSeparator}indexes');
-      if (await indexDir.exists()) {
-        await indexDir.delete(recursive: true);
-      }
-
-      // Rebuild indexes
-      await queue.rebuildIndexes();
-
-      // Enqueue with the same idempotency key must resolve the existing job
-      final reEnqueued = await queue.enqueue(
-        siteId: 'site-1',
-        tenantId: 'tenant-1',
-        path: '/recover-me',
-        routeId: 'r',
-        tags: const [],
-        idempotencyKey: 'recover-key',
-      );
-      expect(reEnqueued.id, job.id);
-    });
+        final metrics = await queue.metrics();
+        expect(metrics.totalJobs, 0);
+      },
+    );
 
     test(
-        '10,000 scheduled jobs benchmark verifies linear/sub-quadratic enqueue performance',
-        () async {
+      'rebuildIndexes recovers queue state after corrupted or missing index',
+      () async {
+        final job = await queue.enqueue(
+          siteId: 'site-1',
+          tenantId: 'tenant-1',
+          path: '/recover-me',
+          routeId: 'r',
+          tags: const [],
+          idempotencyKey: 'recover-key',
+        );
+
+        // Simulate index corruption by deleting the index directory
+        final indexDir = Directory(
+          '${temp.path}${Platform.pathSeparator}indexes',
+        );
+        if (await indexDir.exists()) {
+          await indexDir.delete(recursive: true);
+        }
+
+        // Rebuild indexes
+        await queue.rebuildIndexes();
+
+        // Enqueue with the same idempotency key must resolve the existing job
+        final reEnqueued = await queue.enqueue(
+          siteId: 'site-1',
+          tenantId: 'tenant-1',
+          path: '/recover-me',
+          routeId: 'r',
+          tags: const [],
+          idempotencyKey: 'recover-key',
+        );
+        expect(reEnqueued.id, job.id);
+      },
+    );
+
+    test('10,000 scheduled jobs benchmark verifies linear/sub-quadratic enqueue performance', () async {
       const totalJobs = 10000;
       const batchSize = 1000;
       final stopwatch = Stopwatch()..start();
 
       for (var batch = 0; batch < totalJobs ~/ batchSize; batch++) {
-        final requests = List.generate(
-          batchSize,
-          (i) {
-            final idx = batch * batchSize + i;
-            return RegenerationJobRequest(
-              siteId: 'site-bench',
-              tenantId: 'tenant-bench',
-              path: '/catalogue/item-$idx',
-              routeId: 'catalogue',
-              tags: ['catalog', 'cat:${idx % 50}'],
-              idempotencyKey: 'bench-key-$idx',
-            );
-          },
-        );
+        final requests = List.generate(batchSize, (i) {
+          final idx = batch * batchSize + i;
+          return RegenerationJobRequest(
+            siteId: 'site-bench',
+            tenantId: 'tenant-bench',
+            path: '/catalogue/item-$idx',
+            routeId: 'catalogue',
+            tags: ['catalog', 'cat:${idx % 50}'],
+            idempotencyKey: 'bench-key-$idx',
+          );
+        });
         await queue.enqueueAll(requests);
       }
 
@@ -351,9 +361,7 @@ void main() {
       await temp.delete(recursive: true);
     });
 
-    test(
-        'two independent workers: competing claims serialize, expired lease reclaimed, stale token rejected',
-        () async {
+    test('two independent workers: competing claims serialize, expired lease reclaimed, stale token rejected', () async {
       final queue1 = FileRegenerationQueue(temp);
       final queue2 = FileRegenerationQueue(temp);
 
@@ -409,36 +417,38 @@ void main() {
   });
 
   group('REST & GraphQL Network Security & DNS Pinning Tests', () {
-    test('SsrfGuard createPinnedClient pins socket to validated address',
-        () async {
-      var resolveCalls = 0;
-      final guard = SsrfGuard(
-        resolver: (host) async {
-          resolveCalls++;
-          if (host == 'safe.example.com') {
-            return [InternetAddress('93.184.216.34')]; // Example public IP
-          }
-          if (host == 'rebinding.example.com') {
-            return [InternetAddress('10.0.0.1')]; // Private IP
-          }
-          return [];
-        },
-      );
+    test(
+      'SsrfGuard createPinnedClient pins socket to validated address',
+      () async {
+        var resolveCalls = 0;
+        final guard = SsrfGuard(
+          resolver: (host) async {
+            resolveCalls++;
+            if (host == 'safe.example.com') {
+              return [InternetAddress('93.184.216.34')]; // Example public IP
+            }
+            if (host == 'rebinding.example.com') {
+              return [InternetAddress('10.0.0.1')]; // Private IP
+            }
+            return [];
+          },
+        );
 
-      final client = guard.createPinnedClient();
-      expect(client, isNotNull);
+        final client = guard.createPinnedClient();
+        expect(client, isNotNull);
 
-      final restProvider = RestDataProvider<Map<String, dynamic>>(
-        urlBuilder: (_) => 'http://rebinding.example.com/api',
-        mapper: (json) => json as Map<String, dynamic>,
-        ssrfGuard: guard,
-      );
+        final restProvider = RestDataProvider<Map<String, dynamic>>(
+          urlBuilder: (_) => 'http://rebinding.example.com/api',
+          mapper: (json) => json as Map<String, dynamic>,
+          ssrfGuard: guard,
+        );
 
-      await expectLater(
-        restProvider.load(RouteDataContext(path: '/test')),
-        throwsA(isA<SecurityException>()),
-      );
-      expect(resolveCalls, greaterThanOrEqualTo(1));
-    });
+        await expectLater(
+          restProvider.load(RouteDataContext(path: '/test')),
+          throwsA(isA<SecurityException>()),
+        );
+        expect(resolveCalls, greaterThanOrEqualTo(1));
+      },
+    );
   });
 }

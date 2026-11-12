@@ -33,7 +33,7 @@ class CollectionRouteSource<T> {
   final String routeId;
   final String pathPattern;
   final Future<RouteDiscoveryPage<T>> Function(String? cursor, int limit)
-      discover;
+  discover;
   final String Function(T record) keyOf;
   final Future<GeneratedRouteDocument> Function(T record, String path) render;
   final Iterable<String> Function(T record)? tagsOf;
@@ -62,13 +62,14 @@ class FixedRouteSource {
 
 /// Complete HTML plus dependency information for one generated page.
 class GeneratedRouteDocument {
-  const GeneratedRouteDocument(
-      {this.tags = const [],
-      this.sourceVersion,
-      this.lastModified,
-      this.canonicalUrl,
-      this.indexable,
-      required this.html});
+  const GeneratedRouteDocument({
+    this.tags = const [],
+    this.sourceVersion,
+    this.lastModified,
+    this.canonicalUrl,
+    this.indexable,
+    required this.html,
+  });
   final String html;
   final List<String> tags;
   final String? sourceVersion;
@@ -78,15 +79,16 @@ class GeneratedRouteDocument {
 }
 
 class RouteDependency {
-  const RouteDependency(
-      {required this.path,
-      required this.routeId,
-      required this.tags,
-      required this.generatedAt,
-      this.sourceVersion,
-      this.lastModified,
-      this.canonicalUrl,
-      this.indexable = true});
+  const RouteDependency({
+    required this.path,
+    required this.routeId,
+    required this.tags,
+    required this.generatedAt,
+    this.sourceVersion,
+    this.lastModified,
+    this.canonicalUrl,
+    this.indexable = true,
+  });
   final String path;
   final String routeId;
   final List<String> tags;
@@ -96,15 +98,15 @@ class RouteDependency {
   final String? canonicalUrl;
   final bool indexable;
   Map<String, Object?> toJson() => {
-        'path': path,
-        'routeId': routeId,
-        'tags': tags,
-        'generatedAt': generatedAt.toUtc().toIso8601String(),
-        'sourceVersion': sourceVersion,
-        'lastModified': lastModified?.toUtc().toIso8601String(),
-        'canonicalUrl': canonicalUrl,
-        'indexable': indexable,
-      };
+    'path': path,
+    'routeId': routeId,
+    'tags': tags,
+    'generatedAt': generatedAt.toUtc().toIso8601String(),
+    'sourceVersion': sourceVersion,
+    'lastModified': lastModified?.toUtc().toIso8601String(),
+    'canonicalUrl': canonicalUrl,
+    'indexable': indexable,
+  };
   factory RouteDependency.fromJson(Map<String, Object?> json) =>
       RouteDependency(
         path: json['path']! as String,
@@ -160,17 +162,17 @@ class StorageCapabilities {
   final bool supportsRollback;
 
   Map<String, bool> toMap() => {
-        'supportsMutableArtifacts': supportsMutableArtifacts,
-        'supportsAtomicPublication': supportsAtomicPublication,
-        'supportsVersionedArtifacts': supportsVersionedArtifacts,
-        'supportsSharedReads': supportsSharedReads,
-        'supportsDistributedLeases': supportsDistributedLeases,
-        'supportsPostDeploymentMutation': supportsPostDeploymentMutation,
-        'supportsCacheInvalidation': supportsCacheInvalidation,
-        'supportsGarbageCollection': supportsGarbageCollection,
-        'supportsImmutableObjects': supportsImmutableObjects,
-        'supportsRollback': supportsRollback,
-      };
+    'supportsMutableArtifacts': supportsMutableArtifacts,
+    'supportsAtomicPublication': supportsAtomicPublication,
+    'supportsVersionedArtifacts': supportsVersionedArtifacts,
+    'supportsSharedReads': supportsSharedReads,
+    'supportsDistributedLeases': supportsDistributedLeases,
+    'supportsPostDeploymentMutation': supportsPostDeploymentMutation,
+    'supportsCacheInvalidation': supportsCacheInvalidation,
+    'supportsGarbageCollection': supportsGarbageCollection,
+    'supportsImmutableObjects': supportsImmutableObjects,
+    'supportsRollback': supportsRollback,
+  };
 }
 
 /// Report summarizing an artifact garbage collection execution.
@@ -190,12 +192,12 @@ class GarbageCollectionReport {
   final Duration duration;
 
   Map<String, Object?> toJson() => {
-        'reclaimedBytes': reclaimedBytes,
-        'deletedObjects': deletedObjects,
-        'retainedVersions': retainedVersions,
-        'deletedVersions': deletedVersions,
-        'durationMs': duration.inMilliseconds,
-      };
+    'reclaimedBytes': reclaimedBytes,
+    'deletedObjects': deletedObjects,
+    'retainedVersions': retainedVersions,
+    'deletedVersions': deletedVersions,
+    'durationMs': duration.inMilliseconds,
+  };
 }
 
 /// Metadata record for an immutable content-addressed route artifact.
@@ -213,11 +215,11 @@ class RouteArtifactEntry {
   final DateTime generatedAt;
 
   Map<String, Object?> toJson() => {
-        'path': path,
-        'objectHash': objectHash,
-        'contentLength': contentLength,
-        'generatedAt': generatedAt.toUtc().toIso8601String(),
-      };
+    'path': path,
+    'objectHash': objectHash,
+    'contentLength': contentLength,
+    'generatedAt': generatedAt.toUtc().toIso8601String(),
+  };
 
   factory RouteArtifactEntry.fromJson(Map<String, Object?> json) =>
       RouteArtifactEntry(
@@ -241,26 +243,28 @@ class FileHtmlArtifactStore {
     if (!RegExp(r'^[A-Za-z0-9_-]{1,120}$').hasMatch(tenantId)) {
       throw const FormatException('Invalid artifact tenant ID.');
     }
-    return FileHtmlArtifactStore(Directory(
-      '${root.absolute.path}${Platform.pathSeparator}tenants${Platform.pathSeparator}$tenantId',
-    ));
+    return FileHtmlArtifactStore(
+      Directory(
+        '${root.absolute.path}${Platform.pathSeparator}tenants${Platform.pathSeparator}$tenantId',
+      ),
+    );
   }
 
   final Directory root;
 
   /// Declares the real capabilities of this local filesystem store.
   StorageCapabilities get capabilities => const StorageCapabilities(
-        supportsMutableArtifacts: true,
-        supportsAtomicPublication: true,
-        supportsVersionedArtifacts: true,
-        supportsSharedReads: true,
-        supportsDistributedLeases: false,
-        supportsPostDeploymentMutation: true,
-        supportsCacheInvalidation: false,
-        supportsGarbageCollection: true,
-        supportsImmutableObjects: true,
-        supportsRollback: true,
-      );
+    supportsMutableArtifacts: true,
+    supportsAtomicPublication: true,
+    supportsVersionedArtifacts: true,
+    supportsSharedReads: true,
+    supportsDistributedLeases: false,
+    supportsPostDeploymentMutation: true,
+    supportsCacheInvalidation: false,
+    supportsGarbageCollection: true,
+    supportsImmutableObjects: true,
+    supportsRollback: true,
+  );
 
   Directory get _objectsDir =>
       Directory('${root.path}${Platform.pathSeparator}.objects');
@@ -270,12 +274,14 @@ class FileHtmlArtifactStore {
       throw const FormatException('Invalid artifact version.');
     }
     return Directory(
-        '${root.path}${Platform.pathSeparator}.versions${Platform.pathSeparator}$version');
+      '${root.path}${Platform.pathSeparator}.versions${Platform.pathSeparator}$version',
+    );
   }
 
   Future<String?> get activeVersion async {
-    final pointer =
-        File('${root.path}${Platform.pathSeparator}.active_version');
+    final pointer = File(
+      '${root.path}${Platform.pathSeparator}.active_version',
+    );
     if (!await pointer.exists()) return null;
     final version = (await pointer.readAsString()).trim();
     _versionDir(version);
@@ -326,8 +332,11 @@ class FileHtmlArtifactStore {
     await _writeJsonIndex(root, '.publish_epochs.json', epochs);
   }
 
-  Future<void> publishVersion(String version,
-      {int? fencingEpoch, String? routePath}) async {
+  Future<void> publishVersion(
+    String version, {
+    int? fencingEpoch,
+    String? routePath,
+  }) async {
     final draft = _versionDir(version);
     if (!await draft.exists()) {
       throw StateError('Artifact draft does not exist.');
@@ -336,8 +345,9 @@ class FileHtmlArtifactStore {
     await root.create(recursive: true);
     final lockHandle = await lockFile.open(mode: FileMode.append);
     await lockHandle.lock(FileLock.exclusive);
-    final pointer =
-        File('${root.path}${Platform.pathSeparator}.active_version');
+    final pointer = File(
+      '${root.path}${Platform.pathSeparator}.active_version',
+    );
     final temp = File('${pointer.path}.${_nonce()}.tmp');
     try {
       if (fencingEpoch != null) {
@@ -345,8 +355,11 @@ class FileHtmlArtifactStore {
         final epochKey = routePath != null ? _normalizePath(routePath) : '*';
         final currentEpoch = epochs[epochKey] ?? epochs['*'] ?? 0;
         if (fencingEpoch < currentEpoch) {
-          throw StaleFencingEpochException(fencingEpoch, currentEpoch,
-              routePath: routePath);
+          throw StaleFencingEpochException(
+            fencingEpoch,
+            currentEpoch,
+            routePath: routePath,
+          );
         }
         epochs[epochKey] = fencingEpoch;
         if (fencingEpoch > (epochs['*'] ?? 0)) {
@@ -355,10 +368,12 @@ class FileHtmlArtifactStore {
         await _savePublishEpochs(epochs);
       }
 
-      final baseFile =
-          File('${draft.path}${Platform.pathSeparator}.base_version');
-      final expectedBase =
-          await baseFile.exists() ? (await baseFile.readAsString()).trim() : '';
+      final baseFile = File(
+        '${draft.path}${Platform.pathSeparator}.base_version',
+      );
+      final expectedBase = await baseFile.exists()
+          ? (await baseFile.readAsString()).trim()
+          : '';
       final current = await activeVersion ?? '';
       if (current != expectedBase) {
         throw StaleArtifactVersionException(expectedBase, current);
@@ -379,14 +394,16 @@ class FileHtmlArtifactStore {
     final targetDir = _versionDir(targetVersion);
     if (!await targetDir.exists()) {
       throw ArgumentError(
-          'Target rollback version "$targetVersion" does not exist.');
+        'Target rollback version "$targetVersion" does not exist.',
+      );
     }
     final lockFile = File('${root.path}${Platform.pathSeparator}.publish.lock');
     await root.create(recursive: true);
     final lockHandle = await lockFile.open(mode: FileMode.append);
     await lockHandle.lock(FileLock.exclusive);
-    final pointer =
-        File('${root.path}${Platform.pathSeparator}.active_version');
+    final pointer = File(
+      '${root.path}${Platform.pathSeparator}.active_version',
+    );
     final temp = File('${pointer.path}.${_nonce()}.tmp');
     try {
       await temp.writeAsString(targetVersion, flush: true);
@@ -416,7 +433,9 @@ class FileHtmlArtifactStore {
       Directory('${dir.path}${Platform.pathSeparator}.dep_shards');
 
   Future<RouteArtifactEntry?> _findRouteArtifact(
-      Directory dir, String path) async {
+    Directory dir,
+    String path,
+  ) async {
     final shardsDir = _routeShardsDir(dir);
     if (await shardsDir.exists()) {
       final key = _shardKey(path);
@@ -427,7 +446,8 @@ class FileHtmlArtifactStore {
           final val = decoded[path];
           if (val != null) {
             return RouteArtifactEntry.fromJson(
-                Map<String, Object?>.from(val as Map));
+              Map<String, Object?>.from(val as Map),
+            );
           }
         } catch (_) {}
       }
@@ -438,7 +458,10 @@ class FileHtmlArtifactStore {
   }
 
   Future<void> _saveRouteArtifactShard(
-      Directory dir, String path, RouteArtifactEntry entry) async {
+    Directory dir,
+    String path,
+    RouteArtifactEntry entry,
+  ) async {
     final shardsDir = _routeShardsDir(dir);
     await shardsDir.create(recursive: true);
     final key = _shardKey(path);
@@ -457,7 +480,9 @@ class FileHtmlArtifactStore {
   }
 
   Future<RouteDependency?> _findRouteDependency(
-      Directory dir, String path) async {
+    Directory dir,
+    String path,
+  ) async {
     final shardsDir = _depShardsDir(dir);
     if (await shardsDir.exists()) {
       final key = _shardKey(path);
@@ -468,7 +493,8 @@ class FileHtmlArtifactStore {
           final val = decoded[path];
           if (val != null) {
             return RouteDependency.fromJson(
-                Map<String, Object?>.from(val as Map));
+              Map<String, Object?>.from(val as Map),
+            );
           }
         } catch (_) {}
       }
@@ -479,7 +505,10 @@ class FileHtmlArtifactStore {
   }
 
   Future<void> _saveRouteDependencyShard(
-      Directory dir, String path, RouteDependency dep) async {
+    Directory dir,
+    String path,
+    RouteDependency dep,
+  ) async {
     final shardsDir = _depShardsDir(dir);
     await shardsDir.create(recursive: true);
     final key = _shardKey(path);
@@ -514,8 +543,9 @@ class FileHtmlArtifactStore {
             final map = <String, Map<String, Object?>>{};
             for (final e in decoded.entries) {
               if (validPaths.contains(e.key)) {
-                map[e.key as String] =
-                    Map<String, Object?>.from(e.value as Map);
+                map[e.key as String] = Map<String, Object?>.from(
+                  e.value as Map,
+                );
               }
             }
             if (newShards.containsKey(key)) {
@@ -561,8 +591,9 @@ class FileHtmlArtifactStore {
     final normPath = _normalizePath(path);
     final hash = sha256.convert(utf8.encode(html)).toString();
     await _objectsDir.create(recursive: true);
-    final objFile =
-        File('${_objectsDir.path}${Platform.pathSeparator}$hash.html');
+    final objFile = File(
+      '${_objectsDir.path}${Platform.pathSeparator}$hash.html',
+    );
     if (!await objFile.exists()) {
       await _writeFile(objFile, html);
     }
@@ -590,7 +621,8 @@ class FileHtmlArtifactStore {
     final entry = await _findRouteArtifact(draft, normPath);
     if (entry != null) {
       final objFile = File(
-          '${_objectsDir.path}${Platform.pathSeparator}${entry.objectHash}.html');
+        '${_objectsDir.path}${Platform.pathSeparator}${entry.objectHash}.html',
+      );
       if (await objFile.exists()) {
         return await objFile.readAsString();
       }
@@ -606,7 +638,8 @@ class FileHtmlArtifactStore {
 
     final key = _shardKey(normPath);
     final routeShard = File(
-        '${_routeShardsDir(draft).path}${Platform.pathSeparator}$key.json');
+      '${_routeShardsDir(draft).path}${Platform.pathSeparator}$key.json',
+    );
     if (await routeShard.exists()) {
       try {
         final decoded = jsonDecode(await routeShard.readAsString()) as Map;
@@ -621,8 +654,9 @@ class FileHtmlArtifactStore {
       } catch (_) {}
     }
 
-    final depShard =
-        File('${_depShardsDir(draft).path}${Platform.pathSeparator}$key.json');
+    final depShard = File(
+      '${_depShardsDir(draft).path}${Platform.pathSeparator}$key.json',
+    );
     if (await depShard.exists()) {
       try {
         final decoded = jsonDecode(await depShard.readAsString()) as Map;
@@ -644,8 +678,8 @@ class FileHtmlArtifactStore {
   }
 
   Future<Map<String, RouteDependency>> loadVersionDependencies(
-          String version) async =>
-      _loadIndex(_versionDir(version));
+    String version,
+  ) async => _loadIndex(_versionDir(version));
 
   /// Incrementally saves or updates a single route dependency in [version]
   /// shard without rewriting the entire route catalogue.
@@ -656,7 +690,9 @@ class FileHtmlArtifactStore {
   }
 
   Future<void> saveVersionDependencies(
-      String version, Map<String, RouteDependency> deps) async {
+    String version,
+    Map<String, RouteDependency> deps,
+  ) async {
     final directory = _versionDir(version);
     await _saveIndex(directory, deps);
 
@@ -678,24 +714,27 @@ class FileHtmlArtifactStore {
         entries[dependency.path] = entry;
 
         final key = _shardKey(dependency.path);
-        shardsRoute.putIfAbsent(key, () => {})[dependency.path] =
-            entry.toJson();
+        shardsRoute.putIfAbsent(key, () => {})[dependency.path] = entry
+            .toJson();
       } else if (entries.containsKey(dependency.path)) {
         final existing = entries[dependency.path]!;
         final key = _shardKey(dependency.path);
-        shardsRoute.putIfAbsent(key, () => {})[dependency.path] =
-            existing.toJson();
+        shardsRoute.putIfAbsent(key, () => {})[dependency.path] = existing
+            .toJson();
       }
       final key = _shardKey(dependency.path);
-      shardsDep.putIfAbsent(key, () => {})[dependency.path] =
-          dependency.toJson();
+      shardsDep.putIfAbsent(key, () => {})[dependency.path] = dependency
+          .toJson();
     }
     entries.removeWhere((path, _) => !deps.containsKey(path));
     await _saveRouteArtifacts(directory, entries);
 
     final validPaths = deps.keys.toSet();
     await _cleanAndWriteShards(
-        _routeShardsDir(directory), shardsRoute, validPaths);
+      _routeShardsDir(directory),
+      shardsRoute,
+      validPaths,
+    );
     await _cleanAndWriteShards(_depShardsDir(directory), shardsDep, validPaths);
 
     final reverse = <String, List<String>>{};
@@ -733,12 +772,18 @@ class FileHtmlArtifactStore {
   }
 
   Future<void> writeVersionSitemap(
-      String version, Iterable<RouteDependency> dependencies) async {
+    String version,
+    Iterable<RouteDependency> dependencies,
+  ) async {
     final entries = dependencies.where((item) => item.indexable).toList()
-      ..sort((a, b) =>
-          (a.canonicalUrl ?? a.path).compareTo(b.canonicalUrl ?? b.path));
-    final xml = StringBuffer('<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+      ..sort(
+        (a, b) =>
+            (a.canonicalUrl ?? a.path).compareTo(b.canonicalUrl ?? b.path),
+      );
+    final xml = StringBuffer(
+      '<?xml version="1.0" encoding="UTF-8"?>\n'
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    );
     final canonicalUrls = <String>{};
     for (final entry in entries) {
       final canonical = entry.canonicalUrl;
@@ -769,7 +814,8 @@ class FileHtmlArtifactStore {
 
   Future<String?> readVersionSitemap(String version) async {
     final file = File(
-        '${_versionDir(version).path}${Platform.pathSeparator}sitemap.xml');
+      '${_versionDir(version).path}${Platform.pathSeparator}sitemap.xml',
+    );
     return await file.exists() ? file.readAsString() : null;
   }
 
@@ -798,23 +844,28 @@ class FileHtmlArtifactStore {
     if (entries.isNotEmpty) {
       for (final entry in entries.values) {
         final objFile = File(
-            '${_objectsDir.path}${Platform.pathSeparator}${entry.objectHash}.html');
+          '${_objectsDir.path}${Platform.pathSeparator}${entry.objectHash}.html',
+        );
         if (await objFile.exists()) {
           final content = await objFile.readAsString();
           await _writeFile(_artifactFile(target, entry.path), content);
         }
       }
-      final sitemap =
-          File('${source.path}${Platform.pathSeparator}sitemap.xml');
+      final sitemap = File(
+        '${source.path}${Platform.pathSeparator}sitemap.xml',
+      );
       if (await sitemap.exists()) {
-        await sitemap
-            .copy('${target.path}${Platform.pathSeparator}sitemap.xml');
+        await sitemap.copy(
+          '${target.path}${Platform.pathSeparator}sitemap.xml',
+        );
       }
-      final manifest =
-          File('${source.path}${Platform.pathSeparator}route-manifest.json');
+      final manifest = File(
+        '${source.path}${Platform.pathSeparator}route-manifest.json',
+      );
       if (await manifest.exists()) {
-        await manifest
-            .copy('${target.path}${Platform.pathSeparator}route-manifest.json');
+        await manifest.copy(
+          '${target.path}${Platform.pathSeparator}route-manifest.json',
+        );
       }
     } else {
       await _copyPublicDirectory(source, target);
@@ -833,8 +884,9 @@ class FileHtmlArtifactStore {
     await lockHandle.lock(FileLock.exclusive);
     try {
       final active = await activeVersion;
-      final versionsDir =
-          Directory('${root.path}${Platform.pathSeparator}.versions');
+      final versionsDir = Directory(
+        '${root.path}${Platform.pathSeparator}.versions',
+      );
       final allVersions = <Directory>[];
       if (await versionsDir.exists()) {
         await for (final entity in versionsDir.list(followLinks: false)) {
@@ -911,9 +963,14 @@ class FileHtmlArtifactStore {
       _loadReversePaths(version, 'routes', routeId);
 
   Future<List<String>> _loadReversePaths(
-      String version, String kind, String key) async {
-    final file = File('${_versionDir(version).path}${Platform.pathSeparator}'
-        '.meta_mantle_reverse_index.json');
+    String version,
+    String kind,
+    String key,
+  ) async {
+    final file = File(
+      '${_versionDir(version).path}${Platform.pathSeparator}'
+      '.meta_mantle_reverse_index.json',
+    );
     if (!await file.exists()) return const [];
     try {
       final decoded = jsonDecode(await file.readAsString()) as Map;
@@ -932,8 +989,9 @@ class FileHtmlArtifactStore {
       final normPath = _normalizePath(path);
       final hash = sha256.convert(utf8.encode(html)).toString();
       await _objectsDir.create(recursive: true);
-      final objFile =
-          File('${_objectsDir.path}${Platform.pathSeparator}$hash.html');
+      final objFile = File(
+        '${_objectsDir.path}${Platform.pathSeparator}$hash.html',
+      );
       if (!await objFile.exists()) {
         await _writeFile(objFile, html);
       }
@@ -957,7 +1015,8 @@ class FileHtmlArtifactStore {
     final entry = entries[normPath];
     if (entry != null) {
       final objFile = File(
-          '${_objectsDir.path}${Platform.pathSeparator}${entry.objectHash}.html');
+        '${_objectsDir.path}${Platform.pathSeparator}${entry.objectHash}.html',
+      );
       if (await objFile.exists()) return await objFile.readAsString();
     }
     final file = _file(path);
@@ -976,7 +1035,10 @@ class FileHtmlArtifactStore {
         : await readVersion(version, path);
     if (html == null) return null;
     return PublishedHtmlArtifact(
-        version: version, html: html, dependency: dependency);
+      version: version,
+      html: html,
+      dependency: dependency,
+    );
   }
 
   Future<String?> _readLegacy(String path) async {
@@ -1003,12 +1065,17 @@ class FileHtmlArtifactStore {
 
   Future<Map<String, RouteDependency>> _loadIndex(Directory directory) async {
     final file = File(
-        '${directory.path}${Platform.pathSeparator}.meta_mantle_dependencies.json');
+      '${directory.path}${Platform.pathSeparator}.meta_mantle_dependencies.json',
+    );
     if (!await file.exists()) return {};
     try {
       final decoded = jsonDecode(await file.readAsString()) as Map;
-      return decoded.map((k, v) => MapEntry(k as String,
-          RouteDependency.fromJson(Map<String, Object?>.from(v as Map))));
+      return decoded.map(
+        (k, v) => MapEntry(
+          k as String,
+          RouteDependency.fromJson(Map<String, Object?>.from(v as Map)),
+        ),
+      );
     } on Object {
       throw const FormatException('Hybrid dependency index is corrupt.');
     }
@@ -1019,41 +1086,61 @@ class FileHtmlArtifactStore {
   }
 
   Future<void> _saveIndex(
-      Directory directory, Map<String, RouteDependency> deps) async {
-    await _writeJsonIndex(directory, '.meta_mantle_dependencies.json',
-        deps.map((k, v) => MapEntry(k, v.toJson())));
+    Directory directory,
+    Map<String, RouteDependency> deps,
+  ) async {
+    await _writeJsonIndex(
+      directory,
+      '.meta_mantle_dependencies.json',
+      deps.map((k, v) => MapEntry(k, v.toJson())),
+    );
   }
 
   Future<Map<String, RouteArtifactEntry>> _loadRouteArtifacts(
-      Directory directory) async {
-    final file =
-        File('${directory.path}${Platform.pathSeparator}.route_artifacts.json');
+    Directory directory,
+  ) async {
+    final file = File(
+      '${directory.path}${Platform.pathSeparator}.route_artifacts.json',
+    );
     if (!await file.exists()) return {};
     try {
       final decoded = jsonDecode(await file.readAsString()) as Map;
-      return decoded.map((k, v) => MapEntry(k as String,
-          RouteArtifactEntry.fromJson(Map<String, Object?>.from(v as Map))));
+      return decoded.map(
+        (k, v) => MapEntry(
+          k as String,
+          RouteArtifactEntry.fromJson(Map<String, Object?>.from(v as Map)),
+        ),
+      );
     } on Object {
       throw const FormatException('Route artifacts manifest is corrupt.');
     }
   }
 
   Future<void> _saveRouteArtifacts(
-      Directory directory, Map<String, RouteArtifactEntry> entries) async {
-    await _writeJsonIndex(directory, '.route_artifacts.json',
-        entries.map((k, v) => MapEntry(k, v.toJson())));
+    Directory directory,
+    Map<String, RouteArtifactEntry> entries,
+  ) async {
+    await _writeJsonIndex(
+      directory,
+      '.route_artifacts.json',
+      entries.map((k, v) => MapEntry(k, v.toJson())),
+    );
   }
 
   Future<void> _writeJsonIndex(
-      Directory directory, String name, Object value) async {
+    Directory directory,
+    String name,
+    Object value,
+  ) async {
     await directory.create(recursive: true);
     final path = '${directory.path}${Platform.pathSeparator}$name';
     final target = File(path);
     final temp = File('$path.${_nonce()}.tmp');
     try {
       await temp.writeAsString(
-          const JsonEncoder.withIndent('  ').convert(value),
-          flush: true);
+        const JsonEncoder.withIndent('  ').convert(value),
+        flush: true,
+      );
       if (await target.exists()) {
         try {
           await target.delete();
@@ -1075,10 +1162,12 @@ class FileHtmlArtifactStore {
 
   File _artifactFile(Directory directory, String routePath) {
     final path = _normalizePath(routePath);
-    final relative =
-        path == '/' ? 'index.html' : '${path.substring(1)}/index.html';
-    final candidate =
-        File('${directory.path}${Platform.pathSeparator}$relative').absolute;
+    final relative = path == '/'
+        ? 'index.html'
+        : '${path.substring(1)}/index.html';
+    final candidate = File(
+      '${directory.path}${Platform.pathSeparator}$relative',
+    ).absolute;
     final prefix = directory.path.endsWith(Platform.pathSeparator)
         ? directory.path
         : '${directory.path}${Platform.pathSeparator}';
@@ -1107,15 +1196,18 @@ class FileHtmlArtifactStore {
     for (final dirName in shardDirs) {
       final srcDir = Directory('${from.path}${Platform.pathSeparator}$dirName');
       if (await srcDir.exists()) {
-        final destDir =
-            Directory('${to.path}${Platform.pathSeparator}$dirName');
+        final destDir = Directory(
+          '${to.path}${Platform.pathSeparator}$dirName',
+        );
         await destDir.create(recursive: true);
         await for (final entity in srcDir.list(followLinks: false)) {
           if (entity is File) {
-            final fileName =
-                entity.uri.pathSegments.where((s) => s.isNotEmpty).last;
-            await entity
-                .copy('${destDir.path}${Platform.pathSeparator}$fileName');
+            final fileName = entity.uri.pathSegments
+                .where((s) => s.isNotEmpty)
+                .last;
+            await entity.copy(
+              '${destDir.path}${Platform.pathSeparator}$fileName',
+            );
           }
         }
       }
@@ -1139,11 +1231,14 @@ class FileHtmlArtifactStore {
   Future<void> _importLegacyFiles(Directory from, Directory to) async {
     final entries = <String, RouteArtifactEntry>{};
     if (await from.exists()) {
-      await for (final entity
-          in from.list(recursive: true, followLinks: false)) {
+      await for (final entity in from.list(
+        recursive: true,
+        followLinks: false,
+      )) {
         if (entity is! File || !entity.path.endsWith('.html')) continue;
-        final rel =
-            entity.path.substring(from.path.length).replaceAll('\\', '/');
+        final rel = entity.path
+            .substring(from.path.length)
+            .replaceAll('\\', '/');
         if (rel.startsWith('/.objects') ||
             rel.startsWith('/.versions') ||
             rel.startsWith('/tenants')) {
@@ -1152,12 +1247,13 @@ class FileHtmlArtifactStore {
         final routePath = rel == '/index.html'
             ? '/'
             : (rel.endsWith('/index.html')
-                ? rel.substring(0, rel.length - '/index.html'.length)
-                : rel.substring(0, rel.length - '.html'.length));
+                  ? rel.substring(0, rel.length - '/index.html'.length)
+                  : rel.substring(0, rel.length - '.html'.length));
         final content = await entity.readAsString();
         final hash = sha256.convert(utf8.encode(content)).toString();
-        final objFile =
-            File('${_objectsDir.path}${Platform.pathSeparator}$hash.html');
+        final objFile = File(
+          '${_objectsDir.path}${Platform.pathSeparator}$hash.html',
+        );
         if (!await objFile.exists()) {
           await _writeFile(objFile, content);
         }
@@ -1174,10 +1270,12 @@ class FileHtmlArtifactStore {
       await _saveRouteArtifacts(to, entries);
     }
     final depsFile = File(
-        '${from.path}${Platform.pathSeparator}.meta_mantle_dependencies.json');
+      '${from.path}${Platform.pathSeparator}.meta_mantle_dependencies.json',
+    );
     if (await depsFile.exists()) {
       await depsFile.copy(
-          '${to.path}${Platform.pathSeparator}.meta_mantle_dependencies.json');
+        '${to.path}${Platform.pathSeparator}.meta_mantle_dependencies.json',
+      );
     }
   }
 
@@ -1230,27 +1328,27 @@ class HybridGenerationReport {
       : completedAt!.difference(startedAt!);
 
   Map<String, Object?> toJson() => {
-        'buildId': buildId,
-        'siteId': siteId,
-        'startedAt': startedAt?.toUtc().toIso8601String(),
-        'completedAt': completedAt?.toUtc().toIso8601String(),
-        'durationMs': duration?.inMilliseconds,
-        'discovered': discovered,
-        'generated': generated,
-        'skipped': skipped,
-        'deleted': deleted,
-        'pages': pages,
-      };
+    'buildId': buildId,
+    'siteId': siteId,
+    'startedAt': startedAt?.toUtc().toIso8601String(),
+    'completedAt': completedAt?.toUtc().toIso8601String(),
+    'durationMs': duration?.inMilliseconds,
+    'discovered': discovered,
+    'generated': generated,
+    'skipped': skipped,
+    'deleted': deleted,
+    'pages': pages,
+  };
 }
 
 /// Generates paginated collections without loading all records at once.
 class HybridStaticGenerator {
-  HybridStaticGenerator(
-      {required this.store,
-      this.siteBaseUrl,
-      this.siteId = 'default',
-      DateTime Function()? clock})
-      : _clock = clock ?? DateTime.now {
+  HybridStaticGenerator({
+    required this.store,
+    this.siteBaseUrl,
+    this.siteId = 'default',
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now {
     if (siteBaseUrl != null) _validateBaseUrl(siteBaseUrl!);
     if (!RegExp(r'^[A-Za-z0-9_-]{1,120}$').hasMatch(siteId)) {
       throw ArgumentError.value(siteId, 'siteId', 'Must be a safe identifier.');
@@ -1262,7 +1360,8 @@ class HybridStaticGenerator {
   final DateTime Function() _clock;
 
   Future<HybridGenerationReport> generate<T>(
-      CollectionRouteSource<T> source) async {
+    CollectionRouteSource<T> source,
+  ) async {
     if (source.pageSize < 1 ||
         source.pageSize > 1000 ||
         source.concurrency < 1 ||
@@ -1280,7 +1379,8 @@ class HybridStaticGenerator {
     if (source.initialGenerationPolicy == InitialGenerationPolicy.selected &&
         source.includeInInitialGeneration == null) {
       throw ArgumentError(
-          'selected generation requires includeInInitialGeneration.');
+        'selected generation requires includeInInitialGeneration.',
+      );
     }
     _normalizePath(source.pathPattern.replaceAll(':key', 'placeholder'));
     final startedAt = _clock().toUtc();
@@ -1326,51 +1426,54 @@ class HybridStaticGenerator {
         discovered += page.records.length;
         if (discovered > source.maxRecords) {
           throw StateError(
-              'Collection exceeded the configured maxRecords limit.');
+            'Collection exceeded the configured maxRecords limit.',
+          );
         }
         for (var i = 0; i < page.records.length; i += source.concurrency) {
           await Future.wait(
-              page.records.skip(i).take(source.concurrency).map((record) async {
-            final key = source.keyOf(record);
-            if (key.isEmpty ||
-                key == '.' ||
-                key == '..' ||
-                key.contains('/') ||
-                key.contains('\\') ||
-                key.contains('\u0000')) {
-              throw const FormatException('Invalid route key.');
-            }
-            if (!keys.add(key)) throw StateError('Duplicate route key.');
-            if (source.initialGenerationPolicy ==
-                    InitialGenerationPolicy.selected &&
-                !source.includeInInitialGeneration!(record)) {
-              skipped++;
-              return;
-            }
-            final path = _normalizePath(source.pathPattern
-                .replaceAll(':key', Uri.encodeComponent(key)));
-            if (deps[path] != null && deps[path]!.routeId != source.routeId) {
-              throw StateError('Route collision at $path.');
-            }
-            final document = await source.render(record, path);
-            _validateCompleteDocument(document.html);
-            await store.writeVersion(version, path, document.html);
-            deps[path] = RouteDependency(
+            page.records.skip(i).take(source.concurrency).map((record) async {
+              final key = source.keyOf(record);
+              if (key.isEmpty ||
+                  key == '.' ||
+                  key == '..' ||
+                  key.contains('/') ||
+                  key.contains('\\') ||
+                  key.contains('\u0000')) {
+                throw const FormatException('Invalid route key.');
+              }
+              if (!keys.add(key)) throw StateError('Duplicate route key.');
+              if (source.initialGenerationPolicy ==
+                      InitialGenerationPolicy.selected &&
+                  !source.includeInInitialGeneration!(record)) {
+                skipped++;
+                return;
+              }
+              final path = _normalizePath(
+                source.pathPattern.replaceAll(':key', Uri.encodeComponent(key)),
+              );
+              if (deps[path] != null && deps[path]!.routeId != source.routeId) {
+                throw StateError('Route collision at $path.');
+              }
+              final document = await source.render(record, path);
+              _validateCompleteDocument(document.html);
+              await store.writeVersion(version, path, document.html);
+              deps[path] = RouteDependency(
                 path: path,
                 routeId: source.routeId,
                 tags: {
                   ...?source.tagsOf?.call(record),
                   ...document.tags,
-                }.toList()
-                  ..sort(),
+                }.toList()..sort(),
                 generatedAt: _clock().toUtc(),
                 sourceVersion:
                     document.sourceVersion ?? source.versionOf?.call(record),
                 lastModified: document.lastModified,
                 canonicalUrl: document.canonicalUrl ?? _defaultCanonical(path),
-                indexable: document.indexable ?? true);
-            pages.add(path);
-          }));
+                indexable: document.indexable ?? true,
+              );
+              pages.add(path);
+            }),
+          );
         }
         source.onProgress?.call(discovered, pages.length, skipped);
         if (page.nextCursor != null && !cursors.add(page.nextCursor!)) {
@@ -1387,15 +1490,16 @@ class HybridStaticGenerator {
       await _writeSitemapIfConfigured(version, deps);
       await store.publishVersion(version);
       return HybridGenerationReport(
-          discovered: discovered,
-          generated: pages.length,
-          pages: List.unmodifiable(pages),
-          skipped: skipped,
-          deleted: obsolete.length,
-          siteId: siteId,
-          buildId: version,
-          startedAt: startedAt,
-          completedAt: _clock().toUtc());
+        discovered: discovered,
+        generated: pages.length,
+        pages: List.unmodifiable(pages),
+        skipped: skipped,
+        deleted: obsolete.length,
+        siteId: siteId,
+        buildId: version,
+        startedAt: startedAt,
+        completedAt: _clock().toUtc(),
+      );
     } catch (_) {
       await store.discardVersion(version);
       rethrow;
@@ -1403,7 +1507,8 @@ class HybridStaticGenerator {
   }
 
   Future<HybridGenerationReport> generateFixedPages(
-      Iterable<FixedRouteSource> routes) async {
+    Iterable<FixedRouteSource> routes,
+  ) async {
     final startedAt = _clock().toUtc();
     final version = await store.beginVersion();
     try {
@@ -1467,12 +1572,15 @@ class HybridStaticGenerator {
       : Uri.parse(siteBaseUrl!).resolve(path.substring(1)).toString();
 
   Future<void> _writeSitemapIfConfigured(
-      String version, Map<String, RouteDependency> dependencies) async {
+    String version,
+    Map<String, RouteDependency> dependencies,
+  ) async {
     final priorSitemap = await store.readVersionSitemap(version);
     if (siteBaseUrl != null ||
         priorSitemap != null ||
-        dependencies.values
-            .any((dependency) => dependency.canonicalUrl != null)) {
+        dependencies.values.any(
+          (dependency) => dependency.canonicalUrl != null,
+        )) {
       await store.writeVersionSitemap(version, dependencies.values);
     }
   }
@@ -1496,7 +1604,10 @@ class HybridRevalidator {
 
   final FileHtmlArtifactStore store;
   final Future<GeneratedRouteDocument> Function(
-      String path, RouteDependency previous) regenerate;
+    String path,
+    RouteDependency previous,
+  )
+  regenerate;
 
   /// Compares generated and published source versions. Return a negative value
   /// when [candidate] is older than [current]. If omitted, publication is
@@ -1519,7 +1630,8 @@ class HybridRevalidator {
       throw const FormatException('Invalid dependency tag.');
     }
     return _revalidateSelection(
-        (version, _) => store.loadVersionTagPaths(version, tag));
+      (version, _) => store.loadVersionTagPaths(version, tag),
+    );
   }
 
   Future<List<String>> revalidateRoute(String routeId) async {
@@ -1527,12 +1639,14 @@ class HybridRevalidator {
       throw const FormatException('Invalid route ID.');
     }
     return _revalidateSelection(
-        (version, _) => store.loadVersionRoutePaths(version, routeId));
+      (version, _) => store.loadVersionRoutePaths(version, routeId),
+    );
   }
 
   Future<List<String>> revalidateAll() async {
     return _revalidateSelection(
-        (_, dependencies) async => dependencies.keys.toList());
+      (_, dependencies) async => dependencies.keys.toList(),
+    );
   }
 
   Future<List<String>> deleteRoute(String routeId) async {
@@ -1542,11 +1656,12 @@ class HybridRevalidator {
     final version = await store.beginVersion();
     try {
       final deps = await store.loadVersionDependencies(version);
-      final paths = deps.values
-          .where((dependency) => dependency.routeId == routeId)
-          .map((dependency) => dependency.path)
-          .toList()
-        ..sort();
+      final paths =
+          deps.values
+              .where((dependency) => dependency.routeId == routeId)
+              .map((dependency) => dependency.path)
+              .toList()
+            ..sort();
       if (paths.isEmpty) {
         await store.discardVersion(version);
         return const [];
@@ -1572,18 +1687,18 @@ class HybridRevalidator {
     Future<List<String>> Function(
       String version,
       Map<String, RouteDependency> dependencies,
-    ) select, {
+    )
+    select, {
     int? fencingEpoch,
     String? routePath,
   }) async {
     final version = await store.beginVersion();
     try {
       final deps = await store.loadVersionDependencies(version);
-      final paths = (await select(version, deps))
-          .where(deps.containsKey)
-          .toSet()
-          .toList()
-        ..sort();
+      final paths = (await select(
+        version,
+        deps,
+      )).where(deps.containsKey).toSet().toList()..sort();
       if (paths.isEmpty) {
         await store.discardVersion(version);
         return const [];
@@ -1623,8 +1738,11 @@ class HybridRevalidator {
           deps.values.any((dependency) => dependency.canonicalUrl != null)) {
         await store.writeVersionSitemap(version, deps.values);
       }
-      await store.publishVersion(version,
-          fencingEpoch: fencingEpoch, routePath: routePath);
+      await store.publishVersion(
+        version,
+        fencingEpoch: fencingEpoch,
+        routePath: routePath,
+      );
       return List.unmodifiable(paths);
     } catch (_) {
       await store.discardVersion(version);
@@ -1635,7 +1753,10 @@ class HybridRevalidator {
 
 class StaleGeneratedDocumentException implements Exception {
   const StaleGeneratedDocumentException(
-      this.path, this.candidateVersion, this.currentVersion);
+    this.path,
+    this.candidateVersion,
+    this.currentVersion,
+  );
 
   final String path;
   final String candidateVersion;
@@ -1656,7 +1777,8 @@ void _validateBaseUrl(String raw) {
       uri.userInfo.isNotEmpty ||
       !raw.endsWith('/')) {
     throw ArgumentError(
-        'siteBaseUrl must be an absolute HTTP(S) URL ending in /.');
+      'siteBaseUrl must be an absolute HTTP(S) URL ending in /.',
+    );
   }
 }
 
@@ -1697,8 +1819,11 @@ String _nonce() => '${DateTime.now().microsecondsSinceEpoch}_$pid';
 
 /// Thrown when an artifact publication attempt presents an obsolete or lower fencing epoch.
 class StaleFencingEpochException implements Exception {
-  const StaleFencingEpochException(this.candidateEpoch, this.currentEpoch,
-      {this.routePath});
+  const StaleFencingEpochException(
+    this.candidateEpoch,
+    this.currentEpoch, {
+    this.routePath,
+  });
 
   final int candidateEpoch;
   final int currentEpoch;

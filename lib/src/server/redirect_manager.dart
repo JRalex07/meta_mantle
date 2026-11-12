@@ -5,12 +5,12 @@ class RedirectRule {
     required this.toPath,
     this.statusCode = 301,
   }) : assert(
-          statusCode == 301 ||
-              statusCode == 302 ||
-              statusCode == 307 ||
-              statusCode == 308,
-          'Redirect status code must be 301, 302, 307, or 308.',
-        );
+         statusCode == 301 ||
+             statusCode == 302 ||
+             statusCode == 307 ||
+             statusCode == 308,
+         'Redirect status code must be 301, 302, 307, or 308.',
+       );
 
   final String fromPath;
   final String toPath;
@@ -66,7 +66,8 @@ class RedirectManager {
       hops++;
       if (hops > maxHops) {
         throw StateError(
-            'Redirect chain exceeded maximum hops ($maxHops): $path');
+          'Redirect chain exceeded maximum hops ($maxHops): $path',
+        );
       }
 
       final rule = _rules[current]!;
@@ -77,7 +78,8 @@ class RedirectManager {
 
       if (!visited.add(next)) {
         throw StateError(
-            'Redirect loop detected for path: $path (cycle at $next)');
+          'Redirect loop detected for path: $path (cycle at $next)',
+        );
       }
 
       current = next;
@@ -107,7 +109,8 @@ class RedirectManager {
     if (allowedHosts.isNotEmpty &&
         !allowedHosts.contains(uri.host.toLowerCase())) {
       throw FormatException(
-          'Redirect to unlisted external host is disallowed: ${uri.host}');
+        'Redirect to unlisted external host is disallowed: ${uri.host}',
+      );
     }
   }
 

@@ -2,7 +2,8 @@ import '../../models/metadata.dart';
 import '../../universal/components/mantle_component.dart';
 
 typedef StaticComponentBuilder = MantleComponent Function(
-    MantleContext context);
+  MantleContext context,
+);
 
 /// Represents a route with associated SEO metadata and static component content.
 class StaticPageRoute {

@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
+
 import '../security/ssrf_guard.dart';
 import 'data_provider.dart';
 
@@ -21,7 +23,7 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
     this.entityTag = 'rest_api',
     this.ssrfGuard = const SsrfGuard(),
   }) : client =
-            client ?? ssrfGuard.createPinnedClient(connectionTimeout: timeout);
+           client ?? ssrfGuard.createPinnedClient(connectionTimeout: timeout);
 
   final String Function(RouteDataContext context) urlBuilder;
   final JsonEntityMapper<T> mapper;
@@ -89,7 +91,8 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
         if (response.statusCode >= 500 && attempt < maxRetries) {
           // Idempotent GET retry on server error
           await Future<void>.delayed(
-              Duration(milliseconds: 100 * (attempt + 1)));
+            Duration(milliseconds: 100 * (attempt + 1)),
+          );
           continue;
         }
         break;
@@ -133,7 +136,8 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
       } catch (_) {}
     }
 
-    final etag = response.headers['etag'] ??
+    final etag =
+        response.headers['etag'] ??
         response.headers['ETag'] ??
         response.headers['Etag'];
 
@@ -157,7 +161,7 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
   ) async {
     var currentUri = initialRequest.url;
     final requestHeaders = Map<String, String>.of(initialRequest.headers);
-    for (var redirects = 0;; redirects++) {
+    for (var redirects = 0; ; redirects++) {
       final request = http.Request('GET', currentUri)
         ..headers.addAll(requestHeaders)
         ..followRedirects = false
@@ -170,7 +174,8 @@ class RestDataProvider<T> implements MetaMantleDataProvider<T> {
       if (redirects >= maxRedirects) {
         await response.stream.drain<void>();
         throw StateError(
-            'REST API exceeded maximum of $maxRedirects redirects.');
+          'REST API exceeded maximum of $maxRedirects redirects.',
+        );
       }
       final nextUri = currentUri.resolve(location);
       await ssrfGuard.validateUri(nextUri);
@@ -206,7 +211,7 @@ class GraphQLDataProvider<T> implements MetaMantleDataProvider<T> {
     this.entityTag = 'graphql_api',
     this.ssrfGuard = const SsrfGuard(),
   }) : client =
-            client ?? ssrfGuard.createPinnedClient(connectionTimeout: timeout);
+           client ?? ssrfGuard.createPinnedClient(connectionTimeout: timeout);
 
   final Uri endpoint;
   final String Function(RouteDataContext context) queryBuilder;
@@ -290,7 +295,8 @@ class GraphQLDataProvider<T> implements MetaMantleDataProvider<T> {
       final errors = decoded['errors'] as List;
       if (errors.isNotEmpty) {
         throw StateError(
-            'GraphQL query returned errors: ${errors.first['message']}');
+          'GraphQL query returned errors: ${errors.first['message']}',
+        );
       }
     }
 

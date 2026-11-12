@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:crypto/crypto.dart';
 
 /// Records content hashes and output file paths for incremental static builds.
@@ -7,8 +8,8 @@ class IncrementalManifest {
   IncrementalManifest({
     Map<String, String>? routeFingerprints,
     Map<String, String>? ownedFiles,
-  })  : routeFingerprints = routeFingerprints ?? {},
-        ownedFiles = ownedFiles ?? {};
+  }) : routeFingerprints = routeFingerprints ?? {},
+       ownedFiles = ownedFiles ?? {};
 
   /// Maps route path (e.g. `/about/`) to its content SHA/FNV hash.
   final Map<String, String> routeFingerprints;
@@ -41,8 +42,9 @@ class IncrementalManifest {
       'fingerprints': routeFingerprints,
       'ownedFiles': ownedFiles,
     };
-    await file
-        .writeAsString(const JsonEncoder.withIndent('  ').convert(payload));
+    await file.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(payload),
+    );
   }
 
   /// Checks if [path] with [currentFingerprint] has changed compared to manifest.

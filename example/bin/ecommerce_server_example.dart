@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
+
 import 'package:meta_mantle/meta_mantle_server.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
@@ -75,17 +76,14 @@ void main(List<String> args) async {
     storeDescription:
         'High quality handcrafted goods with structured merchant feeds',
   );
-  final merchantFeed =
-      merchantGenerator.generateXmlFeed(catalog.values.toList());
+  final merchantFeed = merchantGenerator.generateXmlFeed(
+    catalog.values.toList(),
+  );
 
   // SSR Route for E-Commerce Product
   final productDb = MemoryDataProvider<ProductItem>(lookupParam: 'slug');
   for (final entry in catalog.entries) {
-    productDb.set(
-      entry.key,
-      entry.value,
-      etag: 'w/"${entry.value.sku}-v1"',
-    );
+    productDb.set(entry.key, entry.value, etag: 'w/"${entry.value.sku}-v1"');
   }
 
   final productRoute = MetaRoute<ProductItem>(
@@ -114,15 +112,24 @@ void main(List<String> args) async {
         H.article([
           H.h1(product.name),
           if (product.images.isNotEmpty)
-            H.img(product.images.first,
-                alt: product.name, width: 400, height: 400),
+            H.img(
+              product.images.first,
+              alt: product.name,
+              width: 400,
+              height: 400,
+            ),
           H.p(product.description),
-          H.p('Brand: ${product.brand} | Rating: ${product.rating?.ratingValue} / 5 (${product.rating?.reviewCount} reviews)'),
+          H.p(
+            'Brand: ${product.brand} | Rating: ${product.rating?.ratingValue} / 5 (${product.rating?.reviewCount} reviews)',
+          ),
           H.h2('Available Options'),
           H.ul(
             product.variants
-                .map((v) => H.li(
-                    '${v.name} - \$${v.price} (${v.availability == ItemAvailability.inStock ? "In Stock" : "Sold Out"})'))
+                .map(
+                  (v) => H.li(
+                    '${v.name} - \$${v.price} (${v.availability == ItemAvailability.inStock ? "In Stock" : "Sold Out"})',
+                  ),
+                )
                 .toList(),
           ),
         ]),
@@ -145,13 +152,14 @@ void main(List<String> args) async {
     ),
   );
 
-  final handler = const Pipeline()
-      .addMiddleware(logRequests())
-      .addHandler((Request request) async {
+  final handler = const Pipeline().addMiddleware(logRequests()).addHandler((
+    Request request,
+  ) async {
     if (request.url.path == 'merchant/feed.xml') {
-      return Response.ok(merchantFeed, headers: {
-        'Content-Type': 'application/xml; charset=utf-8',
-      });
+      return Response.ok(
+        merchantFeed,
+        headers: {'Content-Type': 'application/xml; charset=utf-8'},
+      );
     }
     if (request.url.path == 'catalog') {
       final decision = facetedPolicy.evaluate(request.url.queryParameters);
@@ -170,7 +178,8 @@ void main(List<String> args) async {
         ),
       );
       return Response.ok(
-          'Invalidated ${tags.length} cache tags ($tags) for depleted stock.\n');
+        'Invalidated ${tags.length} cache tags ($tags) for depleted stock.\n',
+      );
     }
     return metaMantleShelfHandler(engine)(request);
   });
@@ -180,11 +189,14 @@ void main(List<String> args) async {
   print(' MetaMantle E-Commerce Production Example Running');
   print(' URL: http://localhost:${server.port}');
   print(
-      ' Product page: http://localhost:${server.port}/products/artisan-ceramic-mug');
+    ' Product page: http://localhost:${server.port}/products/artisan-ceramic-mug',
+  );
   print(' Merchant XML: http://localhost:${server.port}/merchant/feed.xml');
   print(
-      ' Faceted Nav:  http://localhost:${server.port}/catalog?category=kitchen&page=4&sort=price');
+    ' Faceted Nav:  http://localhost:${server.port}/catalog?category=kitchen&page=4&sort=price',
+  );
   print(
-      ' Webhook Invalidation: POST http://localhost:${server.port}/webhooks/inventory');
+    ' Webhook Invalidation: POST http://localhost:${server.port}/webhooks/inventory',
+  );
   print('========================================================');
 }

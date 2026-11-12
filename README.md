@@ -132,7 +132,7 @@ Run `flutter pub get` (or `dart pub get`) to resolve dependencies.
 ### Flutter Web Client Example
 
 ```dart
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:meta_mantle/meta_mantle.dart';
 
 void main() => runApp(const MyApp());

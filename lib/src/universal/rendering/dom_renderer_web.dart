@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+
 import 'package:web/web.dart' as web;
 
 import '../ir/mantle_diff.dart';
@@ -98,11 +99,13 @@ class MantleDomRenderer implements MantleRenderer<web.Node> {
               final select = element as web.HTMLSelectElement;
               value = select.value;
             }
-            callback(MantleEvent(
-              type: eventName,
-              value: value,
-              targetId: element.id.isNotEmpty ? element.id : null,
-            ));
+            callback(
+              MantleEvent(
+                type: eventName,
+                value: value,
+                targetId: element.id.isNotEmpty ? element.id : null,
+              ),
+            );
           }).toJS,
         );
       }
@@ -171,11 +174,13 @@ class _DomVisitor implements MantleNodeVisitor<web.Node> {
             final select = element as web.HTMLSelectElement;
             value = select.value;
           }
-          callback(MantleEvent(
-            type: eventName,
-            value: value,
-            targetId: element.id.isNotEmpty ? element.id : null,
-          ));
+          callback(
+            MantleEvent(
+              type: eventName,
+              value: value,
+              targetId: element.id.isNotEmpty ? element.id : null,
+            ),
+          );
         }).toJS,
       );
     }
@@ -222,45 +227,133 @@ class MantleHydrator {
 
   void _hydrateRecursive(web.Element domElement, MantleNode node) {
     if (node is MantleElementNode) {
-      // Validate element tag or key if present
       final serverTag = domElement.tagName.toLowerCase();
+
+      // 1. Tag Mismatch Recovery: if server tag does not match client component tag, replace it
       if (serverTag != node.tag.toLowerCase()) {
-        // Tag mismatch: patch or replace safely
+        final newDom = const MantleDomRenderer().render(node);
+        domElement.parentNode?.replaceChild(newDom, domElement);
         return;
       }
 
-      // Attach event listeners to this matching DOM element
-      for (final event in node.events.entries) {
-        final eventName = event.key;
-        final callback = event.value;
-
-        domElement.addEventListener(
-          eventName,
-          ((web.Event e) {
-            Object? value;
-            if (domElement.tagName.toLowerCase() == 'input') {
-              final input = domElement as web.HTMLInputElement;
-              value = input.type == 'checkbox' ? input.checked : input.value;
-            } else if (domElement.tagName.toLowerCase() == 'select') {
-              final select = domElement as web.HTMLSelectElement;
-              value = select.value;
-            }
-            callback(MantleEvent(
-              type: eventName,
-              value: value,
-              targetId: domElement.id.isNotEmpty ? domElement.id : null,
-            ));
-          }).toJS,
-        );
+      // 2. Stable Node Identity: check key attribute
+      if (node.key != null) {
+        final existingKey = domElement.getAttribute('data-mantle-key');
+        if (existingKey != null && existingKey != node.key.toString()) {
+          final newDom = const MantleDomRenderer().render(node);
+          domElement.parentNode?.replaceChild(newDom, domElement);
+          return;
+        }
+        domElement.setAttribute('data-mantle-key', node.key.toString());
       }
 
-      // Reconcile child element nodes
-      var domChild = domElement.firstElementChild;
-      for (final childNode in node.children) {
-        if (childNode is MantleElementNode && domChild != null) {
-          _hydrateRecursive(domChild, childNode);
-          domChild = domChild.nextElementSibling;
+      // 3. Attribute Reconciliation
+      if (node.id != null && domElement.id != node.id) {
+        domElement.id = node.id!;
+      }
+      for (final attr in node.attributes.entries) {
+        if (domElement.getAttribute(attr.key) != attr.value) {
+          domElement.setAttribute(attr.key, attr.value);
         }
+      }
+      for (final cls in node.classes) {
+        if (!domElement.classList.contains(cls)) {
+          domElement.classList.add(cls);
+        }
+      }
+
+      // 4. Style Reconciliation
+      if (node.styles.isNotEmpty && domElement.isA<web.HTMLElement>()) {
+        final styleDeclaration = (domElement as web.HTMLElement).style;
+        for (final entry in node.styles.entries) {
+          styleDeclaration.setProperty(entry.key, entry.value);
+        }
+      }
+
+      // 5. Event Listener Registration (with single-registration guard)
+      if (node.events.isNotEmpty &&
+          domElement.getAttribute('data-mantle-hydrated') != 'true') {
+        domElement.setAttribute('data-mantle-hydrated', 'true');
+        for (final event in node.events.entries) {
+          final eventName = event.key;
+          final callback = event.value;
+
+          domElement.addEventListener(
+            eventName,
+            ((web.Event e) {
+              Object? value;
+              if (domElement.tagName.toLowerCase() == 'input') {
+                final input = domElement as web.HTMLInputElement;
+                value = input.type == 'checkbox' ? input.checked : input.value;
+              } else if (domElement.tagName.toLowerCase() == 'select') {
+                final select = domElement as web.HTMLSelectElement;
+                value = select.value;
+              } else if (domElement.tagName.toLowerCase() == 'textarea') {
+                final textarea = domElement as web.HTMLTextAreaElement;
+                value = textarea.value;
+              }
+              callback(
+                MantleEvent(
+                  type: eventName,
+                  value: value,
+                  targetId: domElement.id.isNotEmpty ? domElement.id : null,
+                ),
+              );
+            }).toJS,
+          );
+        }
+      }
+
+      // 6. Child Insertion, Removal, and Text Node Reconciliation
+      final domChildren = <web.Node>[];
+      var childCursor = domElement.firstChild;
+      while (childCursor != null) {
+        domChildren.add(childCursor);
+        childCursor = childCursor.nextSibling;
+      }
+
+      var domIdx = 0;
+      for (final childNode in node.children) {
+        if (childNode is MantleTextNode) {
+          if (domIdx < domChildren.length &&
+              domChildren[domIdx].nodeType == 3) {
+            // Reconcile text
+            final textNode = domChildren[domIdx];
+            if (textNode.textContent != childNode.text) {
+              textNode.textContent = childNode.text;
+            }
+            domIdx++;
+          } else {
+            // Insert missing text node
+            final newText = web.document.createTextNode(childNode.text);
+            if (domIdx < domChildren.length) {
+              domElement.insertBefore(newText, domChildren[domIdx]);
+            } else {
+              domElement.appendChild(newText);
+            }
+          }
+        } else if (childNode is MantleElementNode) {
+          if (domIdx < domChildren.length &&
+              domChildren[domIdx].isA<web.Element>()) {
+            final childElement = domChildren[domIdx] as web.Element;
+            _hydrateRecursive(childElement, childNode);
+            domIdx++;
+          } else {
+            // Insert missing element
+            final newElement = const MantleDomRenderer().render(childNode);
+            if (domIdx < domChildren.length) {
+              domElement.insertBefore(newElement, domChildren[domIdx]);
+            } else {
+              domElement.appendChild(newElement);
+            }
+          }
+        }
+      }
+
+      // Remove excess server DOM nodes
+      while (domIdx < domChildren.length) {
+        domElement.removeChild(domChildren[domIdx]);
+        domIdx++;
       }
     }
   }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meta_mantle/meta_mantle_server.dart';
 
@@ -61,9 +62,11 @@ void main() {
         htmlBuilder: (p, ctx) => [
           H.h1(p.name),
           H.p('Price: \$${p.price.toStringAsFixed(2)}'),
-          H.span(p.availability == ItemAvailability.inStock
-              ? 'In Stock'
-              : 'Sold Out'),
+          H.span(
+            p.availability == ItemAvailability.inStock
+                ? 'In Stock'
+                : 'Sold Out',
+          ),
         ],
         cachePolicy: const CachePolicy(
           ttl: Duration(hours: 1),
@@ -78,9 +81,7 @@ void main() {
       );
     });
 
-    test(
-        'Complete 9-Step Inventory Lifecycle: Request -> Cache -> Price Change -> Invalidate -> Verify New Render & Feed',
-        () async {
+    test('Complete 9-Step Inventory Lifecycle: Request -> Cache -> Price Change -> Invalidate -> Verify New Render & Feed', () async {
       // 1. Initial Request
       final req1 = ServerRequest(
         method: 'GET',
@@ -143,8 +144,9 @@ void main() {
       expect(res3.headers['ETag'], isNot(equals(etag1)));
 
       // 6. Verify Structured Data contains new price
-      final jsonLd =
-          currentProduct.toJsonLd(baseUrl: 'https://store.example.com');
+      final jsonLd = currentProduct.toJsonLd(
+        baseUrl: 'https://store.example.com',
+      );
       final jsonStr = json.encode(jsonLd.data);
       expect(jsonStr, contains('21.99'));
 
@@ -157,12 +159,12 @@ void main() {
       final merchantXml = merchantGen.generateXmlFeed([currentProduct]);
       expect(merchantXml, contains('<g:price>21.99 USD</g:price>'));
       expect(
-          merchantXml, contains('<g:availability>in_stock</g:availability>'));
+        merchantXml,
+        contains('<g:availability>in_stock</g:availability>'),
+      );
     });
 
-    test(
-        'Stock Depletion Lifecycle: availableUnits = 0 invalidates cache and marks Out of Stock',
-        () async {
+    test('Stock Depletion Lifecycle: availableUnits = 0 invalidates cache and marks Out of Stock', () async {
       final req = ServerRequest(
         method: 'GET',
         uri: Uri.parse('http://store.example.com/products/artisan-mug'),
@@ -212,9 +214,7 @@ void main() {
       expect(xml, contains('<g:availability>out_of_stock</g:availability>'));
     });
 
-    test(
-        'Faceted Navigation Policy protects crawl budget and normalizes canonical URLs',
-        () {
+    test('Faceted Navigation Policy protects crawl budget and normalizes canonical URLs', () {
       const policy = FacetedNavPolicy(
         baseCategoryUrl: 'https://store.example.com/categories/kitchen',
         allowedIndexableParams: {'brand', 'color'},
@@ -226,8 +226,10 @@ void main() {
       // 1. Clean category page
       final d1 = policy.evaluate({});
       expect(d1.shouldIndex, isTrue);
-      expect(d1.canonicalUrl,
-          equals('https://store.example.com/categories/kitchen/'));
+      expect(
+        d1.canonicalUrl,
+        equals('https://store.example.com/categories/kitchen/'),
+      );
       expect(d1.robots, contains('index, follow'));
 
       // 2. Allowed indexable filters (<= 2)
@@ -238,12 +240,17 @@ void main() {
       final d3 = policy.evaluate({'sort': 'price_desc'});
       expect(d3.shouldIndex, isFalse);
       expect(d3.robots, contains('noindex, follow'));
-      expect(d3.canonicalUrl,
-          equals('https://store.example.com/categories/kitchen/'));
+      expect(
+        d3.canonicalUrl,
+        equals('https://store.example.com/categories/kitchen/'),
+      );
 
       // 4. Excessive filter combinations (> 2) -> Noindex
-      final d4 = policy
-          .evaluate({'brand': 'terracotta', 'color': 'sand', 'size': 'large'});
+      final d4 = policy.evaluate({
+        'brand': 'terracotta',
+        'color': 'sand',
+        'size': 'large',
+      });
       expect(d4.shouldIndex, isFalse);
       expect(d4.robots, contains('noindex, follow'));
 

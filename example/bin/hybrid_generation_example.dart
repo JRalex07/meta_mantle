@@ -112,13 +112,15 @@ Future<void> main(List<String> arguments) async {
             ),
             bodyNodes: [
               H.h1(product.name),
-              H.tag('img',
-                  attributes: {
-                    'src': 'https://shop.example/images/${product.slug}.jpg',
-                    'alt': product.name,
-                    'loading': 'lazy',
-                  },
-                  isSelfClosing: true),
+              H.tag(
+                'img',
+                attributes: {
+                  'src': 'https://shop.example/images/${product.slug}.jpg',
+                  'alt': product.name,
+                  'loading': 'lazy',
+                },
+                isSelfClosing: true,
+              ),
               H.p(product.description),
               H.p('Price: \$${product.price.toStringAsFixed(2)}'),
               H.a('/products', 'Browse products'),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 /// Result summary of a CDN cache purge operation.
@@ -93,7 +94,10 @@ class CloudflareCdnInvalidator implements CdnInvalidator {
   Future<CdnPurgeResult> purgeUrls(List<String> urls) async {
     if (urls.isEmpty) {
       return const CdnPurgeResult(
-          success: true, provider: 'cloudflare', purgedCount: 0);
+        success: true,
+        provider: 'cloudflare',
+        purgedCount: 0,
+      );
     }
     return _callCloudflare({'files': urls}, urls.length);
   }
@@ -102,7 +106,10 @@ class CloudflareCdnInvalidator implements CdnInvalidator {
   Future<CdnPurgeResult> purgeTags(List<String> tags) async {
     if (tags.isEmpty) {
       return const CdnPurgeResult(
-          success: true, provider: 'cloudflare', purgedCount: 0);
+        success: true,
+        provider: 'cloudflare',
+        purgedCount: 0,
+      );
     }
     return _callCloudflare({'tags': tags}, tags.length);
   }
@@ -113,9 +120,12 @@ class CloudflareCdnInvalidator implements CdnInvalidator {
   }
 
   Future<CdnPurgeResult> _callCloudflare(
-      Map<String, dynamic> body, int count) async {
+    Map<String, dynamic> body,
+    int count,
+  ) async {
     final endpoint = Uri.parse(
-        'https://api.cloudflare.com/client/v4/zones/$zoneId/purge_cache');
+      'https://api.cloudflare.com/client/v4/zones/$zoneId/purge_cache',
+    );
     try {
       final res = await client.post(
         endpoint,
@@ -127,11 +137,13 @@ class CloudflareCdnInvalidator implements CdnInvalidator {
       );
 
       final jsonRes = json.decode(res.body) as Map<String, dynamic>;
-      final success = res.statusCode >= 200 &&
+      final success =
+          res.statusCode >= 200 &&
           res.statusCode < 300 &&
           jsonRes['success'] == true;
-      final resultId =
-          jsonRes['result'] is Map ? jsonRes['result']['id'] : null;
+      final resultId = jsonRes['result'] is Map
+          ? jsonRes['result']['id']
+          : null;
 
       return CdnPurgeResult(
         success: success,
@@ -158,7 +170,8 @@ class CloudflareCdnInvalidator implements CdnInvalidator {
 /// This package does not currently implement AWS Signature Version 4, so this
 /// adapter deliberately reports failure instead of simulating an invalidation.
 @Deprecated(
-    'CloudFront invalidation is unsupported; use a real AWS SDK adapter.')
+  'CloudFront invalidation is unsupported; use a real AWS SDK adapter.',
+)
 class CloudFrontCdnInvalidator implements CdnInvalidator {
   CloudFrontCdnInvalidator({
     required this.distributionId,
@@ -186,20 +199,17 @@ class CloudFrontCdnInvalidator implements CdnInvalidator {
   }
 
   CdnPurgeResult _unsupported() => const CdnPurgeResult(
-        success: false,
-        provider: 'cloudfront',
-        purgedCount: 0,
-        errorMessage:
-            'CloudFront invalidation is unsupported: AWS authentication and API calls are not implemented.',
-      );
+    success: false,
+    provider: 'cloudfront',
+    purgedCount: 0,
+    errorMessage: 'CloudFront invalidation is unsupported: AWS authentication and API calls are not implemented.',
+  );
 }
 
 /// Nginx / Fastly reverse proxy cache purge adapter via HTTP PURGE.
 class NginxProxyInvalidator implements CdnInvalidator {
-  NginxProxyInvalidator({
-    required this.proxyBaseUrl,
-    http.Client? httpClient,
-  }) : client = httpClient ?? http.Client();
+  NginxProxyInvalidator({required this.proxyBaseUrl, http.Client? httpClient})
+    : client = httpClient ?? http.Client();
 
   final String proxyBaseUrl;
   final http.Client client;
@@ -231,8 +241,7 @@ class NginxProxyInvalidator implements CdnInvalidator {
       success: false,
       provider: 'nginx',
       purgedCount: 0,
-      errorMessage:
-          'Nginx standard proxy_cache does not support surrogate tag purges natively.',
+      errorMessage: 'Nginx standard proxy_cache does not support surrogate tag purges natively.',
     );
   }
 

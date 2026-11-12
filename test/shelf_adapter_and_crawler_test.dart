@@ -1,19 +1,20 @@
 import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta_mantle/meta_mantle_server.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
 void main() {
-  group('Real Shelf HTTP Server & Raw Crawler Response Tests (Zero JavaScript)',
-      () {
+  group('Real Shelf HTTP Server & Raw Crawler Response Tests (Zero JavaScript)', () {
     late HttpServer server;
     late String serverBaseUrl;
     late MemoryDataProvider<Map<String, dynamic>> productProvider;
 
     setUpAll(() async {
-      productProvider =
-          MemoryDataProvider<Map<String, dynamic>>(lookupParam: 'slug');
+      productProvider = MemoryDataProvider<Map<String, dynamic>>(
+        lookupParam: 'slug',
+      );
 
       productProvider.set(
         'basmati-rice',
@@ -21,8 +22,7 @@ void main() {
           'id': 'PROD-101',
           'slug': 'basmati-rice',
           'name': 'Premium Basmati Rice',
-          'description':
-              'Aged long-grain aromatic rice sourced directly from Himalayan organic farms.',
+          'description': 'Aged long-grain aromatic rice sourced directly from Himalayan organic farms.',
           'price': 24.99,
           'image':
               'https://metamantle.alex.runs-on.dev/assets/basmati-rice.png',
@@ -62,10 +62,7 @@ void main() {
         ),
         htmlBuilder: (data, ctx) => [
           H.header([
-            H.nav([
-              H.a('/', 'Home'),
-              H.a('/about', 'About Us'),
-            ]),
+            H.nav([H.a('/', 'Home'), H.a('/about', 'About Us')]),
           ]),
           H.main([
             H.article([
@@ -88,9 +85,7 @@ void main() {
               ),
             ]),
           ]),
-          H.footer([
-            H.p('© 2026 MetaMantle Store Inc. All rights reserved.'),
-          ]),
+          H.footer([H.p('© 2026 MetaMantle Store Inc. All rights reserved.')]),
         ],
         cachePolicy: const CachePolicy(
           ttl: Duration(minutes: 10),
@@ -118,82 +113,94 @@ void main() {
     });
 
     test(
-        'raw HTTP crawler receives full semantic HTML before JavaScript executes',
-        () async {
-      final client = http.Client();
-      try {
-        final res = await client.get(
-          Uri.parse('$serverBaseUrl/products/basmati-rice'),
-          headers: {
-            'User-Agent': 'Googlebot/2.1 (+http://www.google.com/bot.html)',
-            'Accept': 'text/html',
-          },
-        );
+      'raw HTTP crawler receives full semantic HTML before JavaScript executes',
+      () async {
+        final client = http.Client();
+        try {
+          final res = await client.get(
+            Uri.parse('$serverBaseUrl/products/basmati-rice'),
+            headers: {
+              'User-Agent': 'Googlebot/2.1 (+http://www.google.com/bot.html)',
+              'Accept': 'text/html',
+            },
+          );
 
-        expect(res.statusCode, equals(200));
-        expect(res.headers['content-type'], contains('text/html'));
-        expect(res.headers['etag'], equals('w/"shelf-rice-101"'));
+          expect(res.statusCode, equals(200));
+          expect(res.headers['content-type'], contains('text/html'));
+          expect(res.headers['etag'], equals('w/"shelf-rice-101"'));
 
-        final body = res.body;
+          final body = res.body;
 
-        // 1. Title verification
-        expect(body,
-            contains('<title>Premium Basmati Rice | MetaMantle Store</title>'));
+          // 1. Title verification
+          expect(
+            body,
+            contains('<title>Premium Basmati Rice | MetaMantle Store</title>'),
+          );
 
-        // 2. Meta description
-        expect(
-          body,
-          contains(
-              'name="description" content="Aged long-grain aromatic rice sourced directly from Himalayan organic farms."'),
-        );
-
-        // 3. Canonical URL
-        expect(
-          body,
-          contains(
-              '<link rel="canonical" href="https://metamantle.alex.runs-on.dev/products/basmati-rice/"'),
-        );
-
-        // 4. Open Graph protocol
-        expect(
+          // 2. Meta description
+          expect(
             body,
             contains(
-                '<meta property="og:title" content="Premium Basmati Rice"'));
-        expect(
+              'name="description" content="Aged long-grain aromatic rice sourced directly from Himalayan organic farms."',
+            ),
+          );
+
+          // 3. Canonical URL
+          expect(
             body,
             contains(
-                '<meta property="og:image" content="https://metamantle.alex.runs-on.dev/assets/basmati-rice.png"'));
-        expect(body, contains('<meta property="og:type" content="product"'));
+              '<link rel="canonical" href="https://metamantle.alex.runs-on.dev/products/basmati-rice/"',
+            ),
+          );
 
-        // 5. JSON-LD Structured Data
-        expect(body, contains('<script type="application/ld+json"'));
-        expect(body, contains(r'"@type":"Product"'));
-        expect(body, contains(r'"name":"Premium Basmati Rice"'));
-        expect(body, contains(r'"sku":"PROD-101"'));
-
-        // 6. Semantic Body Markup
-        expect(body, contains('<h1>Premium Basmati Rice</h1>'));
-        expect(
+          // 4. Open Graph protocol
+          expect(
             body,
             contains(
-                '<img src="https://metamantle.alex.runs-on.dev/assets/basmati-rice.png" alt="Premium Basmati Rice package" width="600" height="600" />'));
-        expect(body, contains('<p>Price: \$24.99 — In Stock</p>'));
-        expect(body, contains('<th>Attribute</th>'));
-        expect(body, contains('<td>Himalayan Foothills</td>'));
+              '<meta property="og:title" content="Premium Basmati Rice"',
+            ),
+          );
+          expect(
+            body,
+            contains(
+              '<meta property="og:image" content="https://metamantle.alex.runs-on.dev/assets/basmati-rice.png"',
+            ),
+          );
+          expect(body, contains('<meta property="og:type" content="product"'));
 
-        // 7. Verify zero requirement for JavaScript execution
-        expect(body, startsWith('<!DOCTYPE html>'));
-        expect(body, endsWith('</html>\n'));
-      } finally {
-        client.close();
-      }
-    });
+          // 5. JSON-LD Structured Data
+          expect(body, contains('<script type="application/ld+json"'));
+          expect(body, contains(r'"@type":"Product"'));
+          expect(body, contains(r'"name":"Premium Basmati Rice"'));
+          expect(body, contains(r'"sku":"PROD-101"'));
+
+          // 6. Semantic Body Markup
+          expect(body, contains('<h1>Premium Basmati Rice</h1>'));
+          expect(
+            body,
+            contains(
+              '<img src="https://metamantle.alex.runs-on.dev/assets/basmati-rice.png" alt="Premium Basmati Rice package" width="600" height="600" />',
+            ),
+          );
+          expect(body, contains('<p>Price: \$24.99 — In Stock</p>'));
+          expect(body, contains('<th>Attribute</th>'));
+          expect(body, contains('<td>Himalayan Foothills</td>'));
+
+          // 7. Verify zero requirement for JavaScript execution
+          expect(body, startsWith('<!DOCTYPE html>'));
+          expect(body, endsWith('</html>\n'));
+        } finally {
+          client.close();
+        }
+      },
+    );
 
     test('raw HTTP crawler receives 404 for missing items', () async {
       final client = http.Client();
       try {
-        final res =
-            await client.get(Uri.parse('$serverBaseUrl/products/unknown-item'));
+        final res = await client.get(
+          Uri.parse('$serverBaseUrl/products/unknown-item'),
+        );
         expect(res.statusCode, equals(404));
         expect(res.body, contains('404'));
       } finally {

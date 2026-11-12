@@ -2,12 +2,13 @@ import '../core/metadata_renderer.dart';
 import '../models/metadata.dart';
 import 'head_adapter_contract.dart';
 import 'head_adapter_stub.dart'
-    if (dart.library.js_interop) 'head_adapter_web.dart' as platform;
+    if (dart.library.js_interop) 'head_adapter_web.dart'
+    as platform;
 
 /// Coordinates metadata scopes and controls head adapter updates.
 class RuntimeCoordinator {
   RuntimeCoordinator({HeadAdapter? adapter})
-      : _adapter = adapter ?? platform.createHeadAdapter();
+    : _adapter = adapter ?? platform.createHeadAdapter();
 
   /// Shared singleton instance used across the package runtime.
   static RuntimeCoordinator instance = RuntimeCoordinator();
@@ -84,7 +85,8 @@ class RuntimeCoordinator {
 
   /// Imperatively updates the title of the active metadata scope.
   void setTitle(String title) {
-    final current = _scopes[_imperativeOwner] ??
+    final current =
+        _scopes[_imperativeOwner] ??
         _scopes.values.lastOrNull ??
         const WebMetadata();
     activate(_imperativeOwner, current.copyWith(title: title));
@@ -92,7 +94,8 @@ class RuntimeCoordinator {
 
   /// Imperatively updates the description of the active metadata scope.
   void setDescription(String description) {
-    final current = _scopes[_imperativeOwner] ??
+    final current =
+        _scopes[_imperativeOwner] ??
         _scopes.values.lastOrNull ??
         const WebMetadata();
     activate(_imperativeOwner, current.copyWith(description: description));
@@ -100,7 +103,8 @@ class RuntimeCoordinator {
 
   /// Imperatively updates the canonical URL of the active metadata scope.
   void setCanonical(String canonical) {
-    final current = _scopes[_imperativeOwner] ??
+    final current =
+        _scopes[_imperativeOwner] ??
         _scopes.values.lastOrNull ??
         const WebMetadata();
     activate(_imperativeOwner, current.copyWith(canonical: canonical));

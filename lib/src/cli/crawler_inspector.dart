@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:html/parser.dart' as html_parser;
 import 'package:http/http.dart' as http;
 
@@ -39,20 +40,20 @@ class UrlInspectionReport {
   final List<String> findings;
 
   Map<String, dynamic> toJson() => {
-        'url': url,
-        'statusCode': statusCode,
-        'headers': headers,
-        'title': title,
-        'description': description,
-        'canonical': canonical,
-        'robots': robots,
-        'openGraph': openGraph,
-        'twitter': twitter,
-        'jsonLd': jsonLd,
-        'language': language,
-        'hasFlutterBootstrap': hasFlutterBootstrap,
-        'findings': findings,
-      };
+    'url': url,
+    'statusCode': statusCode,
+    'headers': headers,
+    'title': title,
+    'description': description,
+    'canonical': canonical,
+    'robots': robots,
+    'openGraph': openGraph,
+    'twitter': twitter,
+    'jsonLd': jsonLd,
+    'language': language,
+    'hasFlutterBootstrap': hasFlutterBootstrap,
+    'findings': findings,
+  };
 
   String toTerminalSummary() {
     final buf = StringBuffer();
@@ -68,7 +69,8 @@ class UrlInspectionReport {
     buf.writeln('OG Image:    ${openGraph["og:image"] ?? "(not declared)"}');
     buf.writeln('JSON-LD:     ${jsonLd.length} schema block(s) detected');
     buf.writeln(
-        'Bootstrap:   ${hasFlutterBootstrap ? "Detected (Progressive / Hybrid)" : "Pure HTML (Zero JS)"}');
+      'Bootstrap:   ${hasFlutterBootstrap ? "Detected (Progressive / Hybrid)" : "Pure HTML (Zero JS)"}',
+    );
 
     if (findings.isNotEmpty) {
       buf.writeln('\nFindings:');
@@ -93,8 +95,8 @@ class CrawlerInspector {
     this.totalTimeout = const Duration(seconds: 30),
     this.maxResponseSizeBytes = 2 * 1024 * 1024,
     this.maxRedirects = 5,
-  })  : client = client ?? _createPinnedClient(ssrfGuard),
-        _ownsClient = client == null {
+  }) : client = client ?? _createPinnedClient(ssrfGuard),
+       _ownsClient = client == null {
     if (timeout <= Duration.zero || totalTimeout <= Duration.zero) {
       throw ArgumentError('Crawler timeouts must be positive.');
     }
@@ -131,12 +133,15 @@ class CrawlerInspector {
       final doc = html_parser.parse(html);
 
       final title = doc.querySelector('title')?.text.trim();
-      final description =
-          doc.querySelector('meta[name="description"]')?.attributes['content'];
-      final canonical =
-          doc.querySelector('link[rel="canonical"]')?.attributes['href'];
-      final robots =
-          doc.querySelector('meta[name="robots"]')?.attributes['content'];
+      final description = doc
+          .querySelector('meta[name="description"]')
+          ?.attributes['content'];
+      final canonical = doc
+          .querySelector('link[rel="canonical"]')
+          ?.attributes['href'];
+      final robots = doc
+          .querySelector('meta[name="robots"]')
+          ?.attributes['content'];
       final lang = doc.querySelector('html')?.attributes['lang'];
 
       final og = <String, String>{};
@@ -154,8 +159,9 @@ class CrawlerInspector {
       }
 
       final jsonLdList = <Map<String, dynamic>>[];
-      for (final el
-          in doc.querySelectorAll('script[type="application/ld+json"]')) {
+      for (final el in doc.querySelectorAll(
+        'script[type="application/ld+json"]',
+      )) {
         try {
           final decoded = json.decode(el.text);
           if (decoded is Map<String, dynamic>) {
@@ -178,8 +184,9 @@ class CrawlerInspector {
         findings.add('Missing <link rel="canonical"> tag.');
       }
       if (response.statusCode >= 400) {
-        findings
-            .add('Server returned HTTP error status ${response.statusCode}.');
+        findings.add(
+          'Server returned HTTP error status ${response.statusCode}.',
+        );
       }
 
       return UrlInspectionReport(
@@ -211,7 +218,7 @@ class CrawlerInspector {
   Future<http.Response> _fetch(Uri initial, Stopwatch watch) async {
     var uri = initial;
     final visited = <String>{};
-    for (var redirects = 0;; redirects++) {
+    for (var redirects = 0; ; redirects++) {
       _ensureBudget(watch);
       await ssrfGuard.validateUri(uri).timeout(_remaining(watch));
       final key = uri.normalizePath().toString();
@@ -231,7 +238,8 @@ class CrawlerInspector {
         if (redirects >= maxRedirects) {
           await streamed.stream.listen(null).cancel();
           throw CrawlerException(
-              'Crawler exceeded maximum of $maxRedirects redirects.');
+            'Crawler exceeded maximum of $maxRedirects redirects.',
+          );
         }
         final Uri next;
         try {
@@ -274,10 +282,13 @@ class CrawlerInspector {
         if (_ownsClient) client.close();
         rethrow;
       }
-      return http.Response.bytes(bytes.takeBytes(), streamed.statusCode,
-          headers: streamed.headers,
-          request: streamed.request,
-          reasonPhrase: streamed.reasonPhrase);
+      return http.Response.bytes(
+        bytes.takeBytes(),
+        streamed.statusCode,
+        headers: streamed.headers,
+        request: streamed.request,
+        reasonPhrase: streamed.reasonPhrase,
+      );
     }
   }
 
@@ -311,5 +322,5 @@ class CrawlerException implements Exception {
 
 class CrawlerResponseTooLargeException extends CrawlerException {
   const CrawlerResponseTooLargeException(int limit)
-      : super('Crawler response exceeded the $limit byte limit.');
+    : super('Crawler response exceeded the $limit byte limit.');
 }

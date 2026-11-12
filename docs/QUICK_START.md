@@ -9,7 +9,7 @@ This guide provides minimal, fully compilable examples for each of MetaMantle's 
 Wrap your route widgets with `MetaHead` to dynamically synchronize `<head>` metadata, Open Graph cards, and JSON-LD structured data during client-side navigation.
 
 ```dart
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:meta_mantle/meta_mantle.dart';
 
 void main() {

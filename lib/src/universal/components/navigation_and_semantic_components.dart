@@ -72,11 +72,7 @@ class MantleAppBar extends StatelessMantleComponent {
     leftGroup.add(
       MantleElementNode(
         tag: 'h1',
-        styles: {
-          'font-size': '20px',
-          'margin': '0',
-          'font-weight': 'bold',
-        },
+        styles: {'font-size': '20px', 'margin': '0', 'font-weight': 'bold'},
         children: [MantleTextNode(title)],
       ),
     );
@@ -88,20 +84,12 @@ class MantleAppBar extends StatelessMantleComponent {
       children: [
         MantleElementNode(
           tag: 'div',
-          styles: {
-            'display': 'flex',
-            'align-items': 'center',
-            'gap': '12px',
-          },
+          styles: {'display': 'flex', 'align-items': 'center', 'gap': '12px'},
           children: leftGroup,
         ),
         MantleElementNode(
           tag: 'div',
-          styles: {
-            'display': 'flex',
-            'align-items': 'center',
-            'gap': '12px',
-          },
+          styles: {'display': 'flex', 'align-items': 'center', 'gap': '12px'},
           children: actions.map((a) => a.toNode(context)).toList(),
         ),
       ],
@@ -154,15 +142,7 @@ class MantleRouteLink extends StatelessMantleComponent {
   }
 }
 
-enum MantleLandmarkType {
-  header,
-  nav,
-  main,
-  footer,
-  aside,
-  section,
-  article,
-}
+enum MantleLandmarkType { header, nav, main, footer, aside, section, article }
 
 class MantleLandmark extends StatelessMantleComponent {
   const MantleLandmark({
@@ -221,12 +201,7 @@ class MantleSemantics extends StatelessMantleComponent {
 }
 
 class MantleLabel extends StatelessMantleComponent {
-  const MantleLabel(
-    this.text, {
-    this.forId,
-    this.style,
-    super.key,
-  });
+  const MantleLabel(this.text, {this.forId, this.style, super.key});
 
   final String text;
   final String? forId;
@@ -431,9 +406,7 @@ class MantleDrawer extends StatelessMantleComponent {
             'height': '100%',
             'background-color': 'rgba(0,0,0,0.5)',
           },
-          events: {
-            if (onClose != null) 'click': (_) => onClose!(),
-          },
+          events: {if (onClose != null) 'click': (_) => onClose!()},
         ),
         drawerAside,
       ],
@@ -444,11 +417,7 @@ class MantleDrawer extends StatelessMantleComponent {
 
 /// Single tab item within a [MantleTabs] component.
 class MantleTab {
-  const MantleTab({
-    required this.title,
-    required this.content,
-    this.icon,
-  });
+  const MantleTab({required this.title, required this.content, this.icon});
 
   final String title;
   final MantleComponent content;
@@ -506,9 +475,7 @@ class MantleTabs extends StatelessMantleComponent {
             'align-items': 'center',
             'gap': '6px',
           },
-          events: {
-            if (onTap != null) 'click': (_) => onTap!(i),
-          },
+          events: {if (onTap != null) 'click': (_) => onTap!(i)},
           children: tabChildren,
         ),
       );

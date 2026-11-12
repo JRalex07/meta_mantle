@@ -7,8 +7,8 @@ class ServerResponse {
     Map<String, String>? headers,
     this.body = '',
     List<int>? bodyBytes,
-  })  : headers = headers != null ? Map.from(headers) : {},
-        bodyBytes = bodyBytes ?? utf8.encode(body);
+  }) : headers = headers != null ? Map.from(headers) : {},
+       bodyBytes = bodyBytes ?? utf8.encode(body);
 
   /// Creates a successful 200 OK HTML response.
   factory ServerResponse.okHtml(
@@ -78,7 +78,8 @@ class ServerResponse {
     String message = 'Page Not Found',
     String? html,
   }) {
-    final bodyHtml = html ??
+    final bodyHtml =
+        html ??
         '<!DOCTYPE html><html><head><title>404 Not Found</title></head><body><h1>404 — Page Not Found</h1><p>$message</p></body></html>';
     return ServerResponse(
       statusCode: 404,
@@ -95,7 +96,8 @@ class ServerResponse {
     String message = 'This resource has been permanently removed.',
     String? html,
   }) {
-    final bodyHtml = html ??
+    final bodyHtml =
+        html ??
         '<!DOCTYPE html><html><head><title>410 Gone</title></head><body><h1>410 — Resource Gone</h1><p>$message</p></body></html>';
     return ServerResponse(
       statusCode: 410,
@@ -112,7 +114,8 @@ class ServerResponse {
     String message = 'An unexpected error occurred.',
     String? html,
   }) {
-    final bodyHtml = html ??
+    final bodyHtml =
+        html ??
         '<!DOCTYPE html><html><head><title>500 Internal Server Error</title></head><body><h1>500 — Server Error</h1><p>$message</p></body></html>';
     return ServerResponse(
       statusCode: 500,

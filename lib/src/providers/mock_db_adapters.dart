@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'data_provider.dart';
 
 /// Function signature for executing a parameterized SQL query.
@@ -83,10 +84,7 @@ typedef DocumentFetcher = Future<Map<String, dynamic>?> Function(
 );
 
 /// Function signature for mapping document fields to entity [T].
-typedef DocumentMapper<T> = T Function(
-  String id,
-  Map<String, dynamic> data,
-);
+typedef DocumentMapper<T> = T Function(String id, Map<String, dynamic> data);
 
 /// Adapter demonstrating how Document Databases (Cloud Firestore, Supabase, MongoDB)
 /// integrate with MetaMantle without introducing vendor SDK dependencies into core.
@@ -130,8 +128,9 @@ class DocumentDatabaseAdapter<T> implements MetaMantleDataProvider<T> {
       updatedAt = DateTime.tryParse(snapshot['updated_at'] as String);
     }
 
-    final etag =
-        snapshot['version'] != null ? 'w/"${snapshot['version']}"' : null;
+    final etag = snapshot['version'] != null
+        ? 'w/"${snapshot['version']}"'
+        : null;
 
     return DataProviderResult<T>.found(
       entity,

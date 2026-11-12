@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'html_sanitizer.dart';
 
 /// Base class for all HTML DOM nodes rendered by MetaMantle SSR.
@@ -59,8 +60,8 @@ class ElementNode extends HtmlNode {
     final buf = StringBuffer('<$tag');
     for (final entry in attributes.entries) {
       if (entry.value != null) {
-        final escapedVal =
-            const HtmlEscape(HtmlEscapeMode.attribute).convert(entry.value!);
+        final escapedVal = const HtmlEscape(HtmlEscapeMode.attribute)
+            .convert(entry.value!);
         buf.write(' ${entry.key}="$escapedVal"');
       }
     }
@@ -88,13 +89,12 @@ class H {
     Map<String, String?> attributes = const {},
     List<HtmlNode> children = const [],
     bool isSelfClosing = false,
-  }) =>
-      ElementNode(
-        name,
-        attributes: attributes,
-        children: children,
-        isSelfClosing: isSelfClosing,
-      );
+  }) => ElementNode(
+    name,
+    attributes: attributes,
+    children: children,
+    isSelfClosing: isSelfClosing,
+  );
 
   static TextNode text(String text) => TextNode(text);
 
@@ -119,16 +119,17 @@ class H {
   static ElementNode pNodes(
     List<HtmlNode> children, {
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode('p', attributes: attrs, children: children);
+  }) => ElementNode('p', attributes: attrs, children: children);
 
   static ElementNode a(
     String href,
     String text, {
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode('a',
-          attributes: {'href': href, ...attrs}, children: [TextNode(text)]);
+  }) => ElementNode(
+    'a',
+    attributes: {'href': href, ...attrs},
+    children: [TextNode(text)],
+  );
 
   static ElementNode img(
     String src, {
@@ -136,76 +137,67 @@ class H {
     int? width,
     int? height,
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode(
-        'img',
-        attributes: {
-          'src': src,
-          'alt': alt,
-          if (width != null) 'width': '$width',
-          if (height != null) 'height': '$height',
-          ...attrs,
-        },
-        isSelfClosing: true,
-      );
+  }) => ElementNode(
+    'img',
+    attributes: {
+      'src': src,
+      'alt': alt,
+      if (width != null) 'width': '$width',
+      if (height != null) 'height': '$height',
+      ...attrs,
+    },
+    isSelfClosing: true,
+  );
 
   static ElementNode div(
     List<HtmlNode> children, {
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode('div', attributes: attrs, children: children);
+  }) => ElementNode('div', attributes: attrs, children: children);
 
-  static ElementNode span(String text,
-          {Map<String, String?> attrs = const {}}) =>
-      ElementNode('span', attributes: attrs, children: [TextNode(text)]);
+  static ElementNode span(
+    String text, {
+    Map<String, String?> attrs = const {},
+  }) => ElementNode('span', attributes: attrs, children: [TextNode(text)]);
 
   static ElementNode header(
     List<HtmlNode> children, {
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode('header', attributes: attrs, children: children);
+  }) => ElementNode('header', attributes: attrs, children: children);
 
   static ElementNode footer(
     List<HtmlNode> children, {
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode('footer', attributes: attrs, children: children);
+  }) => ElementNode('footer', attributes: attrs, children: children);
 
   static ElementNode nav(
     List<HtmlNode> children, {
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode('nav', attributes: attrs, children: children);
+  }) => ElementNode('nav', attributes: attrs, children: children);
 
   static ElementNode main(
     List<HtmlNode> children, {
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode('main', attributes: attrs, children: children);
+  }) => ElementNode('main', attributes: attrs, children: children);
 
   static ElementNode article(
     List<HtmlNode> children, {
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode('article', attributes: attrs, children: children);
+  }) => ElementNode('article', attributes: attrs, children: children);
 
   static ElementNode section(
     List<HtmlNode> children, {
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode('section', attributes: attrs, children: children);
+  }) => ElementNode('section', attributes: attrs, children: children);
 
   static ElementNode ul(
     List<ElementNode> items, {
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode('ul', attributes: attrs, children: items);
+  }) => ElementNode('ul', attributes: attrs, children: items);
 
   static ElementNode ol(
     List<ElementNode> items, {
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode('ol', attributes: attrs, children: items);
+  }) => ElementNode('ol', attributes: attrs, children: items);
 
   static ElementNode li(String text, {Map<String, String?> attrs = const {}}) =>
       ElementNode('li', attributes: attrs, children: [TextNode(text)]);
@@ -213,8 +205,7 @@ class H {
   static ElementNode liNodes(
     List<HtmlNode> children, {
     Map<String, String?> attrs = const {},
-  }) =>
-      ElementNode('li', attributes: attrs, children: children);
+  }) => ElementNode('li', attributes: attrs, children: children);
 
   static ElementNode table({
     List<String>? headers,
@@ -223,21 +214,37 @@ class H {
   }) {
     final children = <HtmlNode>[];
     if (headers != null && headers.isNotEmpty) {
-      children.add(ElementNode('thead', children: [
-        ElementNode('tr',
-            children: headers
-                .map((h) => ElementNode('th', children: [TextNode(h)]))
-                .toList()),
-      ]));
+      children.add(
+        ElementNode(
+          'thead',
+          children: [
+            ElementNode(
+              'tr',
+              children: headers
+                  .map((h) => ElementNode('th', children: [TextNode(h)]))
+                  .toList(),
+            ),
+          ],
+        ),
+      );
     }
-    children.add(ElementNode('tbody',
+    children.add(
+      ElementNode(
+        'tbody',
         children: rows
-            .map((row) => ElementNode('tr',
+            .map(
+              (row) => ElementNode(
+                'tr',
                 children: row
                     .map(
-                        (cell) => ElementNode('td', children: [TextNode(cell)]))
-                    .toList()))
-            .toList()));
+                      (cell) => ElementNode('td', children: [TextNode(cell)]),
+                    )
+                    .toList(),
+              ),
+            )
+            .toList(),
+      ),
+    );
     return ElementNode('table', attributes: attrs, children: children);
   }
 }

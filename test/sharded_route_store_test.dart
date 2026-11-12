@@ -24,9 +24,7 @@ void main() {
       }
     });
 
-    test(
-        'readVersion and readPublished resolve artifacts and dependencies from shards',
-        () async {
+    test('readVersion and readPublished resolve artifacts and dependencies from shards', () async {
       final v1 = await store.beginVersion();
 
       await store.writeVersion(
@@ -46,8 +44,9 @@ void main() {
       await store.publishVersion(v1);
 
       // Verify shards directory was created inside .versions/$v1/
-      final shardsDir =
-          Directory('${store.root.path}/.versions/$v1/.route_shards');
+      final shardsDir = Directory(
+        '${store.root.path}/.versions/$v1/.route_shards',
+      );
       expect(await shardsDir.exists(), isTrue);
       final shardFiles = await shardsDir.list().toList();
       expect(shardFiles.isNotEmpty, isTrue);
@@ -61,13 +60,13 @@ void main() {
       expect(published, isNotNull);
       expect(published!.html, contains('Laptop Pro Specification'));
       expect(published.dependency.tags, contains('hardware'));
-      expect(published.dependency.canonicalUrl,
-          'https://example.com/products/laptop-pro');
+      expect(
+        published.dependency.canonicalUrl,
+        'https://example.com/products/laptop-pro',
+      );
     });
 
-    test(
-        'single page regeneration updates only the touched shard and creates only 1 new object',
-        () async {
+    test('single page regeneration updates only the touched shard and creates only 1 new object', () async {
       final generator = HybridStaticGenerator(store: store);
 
       // 1. Initial build with 4 routes
@@ -119,42 +118,45 @@ void main() {
       expect(await store.read('/beta'), contains('Beta initial'));
     });
 
-    test('deleting a route prunes it from route and dependency shards',
-        () async {
-      final generator = HybridStaticGenerator(store: store);
+    test(
+      'deleting a route prunes it from route and dependency shards',
+      () async {
+        final generator = HybridStaticGenerator(store: store);
 
-      await generator.generateFixedPages([
-        FixedRouteSource(
-          routeId: 'items',
-          path: '/item-to-delete',
-          render: () async => const GeneratedRouteDocument(
-            html: '<!doctype html><body>To be deleted</body>',
+        await generator.generateFixedPages([
+          FixedRouteSource(
+            routeId: 'items',
+            path: '/item-to-delete',
+            render: () async => const GeneratedRouteDocument(
+              html: '<!doctype html><body>To be deleted</body>',
+            ),
           ),
-        ),
-        FixedRouteSource(
-          routeId: 'items',
-          path: '/item-to-keep',
-          render: () async => const GeneratedRouteDocument(
-            html: '<!doctype html><body>Keep me</body>',
+          FixedRouteSource(
+            routeId: 'items',
+            path: '/item-to-keep',
+            render: () async => const GeneratedRouteDocument(
+              html: '<!doctype html><body>Keep me</body>',
+            ),
           ),
-        ),
-      ]);
+        ]);
 
-      expect(await store.read('/item-to-delete'), isNotNull);
-      expect(await store.read('/item-to-keep'), isNotNull);
+        expect(await store.read('/item-to-delete'), isNotNull);
+        expect(await store.read('/item-to-keep'), isNotNull);
 
-      // Delete route via revalidator
-      final revalidator = HybridRevalidator(
-        store: store,
-        regenerate: (_, __) async =>
-            const GeneratedRouteDocument(html: '<!doctype html><body></body>'),
-      );
+        // Delete route via revalidator
+        final revalidator = HybridRevalidator(
+          store: store,
+          regenerate: (_, __) async => const GeneratedRouteDocument(
+            html: '<!doctype html><body></body>',
+          ),
+        );
 
-      final deleted = await revalidator.deleteRoute('items');
-      expect(deleted, containsAll({'/item-to-delete', '/item-to-keep'}));
+        final deleted = await revalidator.deleteRoute('items');
+        expect(deleted, containsAll({'/item-to-delete', '/item-to-keep'}));
 
-      expect(await store.read('/item-to-delete'), isNull);
-      expect(await store.read('/item-to-keep'), isNull);
-    });
+        expect(await store.read('/item-to-delete'), isNull);
+        expect(await store.read('/item-to-keep'), isNull);
+      },
+    );
   });
 }

@@ -51,9 +51,9 @@ class HybridRevalidationScheduler {
         : await store.loadVersionDependencies(version);
     final paths = version == null
         ? dependencies.values
-            .where((dependency) => dependency.tags.contains(tag))
-            .map((dependency) => dependency.path)
-            .toList()
+              .where((dependency) => dependency.tags.contains(tag))
+              .map((dependency) => dependency.path)
+              .toList()
         : await store.loadVersionTagPaths(version, tag);
     return _enqueue(
       paths
@@ -77,9 +77,9 @@ class HybridRevalidationScheduler {
         : await store.loadVersionDependencies(version);
     final paths = version == null
         ? dependencies.values
-            .where((dependency) => dependency.routeId == routeId)
-            .map((dependency) => dependency.path)
-            .toList()
+              .where((dependency) => dependency.routeId == routeId)
+              .map((dependency) => dependency.path)
+              .toList()
         : await store.loadVersionRoutePaths(version, routeId);
     return _enqueue(
       paths
@@ -109,14 +109,18 @@ class HybridRevalidationScheduler {
     }
     if (maxJobs < 1 || maxJobs > 100000) {
       throw ArgumentError.value(
-          maxJobs, 'maxJobs', 'Must be between 1 and 100000.');
+        maxJobs,
+        'maxJobs',
+        'Must be between 1 and 100000.',
+      );
     }
     final dependencies = await store.loadDependencies();
     final cutoff = (now ?? DateTime.now()).toUtc().subtract(maxAge);
-    final expired = dependencies.values
-        .where((dependency) => !dependency.generatedAt.isAfter(cutoff))
-        .toList()
-      ..sort((a, b) => a.path.compareTo(b.path));
+    final expired =
+        dependencies.values
+            .where((dependency) => !dependency.generatedAt.isAfter(cutoff))
+            .toList()
+          ..sort((a, b) => a.path.compareTo(b.path));
     if (expired.length > maxJobs) {
       throw StateError(
         'Expired route count exceeds maxJobs; increase maxJobs or schedule smaller route groups.',
@@ -126,7 +130,9 @@ class HybridRevalidationScheduler {
   }
 
   Future<HybridEnqueueReport> _enqueue(
-      List<RouteDependency> dependencies, String eventId) async {
+    List<RouteDependency> dependencies,
+    String eventId,
+  ) async {
     if (!RegExp(r'^[A-Za-z0-9_-]{1,48}$').hasMatch(eventId)) {
       throw const FormatException('Invalid revalidation event ID.');
     }
@@ -135,15 +141,17 @@ class HybridRevalidationScheduler {
     final jobs = <RegenerationJob>[];
     for (final dependency in ordered) {
       final pathDigest = sha256.convert(utf8.encode(dependency.path));
-      jobs.add(await queue.enqueue(
-        siteId: siteId,
-        tenantId: tenantId,
-        path: dependency.path,
-        routeId: dependency.routeId,
-        tags: dependency.tags,
-        sourceVersion: dependency.sourceVersion,
-        idempotencyKey: '$eventId:$pathDigest',
-      ));
+      jobs.add(
+        await queue.enqueue(
+          siteId: siteId,
+          tenantId: tenantId,
+          path: dependency.path,
+          routeId: dependency.routeId,
+          tags: dependency.tags,
+          sourceVersion: dependency.sourceVersion,
+          idempotencyKey: '$eventId:$pathDigest',
+        ),
+      );
     }
     return HybridEnqueueReport(List.unmodifiable(jobs));
   }

@@ -20,19 +20,13 @@ class MantleImage extends StatelessMantleComponent {
 
   @override
   MantleNode build(MantleContext context) {
-    final styles = <String, String>{
-      'object-fit': fit,
-      'display': 'block',
-    };
+    final styles = <String, String>{'object-fit': fit, 'display': 'block'};
     if (width != null) styles['width'] = '${width}px';
     if (height != null) styles['height'] = '${height}px';
 
     return MantleElementNode(
       tag: 'img',
-      attributes: {
-        'src': src,
-        'alt': alt,
-      },
+      attributes: {'src': src, 'alt': alt},
       styles: styles,
       key: key,
     );
@@ -40,12 +34,7 @@ class MantleImage extends StatelessMantleComponent {
 }
 
 class MantleIcon extends StatelessMantleComponent {
-  const MantleIcon(
-    this.iconName, {
-    this.size = 24.0,
-    this.color,
-    super.key,
-  });
+  const MantleIcon(this.iconName, {this.size = 24.0, this.color, super.key});
 
   final String iconName;
   final double size;

@@ -38,7 +38,8 @@ class HtmlDocument {
     buf.writeln('<head>');
     buf.writeln('  <meta charset="UTF-8">');
     buf.writeln(
-        '  <meta name="viewport" content="width=device-width, initial-scale=1.0">');
+      '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+    );
     buf.writeln('  <base href="$baseHref">');
 
     // Render title first if present
@@ -60,7 +61,8 @@ class HtmlDocument {
 
       if (tag.textContent != null) {
         buf.writeln(
-            '  <${tag.tagName}$attrBuf>${tag.textContent}</${tag.tagName}>');
+          '  <${tag.tagName}$attrBuf>${tag.textContent}</${tag.tagName}>',
+        );
       } else {
         buf.writeln('  <${tag.tagName}$attrBuf>');
       }

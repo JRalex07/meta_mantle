@@ -1,9 +1,6 @@
 /// Parsed document payload containing extracted frontmatter attributes and raw markdown body.
 class ParsedDocument {
-  const ParsedDocument({
-    required this.attributes,
-    required this.body,
-  });
+  const ParsedDocument({required this.attributes, required this.body});
 
   final Map<String, String> attributes;
   final String body;

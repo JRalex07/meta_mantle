@@ -49,16 +49,18 @@ class FileWebhookReplayStore implements WebhookReplayStore {
           }
           await file.delete();
         }
-        await file.writeAsString(expiresAt.toUtc().toIso8601String(),
-            flush: true);
+        await file.writeAsString(
+          expiresAt.toUtc().toIso8601String(),
+          flush: true,
+        );
         return true;
       });
 
   @override
   Future<void> release(String eventId) => _locked(() async {
-        final file = _eventFile(eventId);
-        if (await file.exists()) await file.delete();
-      });
+    final file = _eventFile(eventId);
+    if (await file.exists()) await file.delete();
+  });
 
   File _eventFile(String eventId) {
     final digest = sha256.convert(utf8.encode(eventId));
@@ -123,8 +125,8 @@ class RevalidationWebhookHandler {
     this.maxClockSkew = const Duration(minutes: 5),
     this.maxBodyBytes = 16384,
     InMemoryWebhookRateLimiter? rateLimiter,
-  })  : secret = List.unmodifiable(secret),
-        rateLimiter = rateLimiter ?? InMemoryWebhookRateLimiter() {
+  }) : secret = List.unmodifiable(secret),
+       rateLimiter = rateLimiter ?? InMemoryWebhookRateLimiter() {
     if (secret.length < 32) {
       throw ArgumentError('Webhook secrets must contain at least 32 bytes.');
     }
@@ -163,8 +165,10 @@ class RevalidationWebhookHandler {
         signature == null) {
       return _json(401, {'error': 'invalid_signature_headers'});
     }
-    final signedAt =
-        DateTime.fromMillisecondsSinceEpoch(seconds * 1000, isUtc: true);
+    final signedAt = DateTime.fromMillisecondsSinceEpoch(
+      seconds * 1000,
+      isUtc: true,
+    );
     if (now.difference(signedAt).abs() > maxClockSkew) {
       return _json(401, {'error': 'expired_signature'});
     }
@@ -176,8 +180,9 @@ class RevalidationWebhookHandler {
     }
     final canonical = '$timestamp\n$eventId\n$tenantId\n$body';
     final expected = Hmac(sha256, secret).convert(utf8.encode(canonical)).bytes;
-    final suppliedHex =
-        signature.startsWith('sha256=') ? signature.substring(7) : signature;
+    final suppliedHex = signature.startsWith('sha256=')
+        ? signature.substring(7)
+        : signature;
     final supplied = _decodeHex(suppliedHex);
     if (supplied == null || !_constantTimeEquals(expected, supplied)) {
       return _json(401, {'error': 'invalid_signature'});
@@ -212,11 +217,15 @@ class RevalidationWebhookHandler {
       final report = path is String
           ? await scheduler.revalidatePath(path, eventId: eventId)
           : tag is String
-              ? await scheduler.revalidateTag(tag, eventId: eventId)
-              : await scheduler.revalidateRoute(routeId as String,
-                  eventId: eventId);
-      return _json(
-          202, {'jobIds': report.jobIds, 'scheduled': report.jobs.length});
+          ? await scheduler.revalidateTag(tag, eventId: eventId)
+          : await scheduler.revalidateRoute(
+              routeId as String,
+              eventId: eventId,
+            );
+      return _json(202, {
+        'jobIds': report.jobIds,
+        'scheduled': report.jobs.length,
+      });
     } on FormatException {
       await replayStore.release(eventId);
       return _json(400, {'error': 'invalid_selector'});
@@ -228,34 +237,36 @@ class RevalidationWebhookHandler {
 
   /// Shelf handler that caps streamed request bodies before buffering them.
   shelf.Handler createShelfHandler() => (shelf.Request request) async {
-        final bytes = <int>[];
-        await for (final chunk in request.read()) {
-          if (bytes.length + chunk.length > maxBodyBytes) {
-            return _toShelfResponse(_json(413, {'error': 'payload_too_large'}));
-          }
-          bytes.addAll(chunk);
-        }
-        final response = await handle(ServerRequest(
-          method: request.method,
-          uri: request.requestedUri,
-          headers: request.headers,
-          bodyBytes: bytes,
-        ));
-        return _toShelfResponse(response);
-      };
+    final bytes = <int>[];
+    await for (final chunk in request.read()) {
+      if (bytes.length + chunk.length > maxBodyBytes) {
+        return _toShelfResponse(_json(413, {'error': 'payload_too_large'}));
+      }
+      bytes.addAll(chunk);
+    }
+    final response = await handle(
+      ServerRequest(
+        method: request.method,
+        uri: request.requestedUri,
+        headers: request.headers,
+        bodyBytes: bytes,
+      ),
+    );
+    return _toShelfResponse(response);
+  };
 
   shelf.Response _toShelfResponse(ServerResponse response) => shelf.Response(
-        response.statusCode,
-        body: response.bodyBytes,
-        headers: response.headers,
-      );
+    response.statusCode,
+    body: response.bodyBytes,
+    headers: response.headers,
+  );
 }
 
 List<int>? _decodeHex(String value) {
   if (!RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(value)) return null;
   return [
     for (var i = 0; i < value.length; i += 2)
-      int.parse(value.substring(i, i + 2), radix: 16)
+      int.parse(value.substring(i, i + 2), radix: 16),
   ];
 }
 
@@ -268,14 +279,16 @@ bool _constantTimeEquals(List<int> a, List<int> b) {
   return difference == 0;
 }
 
-ServerResponse _json(int status, Map<String, Object?> value,
-        [Map<String, String> headers = const {}]) =>
-    ServerResponse(
-      statusCode: status,
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': 'no-store',
-        ...headers,
-      },
-      body: jsonEncode(value),
-    );
+ServerResponse _json(
+  int status,
+  Map<String, Object?> value, [
+  Map<String, String> headers = const {},
+]) => ServerResponse(
+  statusCode: status,
+  headers: {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    ...headers,
+  },
+  body: jsonEncode(value),
+);

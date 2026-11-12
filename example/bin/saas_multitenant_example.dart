@@ -99,8 +99,10 @@ void main() async {
   await partitioner.invalidateTenant(tenantAcme.tenantId);
   print('  Invalidated entries for Acme Corp.');
   print(
-      '  Acme entry in cache:   ${await cacheStore.get(acmeCacheKey) != null}');
+    '  Acme entry in cache:   ${await cacheStore.get(acmeCacheKey) != null}',
+  );
   print(
-      '  Globex entry in cache: ${await cacheStore.get(globexCacheKey) != null}');
+    '  Globex entry in cache: ${await cacheStore.get(globexCacheKey) != null}',
+  );
   print('========================================================');
 }

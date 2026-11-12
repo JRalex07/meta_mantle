@@ -22,9 +22,9 @@ class TenantContext {
 
   /// Returns all authorized hostnames for this tenant.
   Set<String> get allAuthorizedHosts => {
-        primaryDomain.toLowerCase(),
-        for (final d in customDomains) d.toLowerCase(),
-      };
+    primaryDomain.toLowerCase(),
+    for (final d in customDomains) d.toLowerCase(),
+  };
 }
 
 /// Security guard that validates incoming HTTP Host headers against trusted tenant domains.
@@ -53,10 +53,13 @@ class TenantHostValidator {
     for (final rootDomain in allowedRootDomains) {
       final cleanRoot = rootDomain.toLowerCase();
       if (cleanHost == cleanRoot || cleanHost.endsWith('.$cleanRoot')) {
-        final subdomain =
-            cleanHost.substring(0, cleanHost.length - cleanRoot.length - 1);
-        final matched =
-            tenants.where((t) => t.tenantId == subdomain).firstOrNull;
+        final subdomain = cleanHost.substring(
+          0,
+          cleanHost.length - cleanRoot.length - 1,
+        );
+        final matched = tenants
+            .where((t) => t.tenantId == subdomain)
+            .firstOrNull;
         if (matched != null) return matched;
       }
     }

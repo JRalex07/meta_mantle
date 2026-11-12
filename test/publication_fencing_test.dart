@@ -24,9 +24,7 @@ void main() {
       }
     });
 
-    test(
-        'rejects publication from stale worker when a higher epoch has already published',
-        () async {
+    test('rejects publication from stale worker when a higher epoch has already published', () async {
       // 1. Worker A begins draft A with fencing epoch 43
       final versionA = await store.beginVersion();
       await store.writeVersion(
@@ -67,10 +65,7 @@ void main() {
       );
 
       expect(await store.activeVersion, versionB);
-      expect(
-        await store.read('/blog/post-1'),
-        contains('Worker B (epoch 44)'),
-      );
+      expect(await store.read('/blog/post-1'), contains('Worker B (epoch 44)'));
 
       // 4. Worker A wakes up and attempts to publish with stale epoch 43
       expect(
@@ -79,25 +74,16 @@ void main() {
           fencingEpoch: 43,
           routePath: '/blog/post-1',
         ),
-        throwsA(isA<StaleFencingEpochException>()
-            .having(
-              (e) => e.candidateEpoch,
-              'candidateEpoch',
-              43,
-            )
-            .having(
-              (e) => e.currentEpoch,
-              'currentEpoch',
-              44,
-            )),
+        throwsA(
+          isA<StaleFencingEpochException>()
+              .having((e) => e.candidateEpoch, 'candidateEpoch', 43)
+              .having((e) => e.currentEpoch, 'currentEpoch', 44),
+        ),
       );
 
       // 5. Version B remains the active published version intact
       expect(await store.activeVersion, versionB);
-      expect(
-        await store.read('/blog/post-1'),
-        contains('Worker B (epoch 44)'),
-      );
+      expect(await store.read('/blog/post-1'), contains('Worker B (epoch 44)'));
     });
 
     test('monotonic epoch sequence succeeds when epochs increase', () async {

@@ -1,5 +1,83 @@
 import '../ir/mantle_node.dart';
 
+/// Registry retaining and managing lifecycle for [MantleState] instances.
+class MantleStateRegistry {
+  final Map<String, MantleState> _states = {};
+  final Map<Type, int> _typeCounters = {};
+  final Expando<String> _instanceKeys = Expando<String>();
+  final Set<String> _visitedKeysInCurrentPass = {};
+  void Function()? onNeedsRebuild;
+
+  /// Resets per-pass positional counters at the start of a build traversal.
+  void beginBuildPass() {
+    _typeCounters.clear();
+    _visitedKeysInCurrentPass.clear();
+  }
+
+  /// Concludes a build pass.
+  void endBuildPass() {
+    _visitedKeysInCurrentPass.clear();
+  }
+
+  /// Retrieves an existing [MantleState] by its state ID if registered.
+  MantleState? getState(String stateId) => _states[stateId];
+
+  /// Retrieves an existing [MantleState] or instantiates and mounts a new one.
+  MantleState getOrCreateState(
+    StatefulMantleComponent component,
+    MantleContext context,
+  ) {
+    final String stateId;
+    if (component.key != null) {
+      stateId = 'k_${component.key!.value}';
+    } else {
+      final existingKey = _instanceKeys[component];
+      if (existingKey != null) {
+        stateId = existingKey;
+      } else {
+        final counter = (_typeCounters[component.runtimeType] ?? 0) + 1;
+        _typeCounters[component.runtimeType] = counter;
+        stateId = 't_${component.runtimeType}_$counter';
+        _instanceKeys[component] = stateId;
+      }
+    }
+
+    _visitedKeysInCurrentPass.add(stateId);
+
+    if (_states.containsKey(stateId)) {
+      final existingState = _states[stateId]!;
+      final oldComponent = existingState._component;
+      existingState._component = component;
+      existingState._context = context;
+      existingState.didUpdateComponent(oldComponent);
+      return existingState;
+    }
+
+    final newState = component.createState();
+    newState._component = component;
+    newState._context = context;
+    newState._stateId = stateId;
+    newState._mounted = true;
+    newState._onStateChanged = () {
+      onNeedsRebuild?.call();
+    };
+    _states[stateId] = newState;
+    newState.initState();
+    return newState;
+  }
+
+  /// Disposes all registered states and clears the registry.
+  void dispose() {
+    for (final state in _states.values) {
+      state._mounted = false;
+      state.dispose();
+    }
+    _states.clear();
+    _typeCounters.clear();
+    _visitedKeysInCurrentPass.clear();
+  }
+}
+
 /// Context provided to components during build time.
 abstract class MantleContext {
   /// Current active path (e.g. `/products/123`).
@@ -16,6 +94,9 @@ abstract class MantleContext {
 
   /// Navigates back if history allows.
   void back();
+
+  /// State registry for preserving component states across render passes.
+  MantleStateRegistry get stateRegistry;
 }
 
 /// Base class for all portable UI components in MetaMantle.
@@ -45,10 +126,7 @@ abstract class StatefulMantleComponent extends MantleComponent {
 
   @override
   MantleNode toNode(MantleContext context) {
-    final state = createState();
-    state._component = this;
-    state._context = context;
-    state.initState();
+    final state = context.stateRegistry.getOrCreateState(this, context);
     return state.build(context);
   }
 }
@@ -61,13 +139,20 @@ abstract class MantleState<T extends StatefulMantleComponent> {
   MantleContext get context => _context;
   late MantleContext _context;
 
+  String? get stateId => _stateId;
+  String? _stateId;
+  bool get mounted => _mounted;
+  bool _mounted = false;
+
   void Function()? _onStateChanged;
 
   void initState() {}
 
   void didUpdateComponent(covariant T oldComponent) {}
 
-  void dispose() {}
+  void dispose() {
+    _mounted = false;
+  }
 
   void setState(void Function() fn) {
     fn();

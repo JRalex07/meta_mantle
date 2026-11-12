@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:shelf/shelf.dart' as shelf;
 
 import '../server/server_engine.dart';
@@ -72,6 +73,5 @@ shelf.Middleware metaMantleShelfMiddleware(
   MetaMantleServerEngine engine, {
   bool passThroughNotFound = true,
 }) =>
-    MetaMantleShelfAdapter(engine).createMiddleware(
-      passThroughNotFound: passThroughNotFound,
-    );
+    MetaMantleShelfAdapter(engine)
+        .createMiddleware(passThroughNotFound: passThroughNotFound);

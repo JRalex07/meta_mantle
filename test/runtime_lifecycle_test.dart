@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:meta_mantle/meta_mantle.dart';
 import 'package:meta_mantle/src/runtime/head_adapter_contract.dart';
 import 'package:meta_mantle/src/runtime/head_adapter_stub.dart';
@@ -46,65 +46,85 @@ void main() {
   });
 
   group('RuntimeCoordinator Lifecycle & Scopes', () {
-    test('1. Initial metadata activation registers owner and resolves metadata',
-        () {
-      final adapter = RecordingHeadAdapter();
-      final coordinator = RuntimeCoordinator(adapter: adapter);
-      coordinator.initialize(const WebHeadConfig(
-        siteName: 'TestSite',
-        titleTemplate: '%s | TestSite',
-        baseUrl: 'https://example.com',
-      ));
+    test(
+      '1. Initial metadata activation registers owner and resolves metadata',
+      () {
+        final adapter = RecordingHeadAdapter();
+        final coordinator = RuntimeCoordinator(adapter: adapter);
+        coordinator.initialize(
+          const WebHeadConfig(
+            siteName: 'TestSite',
+            titleTemplate: '%s | TestSite',
+            baseUrl: 'https://example.com',
+          ),
+        );
 
-      final owner = Object();
-      coordinator.activate(
-        owner,
-        const WebMetadata(
-          title: 'Home',
-          description: 'Welcome home',
-          canonical: '/home',
-        ),
-      );
+        final owner = Object();
+        coordinator.activate(
+          owner,
+          const WebMetadata(
+            title: 'Home',
+            description: 'Welcome home',
+            canonical: '/home',
+          ),
+        );
 
-      expect(coordinator.activeMetadata?.title, 'Home');
-      expect(adapter.applyCount, 1);
-      final tags = adapter.lastAppliedTags!;
-      expect(tags.firstWhere((t) => t.key == 'title').textContent,
-          'Home | TestSite');
-      expect(
+        expect(coordinator.activeMetadata?.title, 'Home');
+        expect(adapter.applyCount, 1);
+        final tags = adapter.lastAppliedTags!;
+        expect(
+          tags.firstWhere((t) => t.key == 'title').textContent,
+          'Home | TestSite',
+        );
+        expect(
           tags.firstWhere((t) => t.key == 'description').attributes['content'],
-          'Welcome home');
-      expect(tags.firstWhere((t) => t.key == 'canonical').attributes['href'],
-          'https://example.com/home');
-    });
+          'Welcome home',
+        );
+        expect(
+          tags.firstWhere((t) => t.key == 'canonical').attributes['href'],
+          'https://example.com/home',
+        );
+      },
+    );
 
     test(
-        '2. Metadata updates modify active metadata without creating duplicates',
-        () {
-      final adapter = RecordingHeadAdapter();
-      final coordinator = RuntimeCoordinator(adapter: adapter);
-      coordinator
-          .initialize(const WebHeadConfig(baseUrl: 'https://example.com'));
+      '2. Metadata updates modify active metadata without creating duplicates',
+      () {
+        final adapter = RecordingHeadAdapter();
+        final coordinator = RuntimeCoordinator(adapter: adapter);
+        coordinator.initialize(
+          const WebHeadConfig(baseUrl: 'https://example.com'),
+        );
 
-      final owner = Object();
-      coordinator.activate(
-          owner, const WebMetadata(title: 'V1', description: 'Desc 1'));
-      expect(
+        final owner = Object();
+        coordinator.activate(
+          owner,
+          const WebMetadata(title: 'V1', description: 'Desc 1'),
+        );
+        expect(
           adapter.lastAppliedTags!
               .firstWhere((t) => t.key == 'title')
               .textContent,
-          'V1');
+          'V1',
+        );
 
-      coordinator.update(
-          owner, const WebMetadata(title: 'V2', description: 'Desc 2'));
-      expect(coordinator.activeMetadata?.title, 'V2');
-      expect(
+        coordinator.update(
+          owner,
+          const WebMetadata(title: 'V2', description: 'Desc 2'),
+        );
+        expect(coordinator.activeMetadata?.title, 'V2');
+        expect(
           adapter.lastAppliedTags!
               .firstWhere((t) => t.key == 'title')
               .textContent,
-          'V2');
-      expect(adapter.lastAppliedTags!.where((t) => t.key == 'title').length, 1);
-    });
+          'V2',
+        );
+        expect(
+          adapter.lastAppliedTags!.where((t) => t.key == 'title').length,
+          1,
+        );
+      },
+    );
 
     test('3. Removing a metadata owner restores previous scope or clears', () {
       final adapter = RecordingHeadAdapter();
@@ -121,9 +141,7 @@ void main() {
       expect(adapter.clearCount, 1);
     });
 
-    test(
-        '4. Nested metadata scopes activate the inner-most scope and restore on unmount',
-        () {
+    test('4. Nested metadata scopes activate the inner-most scope and restore on unmount', () {
       final adapter = RecordingHeadAdapter();
       final coordinator = RuntimeCoordinator(adapter: adapter);
 
@@ -140,15 +158,14 @@ void main() {
       coordinator.remove(innerOwner);
       expect(coordinator.activeMetadata?.title, 'Outer Page');
       expect(
-          adapter.lastAppliedTags!
-              .firstWhere((t) => t.key == 'title')
-              .textContent,
-          'Outer Page');
+        adapter.lastAppliedTags!
+            .firstWhere((t) => t.key == 'title')
+            .textContent,
+        'Outer Page',
+      );
     });
 
-    test(
-        '5. Restoring previous metadata tracks prior states across multiple operations',
-        () {
+    test('5. Restoring previous metadata tracks prior states across multiple operations', () {
       final adapter = RecordingHeadAdapter();
       final coordinator = RuntimeCoordinator(adapter: adapter);
 
@@ -189,13 +206,14 @@ void main() {
 
       final tags = adapter.lastAppliedTags!;
       final keys = tags.map((t) => t.key).toList();
-      expect(keys.toSet().length, keys.length,
-          reason: 'All keys in rendered tags must be unique');
+      expect(
+        keys.toSet().length,
+        keys.length,
+        reason: 'All keys in rendered tags must be unique',
+      );
     });
 
-    test(
-        '7. Asynchronous updates from background route cannot overwrite newer active route',
-        () {
+    test('7. Asynchronous updates from background route cannot overwrite newer active route', () {
       final adapter = RecordingHeadAdapter();
       final coordinator = RuntimeCoordinator(adapter: adapter);
 
@@ -215,10 +233,11 @@ void main() {
       // Active metadata must STILL be Route B!
       expect(coordinator.activeMetadata?.title, 'Route B Active');
       expect(
-          adapter.lastAppliedTags!
-              .firstWhere((t) => t.key == 'title')
-              .textContent,
-          'Route B Active');
+        adapter.lastAppliedTags!
+            .firstWhere((t) => t.key == 'title')
+            .textContent,
+        'Route B Active',
+      );
 
       // Now route B is popped (closed)
       coordinator.remove(routeB);
@@ -226,15 +245,14 @@ void main() {
       // Route A is restored with its UPDATED metadata!
       expect(coordinator.activeMetadata?.title, 'Route A Updated');
       expect(
-          adapter.lastAppliedTags!
-              .firstWhere((t) => t.key == 'title')
-              .textContent,
-          'Route A Updated');
+        adapter.lastAppliedTags!
+            .firstWhere((t) => t.key == 'title')
+            .textContent,
+        'Route A Updated',
+      );
     });
 
-    test(
-        '8. Non-web compatibility: stub adapter is safe no-op on non-web platforms',
-        () {
+    test('8. Non-web compatibility: stub adapter is safe no-op on non-web platforms', () {
       final stub = createHeadAdapter();
       expect(stub.isSupported, isFalse);
       expect(() => stub.apply([]), returnsNormally);
@@ -244,14 +262,20 @@ void main() {
       expect(nonWebCoordinator.isSupported, isFalse);
       final owner = Object();
       expect(
-          () => nonWebCoordinator.activate(
-              owner, const WebMetadata(title: 'NonWeb')),
-          returnsNormally);
+        () => nonWebCoordinator.activate(
+          owner,
+          const WebMetadata(title: 'NonWeb'),
+        ),
+        returnsNormally,
+      );
       expect(nonWebCoordinator.activeMetadata?.title, 'NonWeb');
       expect(
-          () => nonWebCoordinator.update(
-              owner, const WebMetadata(title: 'NonWeb2')),
-          returnsNormally);
+        () => nonWebCoordinator.update(
+          owner,
+          const WebMetadata(title: 'NonWeb2'),
+        ),
+        returnsNormally,
+      );
       expect(nonWebCoordinator.activeMetadata?.title, 'NonWeb2');
       expect(() => nonWebCoordinator.remove(owner), returnsNormally);
       expect(nonWebCoordinator.activeMetadata, isNull);
@@ -261,115 +285,118 @@ void main() {
 
   group('WebHead Widget Lifecycle Integration', () {
     testWidgets(
-        '9. Widget mounts, updates metadata on widget configuration changes, and disposes cleanly',
-        (tester) async {
-      final adapter = RecordingHeadAdapter();
-      final coordinator = RuntimeCoordinator(adapter: adapter);
-      RuntimeCoordinator.instance = coordinator;
+      '9. Widget mounts, updates metadata on widget configuration changes, and disposes cleanly',
+      (tester) async {
+        final adapter = RecordingHeadAdapter();
+        final coordinator = RuntimeCoordinator(adapter: adapter);
+        RuntimeCoordinator.instance = coordinator;
 
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: WebHead(
-            metadata: WebMetadata(title: 'Initial Title'),
-            child: Text('Page 1 Content'),
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: WebHead(
+              metadata: WebMetadata(title: 'Initial Title'),
+              child: Text('Page 1 Content'),
+            ),
           ),
-        ),
-      );
+        );
 
-      expect(coordinator.activeMetadata?.title, 'Initial Title');
-      expect(
+        expect(coordinator.activeMetadata?.title, 'Initial Title');
+        expect(
           adapter.lastAppliedTags!
               .firstWhere((t) => t.key == 'title')
               .textContent,
-          'Initial Title');
+          'Initial Title',
+        );
 
-      // Rebuild with updated metadata
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: WebHead(
-            metadata: WebMetadata(title: 'Updated Title'),
-            child: Text('Page 1 Content'),
+        // Rebuild with updated metadata
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: WebHead(
+              metadata: WebMetadata(title: 'Updated Title'),
+              child: Text('Page 1 Content'),
+            ),
           ),
-        ),
-      );
+        );
 
-      expect(coordinator.activeMetadata?.title, 'Updated Title');
-      expect(
+        expect(coordinator.activeMetadata?.title, 'Updated Title');
+        expect(
           adapter.lastAppliedTags!
               .firstWhere((t) => t.key == 'title')
               .textContent,
-          'Updated Title');
+          'Updated Title',
+        );
 
-      // Unmount widget (e.g. navigation away / replace widget)
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SizedBox.shrink(),
-        ),
-      );
+        // Unmount widget (e.g. navigation away / replace widget)
+        await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
 
-      expect(coordinator.activeMetadata, isNull);
-      expect(adapter.cleared, isTrue);
-    });
+        expect(coordinator.activeMetadata, isNull);
+        expect(adapter.cleared, isTrue);
+      },
+    );
 
     testWidgets(
-        '10. Multi-route transitions and Navigator push/pop restore metadata properly',
-        (tester) async {
-      final adapter = RecordingHeadAdapter();
-      final coordinator = RuntimeCoordinator(adapter: adapter);
-      RuntimeCoordinator.instance = coordinator;
+      '10. Multi-route transitions and Navigator push/pop restore metadata properly',
+      (tester) async {
+        final adapter = RecordingHeadAdapter();
+        final coordinator = RuntimeCoordinator(adapter: adapter);
+        RuntimeCoordinator.instance = coordinator;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Builder(
-            builder: (context) => WebHead(
-              metadata: const WebMetadata(title: 'Home Page'),
-              child: Scaffold(
-                body: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const WebHead(
-                          metadata: WebMetadata(title: 'Detail Page'),
-                          child: Scaffold(body: Text('Detail')),
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) => WebHead(
+                metadata: const WebMetadata(title: 'Home Page'),
+                child: Scaffold(
+                  body: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const WebHead(
+                            metadata: WebMetadata(title: 'Detail Page'),
+                            child: Scaffold(body: Text('Detail')),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  child: const Text('Go to Detail'),
+                      );
+                    },
+                    child: const Text('Go to Detail'),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
+        );
 
-      expect(coordinator.activeMetadata?.title, 'Home Page');
+        expect(coordinator.activeMetadata?.title, 'Home Page');
 
-      // Navigate to Detail Page
-      await tester.tap(find.text('Go to Detail'));
-      await tester.pumpAndSettle();
+        // Navigate to Detail Page
+        await tester.tap(find.text('Go to Detail'));
+        await tester.pumpAndSettle();
 
-      expect(coordinator.activeMetadata?.title, 'Detail Page');
-      expect(
+        expect(coordinator.activeMetadata?.title, 'Detail Page');
+        expect(
           adapter.lastAppliedTags!
               .firstWhere((t) => t.key == 'title')
               .textContent,
-          'Detail Page');
+          'Detail Page',
+        );
 
-      // Pop back to Home Page
-      Navigator.of(tester.element(find.text('Detail'))).pop();
-      await tester.pumpAndSettle();
+        // Pop back to Home Page
+        Navigator.of(tester.element(find.text('Detail'))).pop();
+        await tester.pumpAndSettle();
 
-      expect(coordinator.activeMetadata?.title, 'Home Page');
-      expect(
+        expect(coordinator.activeMetadata?.title, 'Home Page');
+        expect(
           adapter.lastAppliedTags!
               .firstWhere((t) => t.key == 'title')
               .textContent,
-          'Home Page');
-    });
+          'Home Page',
+        );
+      },
+    );
 
-    testWidgets('WebHead inactive tab does not take ownership until active',
-        (tester) async {
+    testWidgets('WebHead inactive tab does not take ownership until active', (
+      tester,
+    ) async {
       final adapter = RecordingHeadAdapter();
       final coordinator = RuntimeCoordinator(adapter: adapter);
       RuntimeCoordinator.instance = coordinator;

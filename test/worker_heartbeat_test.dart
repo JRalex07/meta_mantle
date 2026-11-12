@@ -22,96 +22,103 @@ void main() {
       }
     });
 
-    test('renewLease explicitly extends lease deadline on claimed job',
-        () async {
-      final queueDir = Directory('${temp.path}/queue');
-      final queue = FileRegenerationQueue(queueDir);
-
-      var currentTime = DateTime.utc(2026, 1, 1, 12, 0, 0);
-
-      await queue.enqueue(
-        siteId: 'site-1',
-        tenantId: 'tenant-1',
-        path: '/renew',
-        routeId: 'pages',
-        tags: const [],
-        idempotencyKey: 'key-renew',
-        now: currentTime,
-      );
-
-      // Claim job with 60 second lease
-      final claimed = await queue.claimNext(
-        now: currentTime,
-        lease: const Duration(seconds: 60),
-      );
-      expect(claimed, isNotNull);
-      expect(claimed!.leaseUntil, currentTime.add(const Duration(seconds: 60)));
-
-      // 40 seconds pass, renew lease for another 60 seconds
-      currentTime = currentTime.add(const Duration(seconds: 40));
-      final renewed = await queue.renewLease(
-        claimed.id,
-        leaseToken: claimed.leaseToken!,
-        extension: const Duration(seconds: 60),
-        now: currentTime,
-      );
-
-      expect(renewed.leaseUntil, currentTime.add(const Duration(seconds: 60)));
-      expect(renewed.leaseUntil!.isAfter(claimed.leaseUntil!), isTrue);
-    });
-
     test(
-        'renewLease throws StateError if lease was reclaimed by another worker',
-        () async {
-      final queueDir = Directory('${temp.path}/queue');
-      final queue = FileRegenerationQueue(queueDir);
+      'renewLease explicitly extends lease deadline on claimed job',
+      () async {
+        final queueDir = Directory('${temp.path}/queue');
+        final queue = FileRegenerationQueue(queueDir);
 
-      var currentTime = DateTime.utc(2026, 1, 1, 12, 0, 0);
+        var currentTime = DateTime.utc(2026, 1, 1, 12, 0, 0);
 
-      await queue.enqueue(
-        siteId: 'site-1',
-        tenantId: 'tenant-1',
-        path: '/steal',
-        routeId: 'pages',
-        tags: const [],
-        idempotencyKey: 'key-steal',
-        now: currentTime,
-      );
-
-      // Worker 1 claims job
-      final worker1Claim = await queue.claimNext(
-        now: currentTime,
-        lease: const Duration(seconds: 30),
-      );
-      expect(worker1Claim, isNotNull);
-
-      // 35 seconds pass - lease expires!
-      currentTime = currentTime.add(const Duration(seconds: 35));
-
-      // Worker 2 claims the expired job
-      final worker2Claim = await queue.claimNext(
-        now: currentTime,
-        lease: const Duration(seconds: 30),
-      );
-      expect(worker2Claim, isNotNull);
-      expect(worker2Claim!.id, worker1Claim!.id);
-      expect(worker2Claim.leaseToken, isNot(worker1Claim.leaseToken));
-
-      // Worker 1 tries to renew its stale lease -> must be rejected
-      expect(
-        () => queue.renewLease(
-          worker1Claim.id,
-          leaseToken: worker1Claim.leaseToken!,
-          extension: const Duration(seconds: 30),
+        await queue.enqueue(
+          siteId: 'site-1',
+          tenantId: 'tenant-1',
+          path: '/renew',
+          routeId: 'pages',
+          tags: const [],
+          idempotencyKey: 'key-renew',
           now: currentTime,
-        ),
-        throwsStateError,
-      );
-    });
+        );
+
+        // Claim job with 60 second lease
+        final claimed = await queue.claimNext(
+          now: currentTime,
+          lease: const Duration(seconds: 60),
+        );
+        expect(claimed, isNotNull);
+        expect(
+          claimed!.leaseUntil,
+          currentTime.add(const Duration(seconds: 60)),
+        );
+
+        // 40 seconds pass, renew lease for another 60 seconds
+        currentTime = currentTime.add(const Duration(seconds: 40));
+        final renewed = await queue.renewLease(
+          claimed.id,
+          leaseToken: claimed.leaseToken!,
+          extension: const Duration(seconds: 60),
+          now: currentTime,
+        );
+
+        expect(
+          renewed.leaseUntil,
+          currentTime.add(const Duration(seconds: 60)),
+        );
+        expect(renewed.leaseUntil!.isAfter(claimed.leaseUntil!), isTrue);
+      },
+    );
 
     test(
-        'RegenerationWorker heartbeat periodically renews lease during long job',
-        () async {
+      'renewLease throws StateError if lease was reclaimed by another worker',
+      () async {
+        final queueDir = Directory('${temp.path}/queue');
+        final queue = FileRegenerationQueue(queueDir);
+
+        var currentTime = DateTime.utc(2026, 1, 1, 12, 0, 0);
+
+        await queue.enqueue(
+          siteId: 'site-1',
+          tenantId: 'tenant-1',
+          path: '/steal',
+          routeId: 'pages',
+          tags: const [],
+          idempotencyKey: 'key-steal',
+          now: currentTime,
+        );
+
+        // Worker 1 claims job
+        final worker1Claim = await queue.claimNext(
+          now: currentTime,
+          lease: const Duration(seconds: 30),
+        );
+        expect(worker1Claim, isNotNull);
+
+        // 35 seconds pass - lease expires!
+        currentTime = currentTime.add(const Duration(seconds: 35));
+
+        // Worker 2 claims the expired job
+        final worker2Claim = await queue.claimNext(
+          now: currentTime,
+          lease: const Duration(seconds: 30),
+        );
+        expect(worker2Claim, isNotNull);
+        expect(worker2Claim!.id, worker1Claim!.id);
+        expect(worker2Claim.leaseToken, isNot(worker1Claim.leaseToken));
+
+        // Worker 1 tries to renew its stale lease -> must be rejected
+        expect(
+          () => queue.renewLease(
+            worker1Claim.id,
+            leaseToken: worker1Claim.leaseToken!,
+            extension: const Duration(seconds: 30),
+            now: currentTime,
+          ),
+          throwsStateError,
+        );
+      },
+    );
+
+    test('RegenerationWorker heartbeat periodically renews lease during long job', () async {
       final queueDir = Directory('${temp.path}/queue');
       final queue = FileRegenerationQueue(queueDir);
 
@@ -148,9 +155,7 @@ void main() {
       expect(next, isNull);
     });
 
-    test(
-        'RegenerationWorker returns leaseLost when heartbeat fails due to lease theft',
-        () async {
+    test('RegenerationWorker returns leaseLost when heartbeat fails due to lease theft', () async {
       final queueDir = Directory('${temp.path}/queue');
       final queue = FileRegenerationQueue(queueDir);
 

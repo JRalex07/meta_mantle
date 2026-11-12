@@ -123,12 +123,25 @@ class BootstrapAdapter {
       }
 
       if (mode != BuildMode.metadata) {
+        final existingStyle = head.querySelector('#mantle-prerender-style');
+        if (existingStyle != null) {
+          existingStyle.remove();
+        }
         final styleEl = html_parser.parseFragment(generatePrerenderStyles());
         head.append(styleEl);
       }
     }
 
     if (body != null && mode != BuildMode.metadata && semanticHtml.isNotEmpty) {
+      final existingRoot = body.querySelector('#mantle-prerender-root');
+      if (existingRoot != null) {
+        existingRoot.remove();
+      }
+      final existingBridge = body.querySelector('#mantle-startup-bridge');
+      if (existingBridge != null) {
+        existingBridge.remove();
+      }
+
       final wrapped = wrapPrerenderContent(semanticHtml, mode: mode);
       final contentFragment = html_parser.parseFragment(wrapped);
       if (contentFragment.children.isNotEmpty) {
@@ -136,8 +149,9 @@ class BootstrapAdapter {
       }
 
       if (mode == BuildMode.hybrid) {
-        final bridgeFragment =
-            html_parser.parseFragment(generateClientHandshakeScript());
+        final bridgeFragment = html_parser.parseFragment(
+          generateClientHandshakeScript(),
+        );
         body.append(bridgeFragment);
       }
     }

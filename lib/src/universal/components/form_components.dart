@@ -13,8 +13,10 @@ class MantleTextField extends StatelessMantleComponent {
     this.onChanged,
     this.onSubmitted,
     this.obscureText = false,
-    this.padding =
-        const MantleEdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    this.padding = const MantleEdgeInsets.symmetric(
+      horizontal: 12,
+      vertical: 8,
+    ),
     this.border = const MantleBorder.all(color: MantleColor.grey),
     this.borderRadius = const MantleBorderRadius.circular(4),
     super.key,
@@ -85,9 +87,7 @@ class MantleCheckbox extends StatelessMantleComponent {
 
   @override
   MantleNode build(MantleContext context) {
-    final attributes = <String, String>{
-      'type': 'checkbox',
-    };
+    final attributes = <String, String>{'type': 'checkbox'};
     if (value) attributes['checked'] = 'checked';
     if (onChanged == null) attributes['disabled'] = 'disabled';
 
@@ -114,10 +114,7 @@ class MantleCheckbox extends StatelessMantleComponent {
           'gap': '8px',
           'cursor': 'pointer',
         },
-        children: [
-          inputNode,
-          MantleTextNode(label!),
-        ],
+        children: [inputNode, MantleTextNode(label!)],
       );
     }
     return inputNode;
@@ -164,17 +161,13 @@ class MantleRadio<T> extends StatelessMantleComponent {
   @override
   MantleNode build(MantleContext context) {
     final isSelected = value == groupValue;
-    final attributes = <String, String>{
-      'type': 'radio',
-    };
+    final attributes = <String, String>{'type': 'radio'};
     if (isSelected) attributes['checked'] = 'checked';
 
     final inputNode = MantleElementNode(
       tag: 'input',
       attributes: attributes,
-      events: {
-        'change': (_) => onChanged(value),
-      },
+      events: {'change': (_) => onChanged(value)},
       key: key,
     );
 
@@ -187,10 +180,7 @@ class MantleRadio<T> extends StatelessMantleComponent {
           'gap': '8px',
           'cursor': 'pointer',
         },
-        children: [
-          inputNode,
-          MantleTextNode(label!),
-        ],
+        children: [inputNode, MantleTextNode(label!)],
       );
     }
     return inputNode;
@@ -213,9 +203,7 @@ class MantleSelect<T> extends StatelessMantleComponent {
   MantleNode build(MantleContext context) {
     final optionNodes = <MantleNode>[];
     for (final entry in options.entries) {
-      final attrs = <String, String>{
-        'value': entry.key.toString(),
-      };
+      final attrs = <String, String>{'value': entry.key.toString()};
       if (entry.key == value) attrs['selected'] = 'selected';
       optionNodes.add(
         MantleElementNode(
@@ -252,11 +240,7 @@ class MantleSelect<T> extends StatelessMantleComponent {
 }
 
 class MantleForm extends StatelessMantleComponent {
-  const MantleForm({
-    required this.child,
-    this.onSubmit,
-    super.key,
-  });
+  const MantleForm({required this.child, this.onSubmit, super.key});
 
   final MantleComponent child;
   final MantleVoidCallback? onSubmit;

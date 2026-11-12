@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+
 import 'package:web/web.dart' as web;
 
 import '../rendering/dom_renderer_web.dart';
@@ -46,8 +47,10 @@ void runMantleApp(MantleApp app, {bool hydrate = true}) {
       var fullUrl = path;
       if (queryParameters != null && queryParameters.isNotEmpty) {
         final query = queryParameters.entries
-            .map((e) =>
-                '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+            .map(
+              (e) =>
+                  '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
+            )
             .join('&');
         fullUrl = '$path?$query';
       }

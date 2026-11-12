@@ -135,26 +135,25 @@ class MetaMantleConfig {
   }
 
   Map<String, Object?> toJson() => {
-        if (siteName != null) 'siteName': siteName,
-        if (baseUrl != null) 'baseUrl': baseUrl,
-        if (defaultTitle != null) 'defaultTitle': defaultTitle,
-        if (defaultDescription != null)
-          'defaultDescription': defaultDescription,
-        if (defaultImage != null) 'defaultImage': defaultImage,
-        if (defaultRobots != null) 'defaultRobots': defaultRobots,
-        if (titleTemplate != null) 'titleTemplate': titleTemplate,
-        if (themeColor != null) 'themeColor': themeColor,
-        if (language != null) 'language': language,
-        'includeCurrentUrlAsCanonical': includeCurrentUrlAsCanonical,
-        if (trailingSlash != null) 'trailingSlash': trailingSlash,
-        if (defaultKeywords != null) 'defaultKeywords': defaultKeywords,
-        if (defaultAuthor != null) 'defaultAuthor': defaultAuthor,
-        if (defaultPublisher != null) 'defaultPublisher': defaultPublisher,
-        if (defaultApplicationName != null)
-          'defaultApplicationName': defaultApplicationName,
-        if (colorScheme != null) 'colorScheme': colorScheme,
-        'debug': debug,
-      };
+    if (siteName != null) 'siteName': siteName,
+    if (baseUrl != null) 'baseUrl': baseUrl,
+    if (defaultTitle != null) 'defaultTitle': defaultTitle,
+    if (defaultDescription != null) 'defaultDescription': defaultDescription,
+    if (defaultImage != null) 'defaultImage': defaultImage,
+    if (defaultRobots != null) 'defaultRobots': defaultRobots,
+    if (titleTemplate != null) 'titleTemplate': titleTemplate,
+    if (themeColor != null) 'themeColor': themeColor,
+    if (language != null) 'language': language,
+    'includeCurrentUrlAsCanonical': includeCurrentUrlAsCanonical,
+    if (trailingSlash != null) 'trailingSlash': trailingSlash,
+    if (defaultKeywords != null) 'defaultKeywords': defaultKeywords,
+    if (defaultAuthor != null) 'defaultAuthor': defaultAuthor,
+    if (defaultPublisher != null) 'defaultPublisher': defaultPublisher,
+    if (defaultApplicationName != null)
+      'defaultApplicationName': defaultApplicationName,
+    if (colorScheme != null) 'colorScheme': colorScheme,
+    'debug': debug,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -181,24 +180,24 @@ class MetaMantleConfig {
 
   @override
   int get hashCode => Object.hashAll([
-        siteName,
-        baseUrl,
-        defaultTitle,
-        defaultDescription,
-        defaultImage,
-        defaultRobots,
-        titleTemplate,
-        themeColor,
-        language,
-        includeCurrentUrlAsCanonical,
-        trailingSlash,
-        defaultKeywords,
-        defaultAuthor,
-        defaultPublisher,
-        defaultApplicationName,
-        colorScheme,
-        debug,
-      ]);
+    siteName,
+    baseUrl,
+    defaultTitle,
+    defaultDescription,
+    defaultImage,
+    defaultRobots,
+    titleTemplate,
+    themeColor,
+    language,
+    includeCurrentUrlAsCanonical,
+    trailingSlash,
+    defaultKeywords,
+    defaultAuthor,
+    defaultPublisher,
+    defaultApplicationName,
+    colorScheme,
+    debug,
+  ]);
 }
 
 /// Backward compatibility alias for [MetaMantleConfig].
@@ -340,22 +339,22 @@ class WebMetadata {
       openGraph: og is Map<String, Object?>
           ? OpenGraphMetadata.fromJson(og)
           : og is Map
-              ? OpenGraphMetadata.fromJson(Map<String, Object?>.from(og))
-              : null,
+          ? OpenGraphMetadata.fromJson(Map<String, Object?>.from(og))
+          : null,
       twitter: twitter is Map<String, Object?>
           ? TwitterCardMetadata.fromJson(twitter)
           : twitter is Map
-              ? TwitterCardMetadata.fromJson(Map<String, Object?>.from(twitter))
-              : null,
+          ? TwitterCardMetadata.fromJson(Map<String, Object?>.from(twitter))
+          : null,
       jsonLd: (json['jsonLd'] as List<Object?>? ?? const [])
           .whereType<Map>()
           .map((item) => JsonLd(Map<String, Object?>.from(item)))
           .toList(growable: false),
       alternates: (json['alternates'] as List<Object?>? ?? const [])
           .whereType<Map>()
-          .map((item) => AlternateLink.fromJson(
-                Map<String, Object?>.from(item),
-              ))
+          .map(
+            (item) => AlternateLink.fromJson(Map<String, Object?>.from(item)),
+          )
           .toList(growable: false),
       icons: (json['icons'] as List<Object?>? ?? const [])
           .whereType<Map>()
@@ -383,42 +382,39 @@ class WebMetadata {
   }
 
   Map<String, Object?> toJson() => {
-        if (title != null) 'title': title,
-        if (description != null) 'description': description,
-        if (canonical != null) 'canonical': canonical,
-        if (robots != null) 'robots': robots,
-        if (keywords != null) 'keywords': keywords,
-        if (author != null) 'author': author,
-        if (publisher != null) 'publisher': publisher,
-        if (applicationName != null) 'applicationName': applicationName,
-        if (referrerPolicy != null) 'referrerPolicy': referrerPolicy,
-        if (themeColor != null) 'themeColor': themeColor,
-        if (colorScheme != null) 'colorScheme': colorScheme,
-        if (language != null) 'language': language,
-        if (openGraph != null) 'openGraph': openGraph!.toJson(),
-        if (twitter != null) 'twitter': twitter!.toJson(),
-        if (jsonLd.isNotEmpty)
-          'jsonLd': jsonLd.map((item) => item.data).toList(),
-        if (alternates.isNotEmpty)
-          'alternates': alternates.map((item) => item.toJson()).toList(),
-        if (icons.isNotEmpty)
-          'icons': icons.map((item) => item.toJson()).toList(),
-        if (resourceHints.isNotEmpty)
-          'resourceHints': resourceHints.map((item) => item.toJson()).toList(),
-        if (customMeta.isNotEmpty)
-          'customMeta': customMeta.map((item) => item.toJson()).toList(),
-        if (customLinks.isNotEmpty)
-          'customLinks': customLinks.map((item) => item.toJson()).toList(),
-        if (googleSiteVerification != null)
-          'googleSiteVerification': googleSiteVerification,
-        if (bingSiteVerification != null)
-          'bingSiteVerification': bingSiteVerification,
-        if (yandexVerification != null)
-          'yandexVerification': yandexVerification,
-        if (baiduVerification != null) 'baiduVerification': baiduVerification,
-        'applyTitleTemplate': applyTitleTemplate,
-        if (trailingSlash != null) 'trailingSlash': trailingSlash,
-      };
+    if (title != null) 'title': title,
+    if (description != null) 'description': description,
+    if (canonical != null) 'canonical': canonical,
+    if (robots != null) 'robots': robots,
+    if (keywords != null) 'keywords': keywords,
+    if (author != null) 'author': author,
+    if (publisher != null) 'publisher': publisher,
+    if (applicationName != null) 'applicationName': applicationName,
+    if (referrerPolicy != null) 'referrerPolicy': referrerPolicy,
+    if (themeColor != null) 'themeColor': themeColor,
+    if (colorScheme != null) 'colorScheme': colorScheme,
+    if (language != null) 'language': language,
+    if (openGraph != null) 'openGraph': openGraph!.toJson(),
+    if (twitter != null) 'twitter': twitter!.toJson(),
+    if (jsonLd.isNotEmpty) 'jsonLd': jsonLd.map((item) => item.data).toList(),
+    if (alternates.isNotEmpty)
+      'alternates': alternates.map((item) => item.toJson()).toList(),
+    if (icons.isNotEmpty) 'icons': icons.map((item) => item.toJson()).toList(),
+    if (resourceHints.isNotEmpty)
+      'resourceHints': resourceHints.map((item) => item.toJson()).toList(),
+    if (customMeta.isNotEmpty)
+      'customMeta': customMeta.map((item) => item.toJson()).toList(),
+    if (customLinks.isNotEmpty)
+      'customLinks': customLinks.map((item) => item.toJson()).toList(),
+    if (googleSiteVerification != null)
+      'googleSiteVerification': googleSiteVerification,
+    if (bingSiteVerification != null)
+      'bingSiteVerification': bingSiteVerification,
+    if (yandexVerification != null) 'yandexVerification': yandexVerification,
+    if (baiduVerification != null) 'baiduVerification': baiduVerification,
+    'applyTitleTemplate': applyTitleTemplate,
+    if (trailingSlash != null) 'trailingSlash': trailingSlash,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -454,33 +450,33 @@ class WebMetadata {
 
   @override
   int get hashCode => Object.hashAll([
-        title,
-        description,
-        canonical,
-        robots,
-        keywords,
-        author,
-        publisher,
-        applicationName,
-        referrerPolicy,
-        themeColor,
-        colorScheme,
-        language,
-        openGraph,
-        twitter,
-        Object.hashAll(jsonLd),
-        Object.hashAll(alternates),
-        Object.hashAll(icons),
-        Object.hashAll(resourceHints),
-        Object.hashAll(customMeta),
-        Object.hashAll(customLinks),
-        googleSiteVerification,
-        bingSiteVerification,
-        yandexVerification,
-        baiduVerification,
-        applyTitleTemplate,
-        trailingSlash,
-      ]);
+    title,
+    description,
+    canonical,
+    robots,
+    keywords,
+    author,
+    publisher,
+    applicationName,
+    referrerPolicy,
+    themeColor,
+    colorScheme,
+    language,
+    openGraph,
+    twitter,
+    Object.hashAll(jsonLd),
+    Object.hashAll(alternates),
+    Object.hashAll(icons),
+    Object.hashAll(resourceHints),
+    Object.hashAll(customMeta),
+    Object.hashAll(customLinks),
+    googleSiteVerification,
+    bingSiteVerification,
+    yandexVerification,
+    baiduVerification,
+    applyTitleTemplate,
+    trailingSlash,
+  ]);
 }
 
 /// Standard Open Graph object types.
@@ -591,22 +587,22 @@ class OpenGraphMetadata {
   }
 
   Map<String, Object?> toJson() => {
-        if (title != null) 'title': title,
-        if (description != null) 'description': description,
-        if (url != null) 'url': url,
-        if (image != null) 'image': image,
-        'type': type,
-        if (siteName != null) 'siteName': siteName,
-        if (locale != null) 'locale': locale,
-        if (imageAlt != null) 'imageAlt': imageAlt,
-        if (imageWidth != null) 'imageWidth': imageWidth,
-        if (imageHeight != null) 'imageHeight': imageHeight,
-        if (imageType != null) 'imageType': imageType,
-        if (alternateLocales.isNotEmpty) 'alternateLocales': alternateLocales,
-        if (video != null) 'video': video,
-        if (audio != null) 'audio': audio,
-        if (determiner != null) 'determiner': determiner,
-      };
+    if (title != null) 'title': title,
+    if (description != null) 'description': description,
+    if (url != null) 'url': url,
+    if (image != null) 'image': image,
+    'type': type,
+    if (siteName != null) 'siteName': siteName,
+    if (locale != null) 'locale': locale,
+    if (imageAlt != null) 'imageAlt': imageAlt,
+    if (imageWidth != null) 'imageWidth': imageWidth,
+    if (imageHeight != null) 'imageHeight': imageHeight,
+    if (imageType != null) 'imageType': imageType,
+    if (alternateLocales.isNotEmpty) 'alternateLocales': alternateLocales,
+    if (video != null) 'video': video,
+    if (audio != null) 'audio': audio,
+    if (determiner != null) 'determiner': determiner,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -631,22 +627,22 @@ class OpenGraphMetadata {
 
   @override
   int get hashCode => Object.hash(
-        title,
-        description,
-        url,
-        image,
-        type,
-        siteName,
-        locale,
-        imageAlt,
-        imageWidth,
-        imageHeight,
-        imageType,
-        Object.hashAll(alternateLocales),
-        video,
-        audio,
-        determiner,
-      );
+    title,
+    description,
+    url,
+    image,
+    type,
+    siteName,
+    locale,
+    imageAlt,
+    imageWidth,
+    imageHeight,
+    imageType,
+    Object.hashAll(alternateLocales),
+    video,
+    audio,
+    determiner,
+  );
 }
 
 /// Convenience subclass for [OpenGraphMetadata].
@@ -731,14 +727,14 @@ class TwitterCardMetadata {
   }
 
   Map<String, Object?> toJson() => {
-        'card': card,
-        if (title != null) 'title': title,
-        if (description != null) 'description': description,
-        if (image != null) 'image': image,
-        if (imageAlt != null) 'imageAlt': imageAlt,
-        if (site != null) 'site': site,
-        if (creator != null) 'creator': creator,
-      };
+    'card': card,
+    if (title != null) 'title': title,
+    if (description != null) 'description': description,
+    if (image != null) 'image': image,
+    if (imageAlt != null) 'imageAlt': imageAlt,
+    if (site != null) 'site': site,
+    if (creator != null) 'creator': creator,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -754,15 +750,8 @@ class TwitterCardMetadata {
           creator == other.creator;
 
   @override
-  int get hashCode => Object.hash(
-        card,
-        title,
-        description,
-        image,
-        imageAlt,
-        site,
-        creator,
-      );
+  int get hashCode =>
+      Object.hash(card, title, description, image, imageAlt, site, creator);
 }
 
 /// Convenience subclass for [TwitterCardMetadata].
@@ -781,7 +770,7 @@ class TwitterCard extends TwitterCardMetadata {
 /// Structured data payload for search crawlers.
 class JsonLd {
   JsonLd(Map<String, Object?> data)
-      : data = Map<String, Object?>.unmodifiable(data);
+    : data = Map<String, Object?>.unmodifiable(data);
 
   final Map<String, Object?> data;
 
@@ -794,47 +783,44 @@ class JsonLd {
     List<String> sameAs = const [],
     String? telephone,
     String? email,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'Organization',
-        'name': name,
-        'url': url,
-        if (logo != null) 'logo': logo,
-        if (sameAs.isNotEmpty) 'sameAs': sameAs,
-        if (telephone != null) 'telephone': telephone,
-        if (email != null) 'email': email,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    'name': name,
+    'url': url,
+    if (logo != null) 'logo': logo,
+    if (sameAs.isNotEmpty) 'sameAs': sameAs,
+    if (telephone != null) 'telephone': telephone,
+    if (email != null) 'email': email,
+  });
 
   factory JsonLd.website({
     required String name,
     required String url,
     String? description,
     String? language,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'WebSite',
-        'name': name,
-        'url': url,
-        if (description != null) 'description': description,
-        if (language != null) 'inLanguage': language,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    'name': name,
+    'url': url,
+    if (description != null) 'description': description,
+    if (language != null) 'inLanguage': language,
+  });
 
   factory JsonLd.webPage({
     required String name,
     required String url,
     String? description,
     String? inLanguage,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'WebPage',
-        'name': name,
-        'url': url,
-        if (description != null) 'description': description,
-        if (inLanguage != null) 'inLanguage': inLanguage,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    'name': name,
+    'url': url,
+    if (description != null) 'description': description,
+    if (inLanguage != null) 'inLanguage': inLanguage,
+  });
 
   factory JsonLd.product({
     required String name,
@@ -844,18 +830,17 @@ class JsonLd {
     String? brand,
     String? url,
     Object? offers,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'Product',
-        'name': name,
-        'image': image,
-        if (description != null) 'description': description,
-        if (sku != null) 'sku': sku,
-        if (brand != null) 'brand': {'@type': 'Brand', 'name': brand},
-        if (url != null) 'url': url,
-        if (offers != null) 'offers': offers is JsonLd ? offers.data : offers,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    'name': name,
+    'image': image,
+    if (description != null) 'description': description,
+    if (sku != null) 'sku': sku,
+    if (brand != null) 'brand': {'@type': 'Brand', 'name': brand},
+    if (url != null) 'url': url,
+    if (offers != null) 'offers': offers is JsonLd ? offers.data : offers,
+  });
 
   factory JsonLd.article({
     required String headline,
@@ -866,34 +851,33 @@ class JsonLd {
     String? publisher,
     String? url,
     String? description,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'Article',
-        'headline': headline,
-        'image': image,
-        'datePublished': datePublished,
-        if (dateModified != null) 'dateModified': dateModified,
-        if (author != null) 'author': {'@type': 'Person', 'name': author},
-        if (publisher != null)
-          'publisher': {'@type': 'Organization', 'name': publisher},
-        if (url != null) 'mainEntityOfPage': url,
-        if (description != null) 'description': description,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    'headline': headline,
+    'image': image,
+    'datePublished': datePublished,
+    if (dateModified != null) 'dateModified': dateModified,
+    if (author != null) 'author': {'@type': 'Person', 'name': author},
+    if (publisher != null)
+      'publisher': {'@type': 'Organization', 'name': publisher},
+    if (url != null) 'mainEntityOfPage': url,
+    if (description != null) 'description': description,
+  });
 
   factory JsonLd.breadcrumb(List<Map<String, String>> items) => JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'BreadcrumbList',
-        'itemListElement': [
-          for (var i = 0; i < items.length; i++)
-            {
-              '@type': 'ListItem',
-              'position': i + 1,
-              'name': items[i]['name'],
-              if (items[i]['url'] != null) 'item': items[i]['url'],
-            },
-        ],
-      });
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    'itemListElement': [
+      for (var i = 0; i < items.length; i++)
+        {
+          '@type': 'ListItem',
+          'position': i + 1,
+          'name': items[i]['name'],
+          if (items[i]['url'] != null) 'item': items[i]['url'],
+        },
+    ],
+  });
 
   factory JsonLd.localBusiness({
     required String name,
@@ -902,17 +886,16 @@ class JsonLd {
     String? image,
     String? url,
     String? priceRange,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'LocalBusiness',
-        'name': name,
-        'address': address,
-        if (telephone != null) 'telephone': telephone,
-        if (image != null) 'image': image,
-        if (url != null) 'url': url,
-        if (priceRange != null) 'priceRange': priceRange,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    'name': name,
+    'address': address,
+    if (telephone != null) 'telephone': telephone,
+    if (image != null) 'image': image,
+    if (url != null) 'url': url,
+    if (priceRange != null) 'priceRange': priceRange,
+  });
 
   factory JsonLd.faqPage(List<({String question, String answer})> questions) =>
       JsonLd({
@@ -923,10 +906,7 @@ class JsonLd {
             {
               '@type': 'Question',
               'name': q.question,
-              'acceptedAnswer': {
-                '@type': 'Answer',
-                'text': q.answer,
-              },
+              'acceptedAnswer': {'@type': 'Answer', 'text': q.answer},
             },
         ],
       });
@@ -936,15 +916,14 @@ class JsonLd {
     String? url,
     String? jobTitle,
     String? image,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'Person',
-        'name': name,
-        if (url != null) 'url': url,
-        if (jobTitle != null) 'jobTitle': jobTitle,
-        if (image != null) 'image': image,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    'name': name,
+    if (url != null) 'url': url,
+    if (jobTitle != null) 'jobTitle': jobTitle,
+    if (image != null) 'image': image,
+  });
 
   factory JsonLd.softwareApplication({
     required String name,
@@ -952,20 +931,19 @@ class JsonLd {
     required String applicationCategory,
     Map<String, Object?>? offers,
     String? aggregateRating,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'SoftwareApplication',
-        'name': name,
-        'operatingSystem': operatingSystem,
-        'applicationCategory': applicationCategory,
-        if (offers != null) 'offers': offers,
-        if (aggregateRating != null)
-          'aggregateRating': {
-            '@type': 'AggregateRating',
-            'ratingValue': aggregateRating,
-          },
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    'name': name,
+    'operatingSystem': operatingSystem,
+    'applicationCategory': applicationCategory,
+    if (offers != null) 'offers': offers,
+    if (aggregateRating != null)
+      'aggregateRating': {
+        '@type': 'AggregateRating',
+        'ratingValue': aggregateRating,
+      },
+  });
 
   factory JsonLd.event({
     required String name,
@@ -974,50 +952,44 @@ class JsonLd {
     required String locationName,
     String? description,
     String? url,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'Event',
-        'name': name,
-        'startDate': startDate,
-        if (endDate != null) 'endDate': endDate,
-        'location': {
-          '@type': 'Place',
-          'name': locationName,
-        },
-        if (description != null) 'description': description,
-        if (url != null) 'url': url,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    'name': name,
+    'startDate': startDate,
+    if (endDate != null) 'endDate': endDate,
+    'location': {'@type': 'Place', 'name': locationName},
+    if (description != null) 'description': description,
+    if (url != null) 'url': url,
+  });
 
   factory JsonLd.offer({
     required String price,
     required String priceCurrency,
     String? availability,
     String? url,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'Offer',
-        'price': price,
-        'priceCurrency': priceCurrency,
-        if (availability != null) 'availability': availability,
-        if (url != null) 'url': url,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'Offer',
+    'price': price,
+    'priceCurrency': priceCurrency,
+    if (availability != null) 'availability': availability,
+    if (url != null) 'url': url,
+  });
 
   factory JsonLd.aggregateOffer({
     required String lowPrice,
     String? highPrice,
     required String priceCurrency,
     int? offerCount,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'AggregateOffer',
-        'lowPrice': lowPrice,
-        if (highPrice != null) 'highPrice': highPrice,
-        'priceCurrency': priceCurrency,
-        if (offerCount != null) 'offerCount': offerCount,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'AggregateOffer',
+    'lowPrice': lowPrice,
+    if (highPrice != null) 'highPrice': highPrice,
+    'priceCurrency': priceCurrency,
+    if (offerCount != null) 'offerCount': offerCount,
+  });
 
   factory JsonLd.blogPosting({
     required String headline,
@@ -1027,19 +999,18 @@ class JsonLd {
     String? author,
     String? publisher,
     String? description,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'BlogPosting',
-        'headline': headline,
-        if (image != null) 'image': image,
-        'datePublished': datePublished,
-        if (dateModified != null) 'dateModified': dateModified,
-        if (author != null) 'author': {'@type': 'Person', 'name': author},
-        if (publisher != null)
-          'publisher': {'@type': 'Organization', 'name': publisher},
-        if (description != null) 'description': description,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    'headline': headline,
+    if (image != null) 'image': image,
+    'datePublished': datePublished,
+    if (dateModified != null) 'dateModified': dateModified,
+    if (author != null) 'author': {'@type': 'Person', 'name': author},
+    if (publisher != null)
+      'publisher': {'@type': 'Organization', 'name': publisher},
+    if (description != null) 'description': description,
+  });
 
   factory JsonLd.newsArticle({
     required String headline,
@@ -1048,17 +1019,16 @@ class JsonLd {
     String? dateModified,
     required String author,
     required String publisher,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'NewsArticle',
-        'headline': headline,
-        'image': image,
-        'datePublished': datePublished,
-        if (dateModified != null) 'dateModified': dateModified,
-        'author': {'@type': 'Person', 'name': author},
-        'publisher': {'@type': 'Organization', 'name': publisher},
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    'headline': headline,
+    'image': image,
+    'datePublished': datePublished,
+    if (dateModified != null) 'dateModified': dateModified,
+    'author': {'@type': 'Person', 'name': author},
+    'publisher': {'@type': 'Organization', 'name': publisher},
+  });
 
   factory JsonLd.videoObject({
     required String name,
@@ -1068,33 +1038,31 @@ class JsonLd {
     String? contentUrl,
     String? embedUrl,
     String? duration,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'VideoObject',
-        'name': name,
-        'description': description,
-        'thumbnailUrl': thumbnailUrl,
-        'uploadDate': uploadDate,
-        if (contentUrl != null) 'contentUrl': contentUrl,
-        if (embedUrl != null) 'embedUrl': embedUrl,
-        if (duration != null) 'duration': duration,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    'name': name,
+    'description': description,
+    'thumbnailUrl': thumbnailUrl,
+    'uploadDate': uploadDate,
+    if (contentUrl != null) 'contentUrl': contentUrl,
+    if (embedUrl != null) 'embedUrl': embedUrl,
+    if (duration != null) 'duration': duration,
+  });
 
   factory JsonLd.imageObject({
     required String contentUrl,
     String? caption,
     int? width,
     int? height,
-  }) =>
-      JsonLd({
-        '@context': 'https://schema.org',
-        '@type': 'ImageObject',
-        'contentUrl': contentUrl,
-        if (caption != null) 'caption': caption,
-        if (width != null) 'width': width,
-        if (height != null) 'height': height,
-      });
+  }) => JsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'ImageObject',
+    'contentUrl': contentUrl,
+    if (caption != null) 'caption': caption,
+    if (width != null) 'width': width,
+    if (height != null) 'height': height,
+  });
 
   /// Escapes JSON for embedding safely within an HTML <script> tag.
   String toSafeScriptJson() {
@@ -1125,9 +1093,9 @@ class AlternateLink {
   final String url;
 
   factory AlternateLink.fromJson(Map<String, Object?> json) => AlternateLink(
-        language: json['language'] as String,
-        url: json['url'] as String,
-      );
+    language: json['language'] as String,
+    url: json['url'] as String,
+  );
 
   Map<String, Object?> toJson() => {'language': language, 'url': url};
 
@@ -1170,18 +1138,18 @@ class WebIcon {
   factory WebIcon.manifest(String href) => WebIcon(href: href, rel: 'manifest');
 
   factory WebIcon.fromJson(Map<String, Object?> json) => WebIcon(
-        href: json['href'] as String,
-        rel: json['rel'] as String? ?? 'icon',
-        type: json['type'] as String?,
-        sizes: json['sizes'] as String?,
-      );
+    href: json['href'] as String,
+    rel: json['rel'] as String? ?? 'icon',
+    type: json['type'] as String?,
+    sizes: json['sizes'] as String?,
+  );
 
   Map<String, Object?> toJson() => {
-        'href': href,
-        'rel': rel,
-        if (type != null) 'type': type,
-        if (sizes != null) 'sizes': sizes,
-      };
+    'href': href,
+    'rel': rel,
+    if (type != null) 'type': type,
+    if (sizes != null) 'sizes': sizes,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -1231,36 +1199,35 @@ class ResourceHint {
     String? type,
     String? crossOrigin,
     String? media,
-  }) =>
-      ResourceHint(
-        url: url,
-        relation: 'preload',
-        asType: asType,
-        type: type,
-        crossOrigin: crossOrigin,
-        media: media,
-      );
+  }) => ResourceHint(
+    url: url,
+    relation: 'preload',
+    asType: asType,
+    type: type,
+    crossOrigin: crossOrigin,
+    media: media,
+  );
 
   factory ResourceHint.modulePreload(String url) =>
       ResourceHint(url: url, relation: 'modulepreload');
 
   factory ResourceHint.fromJson(Map<String, Object?> json) => ResourceHint(
-        url: json['url'] as String,
-        relation: json['relation'] as String,
-        asType: json['asType'] as String?,
-        type: json['type'] as String?,
-        crossOrigin: json['crossOrigin'] as String?,
-        media: json['media'] as String?,
-      );
+    url: json['url'] as String,
+    relation: json['relation'] as String,
+    asType: json['asType'] as String?,
+    type: json['type'] as String?,
+    crossOrigin: json['crossOrigin'] as String?,
+    media: json['media'] as String?,
+  );
 
   Map<String, Object?> toJson() => {
-        'url': url,
-        'relation': relation,
-        if (asType != null) 'asType': asType,
-        if (type != null) 'type': type,
-        if (crossOrigin != null) 'crossOrigin': crossOrigin,
-        if (media != null) 'media': media,
-      };
+    'url': url,
+    'relation': relation,
+    if (asType != null) 'asType': asType,
+    if (type != null) 'type': type,
+    if (crossOrigin != null) 'crossOrigin': crossOrigin,
+    if (media != null) 'media': media,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -1296,20 +1263,20 @@ class WebMetaTag {
   final String? httpEquiv;
 
   factory WebMetaTag.fromJson(Map<String, Object?> json) => WebMetaTag(
-        key: json['key'] as String,
-        content: json['content'] as String,
-        name: json['name'] as String?,
-        property: json['property'] as String?,
-        httpEquiv: json['httpEquiv'] as String?,
-      );
+    key: json['key'] as String,
+    content: json['content'] as String,
+    name: json['name'] as String?,
+    property: json['property'] as String?,
+    httpEquiv: json['httpEquiv'] as String?,
+  );
 
   Map<String, Object?> toJson() => {
-        'key': key,
-        'content': content,
-        if (name != null) 'name': name,
-        if (property != null) 'property': property,
-        if (httpEquiv != null) 'httpEquiv': httpEquiv,
-      };
+    'key': key,
+    'content': content,
+    if (name != null) 'name': name,
+    if (property != null) 'property': property,
+    if (httpEquiv != null) 'httpEquiv': httpEquiv,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -1353,30 +1320,30 @@ class WebLinkTag {
   final String? integrity;
 
   factory WebLinkTag.fromJson(Map<String, Object?> json) => WebLinkTag(
-        key: json['key'] as String,
-        rel: json['rel'] as String,
-        href: json['href'] as String,
-        hreflang: json['hreflang'] as String?,
-        type: json['type'] as String?,
-        media: json['media'] as String?,
-        asType: json['asType'] as String?,
-        crossorigin: json['crossorigin'] as String?,
-        referrerpolicy: json['referrerpolicy'] as String?,
-        integrity: json['integrity'] as String?,
-      );
+    key: json['key'] as String,
+    rel: json['rel'] as String,
+    href: json['href'] as String,
+    hreflang: json['hreflang'] as String?,
+    type: json['type'] as String?,
+    media: json['media'] as String?,
+    asType: json['asType'] as String?,
+    crossorigin: json['crossorigin'] as String?,
+    referrerpolicy: json['referrerpolicy'] as String?,
+    integrity: json['integrity'] as String?,
+  );
 
   Map<String, Object?> toJson() => {
-        'key': key,
-        'rel': rel,
-        'href': href,
-        if (hreflang != null) 'hreflang': hreflang,
-        if (type != null) 'type': type,
-        if (media != null) 'media': media,
-        if (asType != null) 'asType': asType,
-        if (crossorigin != null) 'crossorigin': crossorigin,
-        if (referrerpolicy != null) 'referrerpolicy': referrerpolicy,
-        if (integrity != null) 'integrity': integrity,
-      };
+    'key': key,
+    'rel': rel,
+    'href': href,
+    if (hreflang != null) 'hreflang': hreflang,
+    if (type != null) 'type': type,
+    if (media != null) 'media': media,
+    if (asType != null) 'asType': asType,
+    if (crossorigin != null) 'crossorigin': crossorigin,
+    if (referrerpolicy != null) 'referrerpolicy': referrerpolicy,
+    if (integrity != null) 'integrity': integrity,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -1396,17 +1363,17 @@ class WebLinkTag {
 
   @override
   int get hashCode => Object.hash(
-        key,
-        rel,
-        href,
-        hreflang,
-        type,
-        media,
-        asType,
-        crossorigin,
-        referrerpolicy,
-        integrity,
-      );
+    key,
+    rel,
+    href,
+    hreflang,
+    type,
+    media,
+    asType,
+    crossorigin,
+    referrerpolicy,
+    integrity,
+  );
 }
 
 /// Convenience subclass/alias for [WebLinkTag].

@@ -12,12 +12,14 @@ void main() {
     });
 
     test('ElementNode escapes attribute values automatically', () {
-      const node = ElementNode('a', attributes: {
-        'href': '/products?foo="bar"&baz=1',
-        'title': 'Click <here>',
-      }, children: [
-        TextNode('Link'),
-      ]);
+      const node = ElementNode(
+        'a',
+        attributes: {
+          'href': '/products?foo="bar"&baz=1',
+          'title': 'Click <here>',
+        },
+        children: [TextNode('Link')],
+      );
       final html = node.toHtml();
       expect(html, contains('href="/products?foo=&quot;bar&quot;&amp;baz=1"'));
       expect(html, contains('title="Click &lt;here&gt;"'));
@@ -36,21 +38,27 @@ void main() {
       expect(clean, contains('<p>'));
     });
 
-    test('HtmlSanitizer enforces rel="noopener noreferrer" on target="_blank"',
-        () {
-      const sanitizer = HtmlSanitizer();
-      const input =
-          '<a href="https://example.com" target="_blank">External</a>';
-      final clean = sanitizer.sanitize(input);
-      expect(clean, contains('rel="noopener noreferrer"'));
-    });
+    test(
+      'HtmlSanitizer enforces rel="noopener noreferrer" on target="_blank"',
+      () {
+        const sanitizer = HtmlSanitizer();
+        const input =
+            '<a href="https://example.com" target="_blank">External</a>';
+        final clean = sanitizer.sanitize(input);
+        expect(clean, contains('rel="noopener noreferrer"'));
+      },
+    );
 
     test('Semantic tag factories create valid structured markup', () {
       final article = H.article([
         H.h1('Article Title'),
         H.p('First paragraph with details.'),
-        H.img('https://example.com/photo.jpg',
-            alt: 'Scenic View', width: 800, height: 600),
+        H.img(
+          'https://example.com/photo.jpg',
+          alt: 'Scenic View',
+          width: 800,
+          height: 600,
+        ),
         H.table(
           headers: ['Feature', 'Value'],
           rows: [
@@ -65,17 +73,17 @@ void main() {
       expect(html, contains('<h1>Article Title</h1>'));
       expect(html, contains('<p>First paragraph with details.</p>'));
       expect(
-          html,
-          contains(
-              '<img src="https://example.com/photo.jpg" alt="Scenic View" width="800" height="600" />'));
+        html,
+        contains(
+          '<img src="https://example.com/photo.jpg" alt="Scenic View" width="800" height="600" />',
+        ),
+      );
       expect(html, contains('<th>Feature</th>'));
       expect(html, contains('<td>Fast</td>'));
       expect(html, contains('</article>'));
     });
 
-    test(
-        'HtmlDocument renders complete valid HTML5 document with head and body',
-        () {
+    test('HtmlDocument renders complete valid HTML5 document with head and body', () {
       const doc = HtmlDocument(
         metadata: WebMetadata(
           title: 'Product Details',
@@ -94,17 +102,23 @@ void main() {
       expect(output, contains('<html lang="en">'));
       expect(output, contains('<title>Product Details</title>'));
       expect(
-          output,
-          contains(
-              '<meta name="description" content="A detailed view of the product."'));
+        output,
+        contains(
+          '<meta name="description" content="A detailed view of the product."',
+        ),
+      );
       expect(
-          output,
-          contains(
-              '<link rel="canonical" href="https://example.com/products/rice/"'));
+        output,
+        contains(
+          '<link rel="canonical" href="https://example.com/products/rice/"',
+        ),
+      );
       expect(output, contains('<h1>Premium Basmati Rice</h1>'));
       expect(output, contains('<p>Price: \$24.99</p>'));
-      expect(output,
-          contains('<script src="flutter_bootstrap.js" async></script>'));
+      expect(
+        output,
+        contains('<script src="flutter_bootstrap.js" async></script>'),
+      );
       expect(output, endsWith('</html>\n'));
     });
   });

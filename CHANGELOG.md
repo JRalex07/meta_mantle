@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0 - 2026-11-12
+
+### Breaking Changes & SDK Constraint Upgrades
+- **Material UI Decoupling Migration:** Migrated all Material Design imports from the legacy `package:flutter/material.dart` to the official standalone `package:material_ui/material_ui.dart` (`material_ui: ^1.11.0`), aligning with Flutter 3.47+ modular architecture.
+- **Minimum SDK Constraints:** Updated minimum Dart SDK to `>=3.13.0 <4.0.0` and Flutter SDK to `>=3.47.0` to support standalone `material_ui` and `cupertino_ui` resolution without transitive dependency conflicts.
+- **Clean API Compatibility:** Audited all usages of `MaterialApp`, `ThemeData`, `ColorScheme`, `TextTheme`, widgets, and test runners, ensuring clean interoperability with Flutter core widgets and runtime services.
+
+### Universal Component System & Static Build Engine
+- **Content & Commerce Components:** Added `MantleTable`, `MantleTableRow`, `MantleTableCell` with caption, borders, and column/row spans, plus `MantleCustomElement` for arbitrary semantic custom web components.
+- **Universal State Management:** Introduced `MantleStateRegistry` with instance tracking and stable cross-pass state retention via positional keys and Expando references.
+- **DOM Hydration & Reconciliation:** Enhanced `MantleHydrator` with tag mismatch recovery, key identity verification, attribute/style differential patching, text reconciliation, and single-registration event listener protection.
+- **Bootstrap Adaptation:** Hardened `BootstrapAdapter` to guarantee idempotent prerender injection without duplicate tags across repeated builds.
+- **Full Build-Web Integration:** Completed CLI command `dart run meta_mantle build-web` with comprehensive support for `--help`, `--mode`, `--release`, `--wasm`, and automated sitemap, robots, and JSON report generation.
+
 ## 0.1.0 - 2026-11-12
 
 Official release of **MetaMantle** (`meta_mantle`), the typed metadata management, native server rendering, and universal SEO infrastructure framework for Flutter Web and Dart applications.

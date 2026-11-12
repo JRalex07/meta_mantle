@@ -1,5 +1,6 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
+
 import 'package:meta_mantle/meta_mantle_server.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
@@ -21,8 +22,7 @@ void main(List<String> args) async {
       'name': 'Premium Himalayan Basmati Rice',
       'price': 24.99,
       'stock': 42,
-      'description':
-          'Naturally aged extra-long grain aromatic rice harvested from Himalayan foothills.',
+      'description': 'Naturally aged extra-long grain aromatic rice harvested from Himalayan foothills.',
       'image': 'https://metamantle.alex.runs-on.dev/assets/basmati-rice.png',
     },
     lastModified: DateTime.utc(2026, 1, 1),
@@ -37,8 +37,7 @@ void main(List<String> args) async {
       'name': 'Organic Whole Milk',
       'price': 4.49,
       'stock': 18,
-      'description':
-          'Fresh pasture-raised whole milk enriched with essential vitamins and calcium.',
+      'description': 'Fresh pasture-raised whole milk enriched with essential vitamins and calcium.',
       'image': 'https://metamantle.alex.runs-on.dev/assets/whole-milk.png',
     },
     lastModified: DateTime.utc(2026, 1, 15),
@@ -99,7 +98,9 @@ void main(List<String> args) async {
             height: 500,
           ),
           H.p(product['description'] as String),
-          H.p('Price: \$${product["price"]} | Stock: ${product["stock"]} units'),
+          H.p(
+            'Price: \$${product["price"]} | Stock: ${product["stock"]} units',
+          ),
           H.table(
             headers: ['Attribute', 'Details'],
             rows: [
@@ -107,15 +108,13 @@ void main(List<String> args) async {
               ['Delivery', 'Same-day delivery available'],
               [
                 'Status',
-                (product['stock'] as int) > 0 ? 'In Stock' : 'Sold Out'
+                (product['stock'] as int) > 0 ? 'In Stock' : 'Sold Out',
               ],
             ],
           ),
         ]),
       ]),
-      H.footer([
-        H.p('© 2026 MetaMantle Store Inc. All rights reserved.'),
-      ]),
+      H.footer([H.p('© 2026 MetaMantle Store Inc. All rights reserved.')]),
     ],
     cachePolicy: const CachePolicy(
       ttl: Duration(minutes: 15),

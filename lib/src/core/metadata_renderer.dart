@@ -20,7 +20,8 @@ class MetadataRenderer {
     final referrerPolicy = metadata.referrerPolicy;
     final colorScheme = metadata.colorScheme ?? config.colorScheme;
 
-    final rawCanonical = metadata.canonical ??
+    final rawCanonical =
+        metadata.canonical ??
         (config.includeCurrentUrlAsCanonical ? currentUrl : null);
     final resolvedCanonical = _resolveUrl(rawCanonical, config.baseUrl);
     final canonical = _applyTrailingSlash(
@@ -58,19 +59,23 @@ class MetadataRenderer {
     final tags = <HeadTag>[];
 
     void addMeta(String key, String name, String content) {
-      tags.add(HeadTag(
-        key: key,
-        tagName: 'meta',
-        attributes: {'name': name, 'content': content},
-      ));
+      tags.add(
+        HeadTag(
+          key: key,
+          tagName: 'meta',
+          attributes: {'name': name, 'content': content},
+        ),
+      );
     }
 
     void addProperty(String key, String property, String content) {
-      tags.add(HeadTag(
-        key: key,
-        tagName: 'meta',
-        attributes: {'property': property, 'content': content},
-      ));
+      tags.add(
+        HeadTag(
+          key: key,
+          tagName: 'meta',
+          attributes: {'property': property, 'content': content},
+        ),
+      );
     }
 
     if (title != null && title.isNotEmpty) {
@@ -101,22 +106,26 @@ class MetadataRenderer {
       addMeta('robots', 'robots', robots);
     }
     if (canonical != null) {
-      tags.add(HeadTag(
-        key: 'canonical',
-        tagName: 'link',
-        attributes: {'rel': 'canonical', 'href': canonical},
-      ));
+      tags.add(
+        HeadTag(
+          key: 'canonical',
+          tagName: 'link',
+          attributes: {'rel': 'canonical', 'href': canonical},
+        ),
+      );
     }
     final themeColor = metadata.themeColor ?? config.themeColor;
     if (themeColor != null && themeColor.isNotEmpty) {
       addMeta('theme-color', 'theme-color', themeColor);
     }
     if (resolvedLanguage != null && resolvedLanguage.isNotEmpty) {
-      tags.add(HeadTag(
-        key: 'html-language',
-        tagName: 'html',
-        attributes: {'lang': resolvedLanguage},
-      ));
+      tags.add(
+        HeadTag(
+          key: 'html-language',
+          tagName: 'html',
+          attributes: {'lang': resolvedLanguage},
+        ),
+      );
     }
 
     // Search Engine Verifications
@@ -130,11 +139,7 @@ class MetadataRenderer {
     }
     if (metadata.bingSiteVerification != null &&
         metadata.bingSiteVerification!.isNotEmpty) {
-      addMeta(
-        'msvalidate.01',
-        'msvalidate.01',
-        metadata.bingSiteVerification!,
-      );
+      addMeta('msvalidate.01', 'msvalidate.01', metadata.bingSiteVerification!);
     }
     if (metadata.yandexVerification != null &&
         metadata.yandexVerification!.isNotEmpty) {
@@ -241,69 +246,83 @@ class MetadataRenderer {
 
     // JSON-LD Scripts
     for (var i = 0; i < metadata.jsonLd.length; i++) {
-      tags.add(HeadTag(
-        key: 'jsonld-$i',
-        tagName: 'script',
-        attributes: {'type': 'application/ld+json'},
-        textContent: metadata.jsonLd[i].toSafeScriptJson(),
-      ));
+      tags.add(
+        HeadTag(
+          key: 'jsonld-$i',
+          tagName: 'script',
+          attributes: {'type': 'application/ld+json'},
+          textContent: metadata.jsonLd[i].toSafeScriptJson(),
+        ),
+      );
     }
 
     // Alternate Links (hreflang)
     for (final alternate in metadata.alternates) {
-      tags.add(HeadTag(
-        key: 'alternate-${alternate.language}',
-        tagName: 'link',
-        attributes: {
-          'rel': 'alternate',
-          'hreflang': alternate.language,
-          'href': _resolveUrl(alternate.url, config.baseUrl)!,
-        },
-      ));
+      tags.add(
+        HeadTag(
+          key: 'alternate-${alternate.language}',
+          tagName: 'link',
+          attributes: {
+            'rel': 'alternate',
+            'hreflang': alternate.language,
+            'href': _resolveUrl(alternate.url, config.baseUrl)!,
+          },
+        ),
+      );
     }
 
     // Favicons & Web Icons
     for (var i = 0; i < metadata.icons.length; i++) {
       final icon = metadata.icons[i];
-      tags.add(HeadTag(
-        key: 'icon-$i-${icon.rel}',
-        tagName: 'link',
-        attributes: {
-          'rel': icon.rel,
-          'href': _resolveUrl(icon.href, config.baseUrl)!,
-          if (icon.type != null) 'type': icon.type!,
-          if (icon.sizes != null) 'sizes': icon.sizes!,
-        },
-      ));
+      tags.add(
+        HeadTag(
+          key: 'icon-$i-${icon.rel}',
+          tagName: 'link',
+          attributes: {
+            'rel': icon.rel,
+            'href': _resolveUrl(icon.href, config.baseUrl)!,
+            if (icon.type != null) 'type': icon.type!,
+            if (icon.sizes != null) 'sizes': icon.sizes!,
+          },
+        ),
+      );
     }
 
     // Resource Hints (preconnect, dns-prefetch, preload, modulepreload)
     for (var i = 0; i < metadata.resourceHints.length; i++) {
       final hint = metadata.resourceHints[i];
-      tags.add(HeadTag(
-        key: 'hint-$i-${hint.relation}-${hint.url}',
-        tagName: 'link',
-        attributes: {
-          'rel': hint.relation,
-          'href': _resolveUrl(hint.url, config.baseUrl)!,
-          if (hint.asType != null) 'as': hint.asType!,
-          if (hint.type != null) 'type': hint.type!,
-          if (hint.crossOrigin != null) 'crossorigin': hint.crossOrigin!,
-          if (hint.media != null) 'media': hint.media!,
-        },
-      ));
+      tags.add(
+        HeadTag(
+          key: 'hint-$i-${hint.relation}-${hint.url}',
+          tagName: 'link',
+          attributes: {
+            'rel': hint.relation,
+            'href': _resolveUrl(hint.url, config.baseUrl)!,
+            if (hint.asType != null) 'as': hint.asType!,
+            if (hint.type != null) 'type': hint.type!,
+            if (hint.crossOrigin != null) 'crossorigin': hint.crossOrigin!,
+            if (hint.media != null) 'media': hint.media!,
+          },
+        ),
+      );
     }
 
     // Custom Meta Tags
     for (final custom in metadata.customMeta) {
-      final identityCount = [custom.name, custom.property, custom.httpEquiv]
-          .where((value) => value != null && value.isNotEmpty)
-          .length;
-      final hasBlankIdentity = [custom.name, custom.property, custom.httpEquiv]
-          .any((value) => value != null && value.trim().isEmpty);
+      final identityCount = [
+        custom.name,
+        custom.property,
+        custom.httpEquiv,
+      ].where((value) => value != null && value.isNotEmpty).length;
+      final hasBlankIdentity = [
+        custom.name,
+        custom.property,
+        custom.httpEquiv,
+      ].any((value) => value != null && value.trim().isEmpty);
       if (custom.key.trim().isEmpty || identityCount != 1 || hasBlankIdentity) {
         throw FormatException(
-            'Custom meta tags need a unique key and exactly one of name, property or httpEquiv.');
+          'Custom meta tags need a unique key and exactly one of name, property or httpEquiv.',
+        );
       }
       final attributes = <String, String>{'content': custom.content};
       if (custom.name != null) attributes['name'] = custom.name!;
@@ -311,11 +330,13 @@ class MetadataRenderer {
       if (custom.httpEquiv != null) {
         attributes['http-equiv'] = custom.httpEquiv!;
       }
-      tags.add(HeadTag(
-        key: 'custom-meta-${custom.key}',
-        tagName: 'meta',
-        attributes: attributes,
-      ));
+      tags.add(
+        HeadTag(
+          key: 'custom-meta-${custom.key}',
+          tagName: 'meta',
+          attributes: attributes,
+        ),
+      );
     }
 
     // Custom Link Tags
@@ -324,24 +345,27 @@ class MetadataRenderer {
           custom.rel.trim().isEmpty ||
           custom.href.trim().isEmpty) {
         throw const FormatException(
-            'Custom link tags need non-empty key, rel and href values.');
+          'Custom link tags need non-empty key, rel and href values.',
+        );
       }
-      tags.add(HeadTag(
-        key: 'custom-link-${custom.key}',
-        tagName: 'link',
-        attributes: {
-          'rel': custom.rel,
-          'href': _resolveUrl(custom.href, config.baseUrl)!,
-          if (custom.hreflang != null) 'hreflang': custom.hreflang!,
-          if (custom.type != null) 'type': custom.type!,
-          if (custom.media != null) 'media': custom.media!,
-          if (custom.asType != null) 'as': custom.asType!,
-          if (custom.crossorigin != null) 'crossorigin': custom.crossorigin!,
-          if (custom.referrerpolicy != null)
-            'referrerpolicy': custom.referrerpolicy!,
-          if (custom.integrity != null) 'integrity': custom.integrity!,
-        },
-      ));
+      tags.add(
+        HeadTag(
+          key: 'custom-link-${custom.key}',
+          tagName: 'link',
+          attributes: {
+            'rel': custom.rel,
+            'href': _resolveUrl(custom.href, config.baseUrl)!,
+            if (custom.hreflang != null) 'hreflang': custom.hreflang!,
+            if (custom.type != null) 'type': custom.type!,
+            if (custom.media != null) 'media': custom.media!,
+            if (custom.asType != null) 'as': custom.asType!,
+            if (custom.crossorigin != null) 'crossorigin': custom.crossorigin!,
+            if (custom.referrerpolicy != null)
+              'referrerpolicy': custom.referrerpolicy!,
+            if (custom.integrity != null) 'integrity': custom.integrity!,
+          },
+        ),
+      );
     }
 
     // Validate for uniqueness and consistency
@@ -444,8 +468,9 @@ class MetadataRenderer {
     final path = uri.path;
     // Don't modify root or paths with extensions (like .html, .png)
     if (path == '/' || path.isEmpty) return url;
-    final lastSegment =
-        uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+    final lastSegment = uri.pathSegments.isNotEmpty
+        ? uri.pathSegments.last
+        : '';
     final hasExtension = lastSegment.contains('.');
 
     if (trailingSlash) {
@@ -473,13 +498,15 @@ class MetadataRenderer {
           uri.host.isEmpty ||
           uri.userInfo.isNotEmpty) {
         throw FormatException(
-            'Only absolute HTTP(S) URLs without credentials are allowed: $value');
+          'Only absolute HTTP(S) URLs without credentials are allowed: $value',
+        );
       }
       return uri.toString();
     }
     if (uri.hasAuthority) {
       throw FormatException(
-          'Protocol-relative URLs are not accepted; use an explicit HTTP(S) URL: $value');
+        'Protocol-relative URLs are not accepted; use an explicit HTTP(S) URL: $value',
+      );
     }
     if (baseUrl == null) return value;
     final base = Uri.parse(baseUrl);
@@ -490,10 +517,12 @@ class MetadataRenderer {
         base.hasQuery ||
         base.hasFragment) {
       throw FormatException(
-          'baseUrl must be an HTTP(S) URL without credentials, query or fragment: $baseUrl');
+        'baseUrl must be an HTTP(S) URL without credentials, query or fragment: $baseUrl',
+      );
     }
-    final normalizedBase =
-        base.toString().endsWith('/') ? base : Uri.parse('${base.toString()}/');
+    final normalizedBase = base.toString().endsWith('/')
+        ? base
+        : Uri.parse('${base.toString()}/');
     return normalizedBase.resolveUri(uri).toString();
   }
 }

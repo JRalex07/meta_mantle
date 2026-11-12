@@ -13,8 +13,10 @@ class DistributedLockException implements Exception {
 abstract interface class DistributedLockProvider {
   /// Attempts to acquire a distributed lock for [resource] with a lease [ttl].
   /// Returns a fencing token or ownership string if successful, or `null` if locked.
-  Future<String?> acquire(String resource,
-      {Duration ttl = const Duration(seconds: 10)});
+  Future<String?> acquire(
+    String resource, {
+    Duration ttl = const Duration(seconds: 10),
+  });
 
   /// Releases the lock if [lockToken] matches current ownership.
   Future<bool> release(String resource, String lockToken);

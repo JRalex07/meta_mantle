@@ -8,11 +8,12 @@ class ServerRequest {
     Map<String, String>? headers,
     this.clientIp,
     List<int>? bodyBytes,
-  })  : headers = headers != null
-            ? Map.unmodifiable(
-                headers.map((k, v) => MapEntry(k.toLowerCase(), v)))
-            : const {},
-        bodyBytes = bodyBytes ?? const [];
+  }) : headers = headers != null
+           ? Map.unmodifiable(
+               headers.map((k, v) => MapEntry(k.toLowerCase(), v)),
+             )
+           : const {},
+       bodyBytes = bodyBytes ?? const [];
 
   final String method;
   final Uri uri;

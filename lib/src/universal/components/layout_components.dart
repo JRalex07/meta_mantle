@@ -123,11 +123,7 @@ class MantleColumn extends StatelessMantleComponent {
 }
 
 class MantlePadding extends StatelessMantleComponent {
-  const MantlePadding({
-    required this.padding,
-    required this.child,
-    super.key,
-  });
+  const MantlePadding({required this.padding, required this.child, super.key});
 
   final MantleEdgeInsets padding;
   final MantleComponent child;
@@ -144,10 +140,7 @@ class MantlePadding extends StatelessMantleComponent {
 }
 
 class MantleCenter extends StatelessMantleComponent {
-  const MantleCenter({
-    required this.child,
-    super.key,
-  });
+  const MantleCenter({required this.child, super.key});
 
   final MantleComponent child;
 
@@ -168,11 +161,7 @@ class MantleCenter extends StatelessMantleComponent {
 }
 
 class MantleExpanded extends StatelessMantleComponent {
-  const MantleExpanded({
-    required this.child,
-    this.flex = 1,
-    super.key,
-  });
+  const MantleExpanded({required this.child, this.flex = 1, super.key});
 
   final MantleComponent child;
   final int flex;
@@ -189,12 +178,7 @@ class MantleExpanded extends StatelessMantleComponent {
 }
 
 class MantleSizedBox extends StatelessMantleComponent {
-  const MantleSizedBox({
-    this.width,
-    this.height,
-    this.child,
-    super.key,
-  });
+  const MantleSizedBox({this.width, this.height, this.child, super.key});
 
   final double? width;
   final double? height;
@@ -284,10 +268,7 @@ class MantleGrid extends StatelessMantleComponent {
 }
 
 class MantleStack extends StatelessMantleComponent {
-  const MantleStack({
-    required this.children,
-    super.key,
-  });
+  const MantleStack({required this.children, super.key});
 
   final List<MantleComponent> children;
 
@@ -303,18 +284,18 @@ class MantleStack extends StatelessMantleComponent {
 }
 
 String _mapJustify(MantleMainAxisAlignment align) => switch (align) {
-      MantleMainAxisAlignment.start => 'flex-start',
-      MantleMainAxisAlignment.end => 'flex-end',
-      MantleMainAxisAlignment.center => 'center',
-      MantleMainAxisAlignment.spaceBetween => 'space-between',
-      MantleMainAxisAlignment.spaceAround => 'space-around',
-      MantleMainAxisAlignment.spaceEvenly => 'space-evenly',
-    };
+  MantleMainAxisAlignment.start => 'flex-start',
+  MantleMainAxisAlignment.end => 'flex-end',
+  MantleMainAxisAlignment.center => 'center',
+  MantleMainAxisAlignment.spaceBetween => 'space-between',
+  MantleMainAxisAlignment.spaceAround => 'space-around',
+  MantleMainAxisAlignment.spaceEvenly => 'space-evenly',
+};
 
 String _mapAlign(MantleCrossAxisAlignment align) => switch (align) {
-      MantleCrossAxisAlignment.start => 'flex-start',
-      MantleCrossAxisAlignment.end => 'flex-end',
-      MantleCrossAxisAlignment.center => 'center',
-      MantleCrossAxisAlignment.stretch => 'stretch',
-      MantleCrossAxisAlignment.baseline => 'baseline',
-    };
+  MantleCrossAxisAlignment.start => 'flex-start',
+  MantleCrossAxisAlignment.end => 'flex-end',
+  MantleCrossAxisAlignment.center => 'center',
+  MantleCrossAxisAlignment.stretch => 'stretch',
+  MantleCrossAxisAlignment.baseline => 'baseline',
+};

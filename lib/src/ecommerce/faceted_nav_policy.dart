@@ -57,8 +57,9 @@ class FacetedNavPolicy {
     }
 
     // 2. Filter out pagination from parameter count check
-    final activeFilters =
-        queryParameters.keys.where((k) => k != 'page' && k != 'sort').toSet();
+    final activeFilters = queryParameters.keys
+        .where((k) => k != 'page' && k != 'sort')
+        .toSet();
 
     // 3. Unlimited combinatorics trap prevention: If filters exceed threshold, noindex
     if (activeFilters.length > maxFilterParameters) {
@@ -83,12 +84,14 @@ class FacetedNavPolicy {
     }
 
     // 5. Curated indexable facets (e.g. /category?brand=nike)
-    final isAllowedIndexable = activeFilters.isNotEmpty &&
+    final isAllowedIndexable =
+        activeFilters.isNotEmpty &&
         activeFilters.every((f) => allowedIndexableParams.contains(f));
 
     if (isAllowedIndexable && !canonicalizeToCategory) {
-      final sortedQuery =
-          activeFilters.map((k) => '$k=${queryParameters[k]}').join('&');
+      final sortedQuery = activeFilters
+          .map((k) => '$k=${queryParameters[k]}')
+          .join('&');
       return FacetedUrlDecision(
         shouldIndex: true,
         canonicalUrl: '$cleanBase/?$sortedQuery',

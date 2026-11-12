@@ -30,10 +30,7 @@ void main() {
         cachePolicy: const CachePolicy(ttl: Duration(minutes: 10)),
       );
 
-      final engine = MetaMantleServerEngine(
-        routes: [route],
-        cacheStore: store,
-      );
+      final engine = MetaMantleServerEngine(routes: [route], cacheStore: store);
 
       // Measure 1,000 sequential cache-miss renders
       final swMiss = Stopwatch()..start();
@@ -65,10 +62,14 @@ void main() {
       final missThroughput = 1000 / (swMiss.elapsedMilliseconds / 1000.0);
       final hitThroughput = 1000 / (swHit.elapsedMilliseconds / 1000.0);
 
-      expect(missThroughput,
-          greaterThan(100)); // At least 100 pages/sec on miss in debug mode
       expect(
-          hitThroughput, greaterThan(2000)); // At least 2,000 pages/sec on hit
+        missThroughput,
+        greaterThan(100),
+      ); // At least 100 pages/sec on miss in debug mode
+      expect(
+        hitThroughput,
+        greaterThan(2000),
+      ); // At least 2,000 pages/sec on hit
     });
 
     test('10,000 routes scaling & memory efficiency benchmark', () async {

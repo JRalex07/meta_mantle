@@ -4,10 +4,7 @@ import 'seo_policy.dart';
 
 /// Container for the resolved metadata and its diagnostic provenance trace.
 class ResolvedSeoMetadata {
-  const ResolvedSeoMetadata({
-    required this.metadata,
-    required this.provenance,
-  });
+  const ResolvedSeoMetadata({required this.metadata, required this.provenance});
 
   final WebMetadata metadata;
   final PolicyProvenance provenance;
@@ -123,8 +120,10 @@ class SeoPolicyResolver {
     }
 
     if (forceNoindex || forceNofollow) {
-      final parts =
-          finalRobots.split(',').map((e) => e.trim().toLowerCase()).toList();
+      final parts = finalRobots
+          .split(',')
+          .map((e) => e.trim().toLowerCase())
+          .toList();
       if (forceNoindex) {
         parts.remove('index');
         if (!parts.contains('noindex')) parts.insert(0, 'noindex');
@@ -146,8 +145,9 @@ class SeoPolicyResolver {
 
     // 4. Resolve Canonical URL
     String? finalCanonical = page?.canonical;
-    PolicyTier? canonicalOrigin =
-        page?.canonical != null ? PolicyTier.page : null;
+    PolicyTier? canonicalOrigin = page?.canonical != null
+        ? PolicyTier.page
+        : null;
 
     if (finalCanonical == null && currentPath != null) {
       String? baseUrl;
@@ -164,8 +164,9 @@ class SeoPolicyResolver {
 
       if (baseUrl != null) {
         final cleanBase = baseUrl.replaceAll(RegExp(r'/+$'), '');
-        var cleanPath =
-            currentPath.startsWith('/') ? currentPath : '/$currentPath';
+        var cleanPath = currentPath.startsWith('/')
+            ? currentPath
+            : '/$currentPath';
         if (trailingSlash == true && !cleanPath.endsWith('/')) {
           cleanPath = '$cleanPath/';
         } else if (trailingSlash == false &&

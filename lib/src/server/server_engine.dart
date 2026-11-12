@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:crypto/crypto.dart';
 
 import '../cache/cache_store.dart';
@@ -29,9 +30,9 @@ class MetaMantleServerEngine {
     this.artifactMaxAge,
     this.artifactStaleWhileRevalidate = const Duration(seconds: 60),
     this.onStaleArtifact,
-  })  : cache = cacheStore ?? MemoryCacheStore(),
-        redirects = redirectManager ?? RedirectManager(),
-        singleFlight = singleFlight ?? SingleFlightCoordinator();
+  }) : cache = cacheStore ?? MemoryCacheStore(),
+       redirects = redirectManager ?? RedirectManager(),
+       singleFlight = singleFlight ?? SingleFlightCoordinator();
 
   final List<MetaRoute<dynamic>> routes;
   final MetaMantleConfig config;
@@ -45,14 +46,14 @@ class MetaMantleServerEngine {
 
   /// Resolves an isolated store from an already validated tenant context.
   final FileHtmlArtifactStore? Function(TenantContext tenant)?
-      artifactStoreForTenant;
+  artifactStoreForTenant;
   final Duration? artifactMaxAge;
   final Duration artifactStaleWhileRevalidate;
 
   /// Optional ISR hook called for a stale generated artifact. Connect this to
   /// an idempotent durable queue; repeated requests may invoke it concurrently.
   final Future<void> Function(String path, RouteDependency dependency)?
-      onStaleArtifact;
+  onStaleArtifact;
 
   /// Handles an incoming [ServerRequest] through the full SSR pipeline.
   Future<ServerResponse> handleRequest(ServerRequest request) async {
@@ -110,7 +111,8 @@ class MetaMantleServerEngine {
       parameters: params,
       queryParameters: request.queryParameters,
       headers: request.headers,
-      locale: validatedTenant?.defaultLocale ??
+      locale:
+          validatedTenant?.defaultLocale ??
           request.header('accept-language')?.split(',').first.trim() ??
           config.language,
     );
@@ -118,7 +120,8 @@ class MetaMantleServerEngine {
     final selectedArtifactStore = validatedTenant == null
         ? artifactStore
         : artifactStoreForTenant?.call(validatedTenant);
-    final canUseArtifacts = selectedArtifactStore != null &&
+    final canUseArtifacts =
+        selectedArtifactStore != null &&
         artifactMaxAge != null &&
         artifactMaxAge! >= Duration.zero &&
         request.queryParameters.isEmpty &&
@@ -183,8 +186,11 @@ class MetaMantleServerEngine {
     }
 
     // 5. Cache Key Calculation (Tenant-partitioned)
-    final cacheKey =
-        _computeCacheKey(request, route, tenantContext: validatedTenant);
+    final cacheKey = _computeCacheKey(
+      request,
+      route,
+      tenantContext: validatedTenant,
+    );
 
     // 6. Cache Lookup
     if (route.cachePolicy.isCacheable) {
@@ -275,7 +281,9 @@ class MetaMantleServerEngine {
   }
 
   Future<void> _notifyStaleArtifact(
-      String path, RouteDependency dependency) async {
+    String path,
+    RouteDependency dependency,
+  ) async {
     try {
       await onStaleArtifact?.call(path, dependency);
     } on Object {
@@ -468,9 +476,7 @@ class MetaMantleServerEngine {
       etag: etag,
       lastModified: lastModified,
       cacheControl: _buildCacheControl(policy),
-      headers: {
-        'X-MetaMantle-Cache': cacheStatus,
-      },
+      headers: {'X-MetaMantle-Cache': cacheStatus},
     );
   }
 
@@ -482,7 +488,8 @@ class MetaMantleServerEngine {
     final buf = StringBuffer('public, max-age=${policy.ttl.inSeconds}');
     if (policy.staleWhileRevalidate != null) {
       buf.write(
-          ', stale-while-revalidate=${policy.staleWhileRevalidate!.inSeconds}');
+        ', stale-while-revalidate=${policy.staleWhileRevalidate!.inSeconds}',
+      );
     }
     if (policy.staleIfError != null) {
       buf.write(', stale-if-error=${policy.staleIfError!.inSeconds}');
@@ -499,12 +506,14 @@ class MetaMantleServerEngine {
       ..sort((a, b) => a.key.compareTo(b.key));
     final queryStr = sortedParams.map((e) => '${e.key}=${e.value}').join('&');
 
-    final tenant = tenantContext?.tenantId ??
+    final tenant =
+        tenantContext?.tenantId ??
         (tenantHostValidator == null ? (req.tenantId ?? '') : '');
     final host = tenantContext?.primaryDomain ?? req.host ?? '';
     final locale = tenantContext?.defaultLocale ?? req.locale ?? '';
     final currency = tenantContext?.defaultCurrency ?? req.currency ?? '';
-    final prefix = (tenant.isNotEmpty ||
+    final prefix =
+        (tenant.isNotEmpty ||
             host.isNotEmpty ||
             locale.isNotEmpty ||
             currency.isNotEmpty)

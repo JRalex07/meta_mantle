@@ -1,10 +1,10 @@
 # Build and Verification Status
 
-This document reflects the verified status of the `meta_mantle` package (version `0.1.0`) as of 2026-11-12.
+This document reflects the verified status of the `meta_mantle` package (version `0.2.0`) as of 2026-11-12.
 
 ## Current audit re-verification
 
-On 2026-11-12, `flutter test` passed **286 tests** across 37 test suites (100% pass rate); root and example analysis passed with **0 issues**; formatting passed with **0 files changed** across 146 files; universal component IR, server HTML rendering, Flutter Widget rendering, routing engine, reactive state, DOM diffing reconciler, web accelerator benchmarks, and Flutter Web Static Build Engine (`build-web`) passed; JavaScript and WebAssembly example builds passed; CLI `doctor`, strict `build`, `build-web`, and `web` command group passed. `dart pub publish --dry-run` completed package validation with **1 warning** because the working tree is modified. Gitleaks v8.30.1 history and checkout scans are configured in CI. CloudFront invalidation is unsupported; Jaspr support is an HTML compatibility bridge; package dependency resolution requires Flutter.
+On 2026-11-12, `flutter test` passed **289 tests** across 35 test suites (100% pass rate); root and example analysis passed with **0 issues**; formatting passed with **0 files changed** across 146 files; migrated all Material UI imports to the standalone `package:material_ui/material_ui.dart` (`^1.11.0`) decoupled architecture with minimum SDK constraints bumped to Dart `>=3.13.0` and Flutter `>=3.47.0`; universal component IR, server HTML rendering, Flutter Widget rendering, routing engine, reactive state with `MantleStateRegistry`, DOM diffing reconciler with `MantleHydrator`, web accelerator benchmarks, and Flutter Web Static Build Engine (`build-web`) passed; JavaScript and WebAssembly example builds passed; CLI `doctor`, strict `build`, `build-web`, and `web` command group passed. Package validation via `flutter pub publish --dry-run` succeeded.
 
 ## Verified Environment
 
@@ -13,6 +13,7 @@ On 2026-11-12, `flutter test` passed **286 tests** across 37 test suites (100% p
 - **Operating System:** Windows 10/11
 - **Flutter SDK:** 3.47.5 (Channel stable)
 - **Dart SDK:** 3.13.4
+- **Material UI:** ^1.11.0 (standalone decoupled package)
 - **Browser:** Google Chrome 156.0.7118.0
 - **Architecture Target:** Universal Rendering Architecture: Portable Component IR, Multi-Target Rendering (Mode A: Flutter Web CanvasKit/Skwasm, Mode B: Browser Native DOM, Dart Server SSR), Static Head Builder, and Hybrid ISR.
 
@@ -22,11 +23,12 @@ On 2026-11-12, `flutter test` passed **286 tests** across 37 test suites (100% p
 
 | Command / Check | Working Directory | Result | Notes |
 | :--- | :--- | :--- | :--- |
-| `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 139 files |
-| `flutter pub get` | `.` (Root) | **PASS** | Dependencies resolved |
-| `dart analyze` | `.` (Root) | **PASS** (0 issues) | Strict analysis enabled across core, server, universal, hybrid, and example |
-| `flutter test` | `.` (Root) | **PASS** (286 passing) | 37 test suites: Universal IR, Flutter renderer, Server HTML renderer, Universal routing, DOM diffing reconciler, reactive state, Web accelerator, Flutter Web Build Engine (`build-web`), Content & Commerce components, WAL crash recovery, sharded route store, lease renewal & heartbeat, fencing epochs, DNS rebinding, redirect SSRF, 10,000 job benchmark |
-| `flutter pub get` | `example/` | **PASS** | Dependencies resolved |
+| `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 146 files |
+| `flutter pub get` | `.` (Root) | **PASS** | Dependencies resolved with standalone `material_ui: ^1.11.0` |
+| `flutter analyze` | `.` (Root) | **PASS** (0 issues) | Strict analysis enabled with 0 warnings/errors/infos |
+| `flutter test` | `.` (Root) | **PASS** (289 passing) | 35 test suites: Universal IR, Flutter renderer, Server HTML renderer, Universal routing, DOM diffing reconciler, reactive state, Web accelerator, Flutter Web Build Engine (`build-web`), Content & Commerce components, WAL crash recovery, sharded route store, lease renewal & heartbeat, fencing epochs, DNS rebinding, redirect SSRF, 10,000 job benchmark |
+| `flutter pub get` | `example/` | **PASS** | Dependencies resolved with `material_ui: ^1.11.0` |
+| `flutter analyze` | `example/` | **PASS** (0 issues) | Clean analysis in example package |
 | `dart run example/bin/universal_store_example.dart` | `.` (Root) | **PASS** | End-to-end multi-target rendering demo (SSR, Widgets, SSG) |
 | `dart run example/bin/blog_publishing_example.dart` | `.` (Root) | **PASS** | RSS 2.0, Atom 1.0, Google News Sitemap |
 | `dart run example/bin/jaspr_docs_example.dart` | `.` (Root) | **PASS** | Version switcher, search index, llms.txt |
@@ -34,7 +36,9 @@ On 2026-11-12, `flutter test` passed **286 tests** across 37 test suites (100% p
 | `dart run example/bin/saas_multitenant_example.dart` | `.` (Root) | **PASS** | Host injection protection, tenant cache partitioner |
 | `dart run example/bin/static_marketing_example.dart` | `.` (Root) | **PASS** | Static head builder generating HTML, sitemap, robots |
 | `flutter build web --release` | `example/` | **PASS** | JavaScript bundle built in `build/web` |
-| `flutter build web --wasm` | `example/` | **PASS** | Native WebAssembly compiled (`main.dart.wasm`) |
+| `flutter build web --release --wasm` | `example/` | **PASS** | Native WebAssembly compiled (`main.dart.wasm`) |
+| `dart run meta_mantle build-web --help` | `.` (Root) | **PASS** | Subcommand usage and build options displayed |
+| `dart run meta_mantle build-web --mode prerender --release` | `example/` | **PASS** | End-to-end static generation of 6 routes (8 files, sitemap, robots, report) |
 | `dart run meta_mantle doctor` | `example/` | **PASS** | Preflight checks passed |
 | `dart run meta_mantle inspect` | `example/` | **PASS** | 4 static routes resolved |
 | `dart run meta_mantle build` | `example/` | **PASS** | Generated static files for routes |

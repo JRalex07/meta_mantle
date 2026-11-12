@@ -63,8 +63,7 @@ By maintaining a pure-Dart core that compiles everywhere, MetaMantle renders ide
   const feedGen = FeedGenerator(
     feedTitle: 'MetaMantle Engineering Blog',
     feedUrl: 'https://blog.metamantle.dev',
-    feedDescription:
-        'Deep dives on Flutter Web, Dart backend architecture, and technical SEO.',
+    feedDescription: 'Deep dives on Flutter Web, Dart backend architecture, and technical SEO.',
   );
 
   final rssXml = feedGen.generateRss2(feedArticles);

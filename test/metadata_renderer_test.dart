@@ -15,8 +15,10 @@ void main() {
           baseUrl: 'https://example.com',
         ),
       );
-      expect(tags.firstWhere((tag) => tag.key == 'title').textContent,
-          'Rice | Store');
+      expect(
+        tags.firstWhere((tag) => tag.key == 'title').textContent,
+        'Rice | Store',
+      );
       expect(
         tags
             .firstWhere((tag) => tag.key == 'description')
@@ -34,11 +36,13 @@ void main() {
         config: const WebHeadConfig(baseUrl: 'https://example.com'),
       );
       expect(
-          tags.firstWhere((tag) => tag.key == 'canonical').attributes['href'],
-          'https://example.com/items/rice');
+        tags.firstWhere((tag) => tag.key == 'canonical').attributes['href'],
+        'https://example.com/items/rice',
+      );
       expect(
-          tags.firstWhere((tag) => tag.key == 'og:image').attributes['content'],
-          'https://example.com/og/rice.png');
+        tags.firstWhere((tag) => tag.key == 'og:image').attributes['content'],
+        'https://example.com/og/rice.png',
+      );
     });
 
     test('rejects non-http URL schemes', () {
@@ -51,20 +55,20 @@ void main() {
       );
     });
 
-    test('requires an absolute canonical URL when no base URL is configured',
-        () {
-      expect(
-        () => renderer.render(const WebMetadata(canonical: '/products/rice')),
-        throwsFormatException,
-      );
-    });
+    test(
+      'requires an absolute canonical URL when no base URL is configured',
+      () {
+        expect(
+          () => renderer.render(const WebMetadata(canonical: '/products/rice')),
+          throwsFormatException,
+        );
+      },
+    );
 
     test('rejects empty metadata URLs', () {
       expect(
         () => renderer.render(
-          const WebMetadata(
-            openGraph: OpenGraphMetadata(image: ' '),
-          ),
+          const WebMetadata(openGraph: OpenGraphMetadata(image: ' ')),
           config: const WebHeadConfig(baseUrl: 'https://example.com'),
         ),
         throwsFormatException,
@@ -123,8 +127,10 @@ void main() {
           const WebMetadata(title: 'About Us'),
           config: config,
         );
-        expect(tags.firstWhere((t) => t.key == 'title').textContent,
-            'About Us | MetaMantle Store');
+        expect(
+          tags.firstWhere((t) => t.key == 'title').textContent,
+          'About Us | MetaMantle Store',
+        );
       });
 
       test('does not duplicate title when page title matches siteName', () {
@@ -132,8 +138,10 @@ void main() {
           const WebMetadata(title: 'MetaMantle Store'),
           config: config,
         );
-        expect(tags.firstWhere((t) => t.key == 'title').textContent,
-            'MetaMantle Store');
+        expect(
+          tags.firstWhere((t) => t.key == 'title').textContent,
+          'MetaMantle Store',
+        );
       });
 
       test('does not duplicate title when page title matches defaultTitle', () {
@@ -145,20 +153,25 @@ void main() {
             baseUrl: 'https://example.com',
           ),
         );
-        expect(tags.firstWhere((t) => t.key == 'title').textContent,
-            'MetaMantle Store');
+        expect(
+          tags.firstWhere((t) => t.key == 'title').textContent,
+          'MetaMantle Store',
+        );
       });
 
       test(
-          'does not duplicate when page title already contains template suffix',
-          () {
-        final tags = renderer.render(
-          const WebMetadata(title: 'About Us | MetaMantle Store'),
-          config: config,
-        );
-        expect(tags.firstWhere((t) => t.key == 'title').textContent,
-            'About Us | MetaMantle Store');
-      });
+        'does not duplicate when page title already contains template suffix',
+        () {
+          final tags = renderer.render(
+            const WebMetadata(title: 'About Us | MetaMantle Store'),
+            config: config,
+          );
+          expect(
+            tags.firstWhere((t) => t.key == 'title').textContent,
+            'About Us | MetaMantle Store',
+          );
+        },
+      );
 
       test('respects applyTitleTemplate: false', () {
         final tags = renderer.render(
@@ -168,17 +181,18 @@ void main() {
           ),
           config: config,
         );
-        expect(tags.firstWhere((t) => t.key == 'title').textContent,
-            'Special Summer Campaign');
+        expect(
+          tags.firstWhere((t) => t.key == 'title').textContent,
+          'Special Summer Campaign',
+        );
       });
 
       test('uses defaultTitle without template when page title is null', () {
-        final tags = renderer.render(
-          const WebMetadata(),
-          config: config,
+        final tags = renderer.render(const WebMetadata(), config: config);
+        expect(
+          tags.firstWhere((t) => t.key == 'title').textContent,
+          'MetaMantle Store',
         );
-        expect(tags.firstWhere((t) => t.key == 'title').textContent,
-            'MetaMantle Store');
       });
 
       test('uses defaultTitle fallback when page title is empty string', () {
@@ -186,8 +200,10 @@ void main() {
           const WebMetadata(title: ''),
           config: config,
         );
-        expect(tags.firstWhere((t) => t.key == 'title').textContent,
-            'MetaMantle Store');
+        expect(
+          tags.firstWhere((t) => t.key == 'title').textContent,
+          'MetaMantle Store',
+        );
       });
 
       test('returns plain title when titleTemplate is null', () {
@@ -196,7 +212,9 @@ void main() {
           config: const MetaMantleConfig(baseUrl: 'https://example.com'),
         );
         expect(
-            tags.firstWhere((t) => t.key == 'title').textContent, 'Products');
+          tags.firstWhere((t) => t.key == 'title').textContent,
+          'Products',
+        );
       });
     });
   });

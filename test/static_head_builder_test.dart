@@ -5,51 +5,57 @@ import 'package:meta_mantle/meta_mantle_builder.dart';
 
 void main() {
   group('StaticHeadBuilder', () {
-    test('generates route HTML, preserves bootstrap, and writes sitemap',
-        () async {
-      final temp = await Directory.systemTemp.createTemp('fwh_test_');
-      addTearDown(() => temp.delete(recursive: true));
-      final input = Directory('${temp.path}/input')..createSync();
-      final output = Directory('${temp.path}/output')..createSync();
-      File('${input.path}/index.html').writeAsStringSync('''
+    test(
+      'generates route HTML, preserves bootstrap, and writes sitemap',
+      () async {
+        final temp = await Directory.systemTemp.createTemp('fwh_test_');
+        addTearDown(() => temp.delete(recursive: true));
+        final input = Directory('${temp.path}/input')..createSync();
+        final output = Directory('${temp.path}/output')..createSync();
+        File('${input.path}/index.html').writeAsStringSync('''
 <!doctype html><html><head><base href="/">
 <title>App</title><meta name="description" content="Default">
 </head><body><script src="flutter_bootstrap.js" async></script></body></html>
 ''');
-      final config = StaticHeadConfig(
-        baseUrl: 'https://example.com',
-        routes: const [
-          StaticRoute(
-            path: '/',
-            metadata:
-                WebMetadata(title: 'Home', description: 'Home description'),
-          ),
-          StaticRoute(
-            path: '/about',
-            metadata:
-                WebMetadata(title: 'About', description: 'About description'),
-          ),
-        ],
-      );
+        final config = StaticHeadConfig(
+          baseUrl: 'https://example.com',
+          routes: const [
+            StaticRoute(
+              path: '/',
+              metadata: WebMetadata(
+                title: 'Home',
+                description: 'Home description',
+              ),
+            ),
+            StaticRoute(
+              path: '/about',
+              metadata: WebMetadata(
+                title: 'About',
+                description: 'About description',
+              ),
+            ),
+          ],
+        );
 
-      final result = await const StaticHeadBuilder().build(
-        inputDirectory: input,
-        outputDirectory: output,
-        config: config,
-      );
-      expect(result.routes, contains('/about/'));
-      final about = File('${output.path}/about/index.html').readAsStringSync();
-      expect(about, contains('<title>About</title>'));
-      expect(about, contains('flutter_bootstrap.js'));
-      expect(about, contains('https://example.com/about/'));
-      expect(File('${output.path}/sitemap.xml').existsSync(), isTrue);
-    });
+        final result = await const StaticHeadBuilder().build(
+          inputDirectory: input,
+          outputDirectory: output,
+          config: config,
+        );
+        expect(result.routes, contains('/about/'));
+        final about = File('${output.path}/about/index.html')
+            .readAsStringSync();
+        expect(about, contains('<title>About</title>'));
+        expect(about, contains('flutter_bootstrap.js'));
+        expect(about, contains('https://example.com/about/'));
+        expect(File('${output.path}/sitemap.xml').existsSync(), isTrue);
+      },
+    );
 
-    test(
-        'supports inline Flutter bootstrap tokens and preserves unrelated attributes',
-        () async {
-      final temp =
-          await Directory.systemTemp.createTemp('fwh_inline_bootstrap_');
+    test('supports inline Flutter bootstrap tokens and preserves unrelated attributes', () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'fwh_inline_bootstrap_',
+      );
       addTearDown(() => temp.delete(recursive: true));
       final input = Directory('${temp.path}/input')..createSync();
       final output = Directory('${temp.path}/output')..createSync();
@@ -71,8 +77,10 @@ _flutter.loader.load();
           routes: [
             StaticRoute(
               path: '/',
-              metadata:
-                  WebMetadata(title: 'Home', description: 'Route description'),
+              metadata: WebMetadata(
+                title: 'Home',
+                description: 'Route description',
+              ),
             ),
           ],
         ),
@@ -242,10 +250,7 @@ _flutter.loader.load();
             metadataTemplate: {
               'title': '{{name}}',
               'description': '{{description}}',
-              'openGraph': {
-                'type': 'product',
-                'image': '{{image}}',
-              },
+              'openGraph': {'type': 'product', 'image': '{{image}}'},
             },
           ),
         ],
@@ -258,9 +263,8 @@ _flutter.loader.load();
       );
 
       expect(result.routes, contains('/products/basmati-rice/'));
-      final product = File(
-        '${output.path}/products/basmati-rice/index.html',
-      ).readAsStringSync();
+      final product = File('${output.path}/products/basmati-rice/index.html')
+          .readAsStringSync();
       expect(product, contains('<title>Premium Basmati Rice</title>'));
       expect(product, contains('Long grain rice.'));
     });

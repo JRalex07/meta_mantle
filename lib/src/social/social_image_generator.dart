@@ -44,8 +44,7 @@ class SocialCardTheme {
     this.subtitleColor = '#94a3b8',
     this.badgeBackgroundColor = 'rgba(56, 189, 248, 0.15)',
     this.badgeTextColor = '#38bdf8',
-    this.fontFamily =
-        'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    this.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   });
 
   final String backgroundColor;
@@ -141,19 +140,25 @@ class SocialImageGenerator {
     final h = dim.height;
 
     buf.writeln(
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 $w $h" width="$w" height="$h">');
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 $w $h" width="$w" height="$h">',
+    );
     buf.writeln('  <defs>');
     buf.writeln(
-        '    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">');
+      '    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">',
+    );
     buf.writeln(
-        '      <stop offset="0%" stop-color="${_escape(theme.backgroundColor)}" />');
+      '      <stop offset="0%" stop-color="${_escape(theme.backgroundColor)}" />',
+    );
     buf.writeln(
-        '      <stop offset="100%" stop-color="${_escape(theme.backgroundGradientEnd)}" />');
+      '      <stop offset="100%" stop-color="${_escape(theme.backgroundGradientEnd)}" />',
+    );
     buf.writeln('    </linearGradient>');
     buf.writeln(
-        '    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">');
+      '    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">',
+    );
     buf.writeln(
-        '      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity="0.35" />');
+      '      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity="0.35" />',
+    );
     buf.writeln('    </filter>');
     buf.writeln('  </defs>');
 
@@ -162,7 +167,8 @@ class SocialImageGenerator {
 
     // Accent header bar
     buf.writeln(
-        '  <rect x="0" y="0" width="$w" height="6" fill="${_escape(theme.accentColor)}" />');
+      '  <rect x="0" y="0" width="$w" height="6" fill="${_escape(theme.accentColor)}" />',
+    );
 
     // Branding / Site Name Header
     buf.writeln('  <g id="header" transform="translate(80, 80)">');
@@ -170,14 +176,18 @@ class SocialImageGenerator {
       final badgeText = _escape(data.categoryBadge!.toUpperCase());
       final badgeWidth = (badgeText.length * 11) + 32;
       buf.writeln(
-          '    <rect x="0" y="0" width="$badgeWidth" height="34" rx="17" fill="${_escape(theme.badgeBackgroundColor)}" />');
+        '    <rect x="0" y="0" width="$badgeWidth" height="34" rx="17" fill="${_escape(theme.badgeBackgroundColor)}" />',
+      );
       buf.writeln(
-          '    <text x="${badgeWidth / 2}" y="22" font-family="${_escape(theme.fontFamily)}" font-size="13" font-weight="700" fill="${_escape(theme.badgeTextColor)}" text-anchor="middle" letter-spacing="1">$badgeText</text>');
+        '    <text x="${badgeWidth / 2}" y="22" font-family="${_escape(theme.fontFamily)}" font-size="13" font-weight="700" fill="${_escape(theme.badgeTextColor)}" text-anchor="middle" letter-spacing="1">$badgeText</text>',
+      );
       buf.writeln(
-          '    <text x="${badgeWidth + 20}" y="24" font-family="${_escape(theme.fontFamily)}" font-size="20" font-weight="600" fill="${_escape(theme.subtitleColor)}">${_escape(data.siteName)}</text>');
+        '    <text x="${badgeWidth + 20}" y="24" font-family="${_escape(theme.fontFamily)}" font-size="20" font-weight="600" fill="${_escape(theme.subtitleColor)}">${_escape(data.siteName)}</text>',
+      );
     } else {
       buf.writeln(
-          '    <text x="0" y="24" font-family="${_escape(theme.fontFamily)}" font-size="22" font-weight="700" fill="${_escape(theme.accentColor)}" letter-spacing="0.5">${_escape(data.siteName)}</text>');
+        '    <text x="0" y="24" font-family="${_escape(theme.fontFamily)}" font-size="22" font-weight="700" fill="${_escape(theme.accentColor)}" letter-spacing="0.5">${_escape(data.siteName)}</text>',
+      );
     }
     buf.writeln('  </g>');
 
@@ -187,7 +197,8 @@ class SocialImageGenerator {
     for (var i = 0; i < titleLines.length && i < 3; i++) {
       final lineY = i * 62;
       buf.writeln(
-          '    <text x="0" y="$lineY" font-family="${_escape(theme.fontFamily)}" font-size="52" font-weight="800" fill="${_escape(theme.titleColor)}" letter-spacing="-0.02em">${_escape(titleLines[i])}</text>');
+        '    <text x="0" y="$lineY" font-family="${_escape(theme.fontFamily)}" font-size="52" font-weight="800" fill="${_escape(theme.titleColor)}" letter-spacing="-0.02em">${_escape(titleLines[i])}</text>',
+      );
     }
     buf.writeln('  </g>');
 
@@ -199,7 +210,8 @@ class SocialImageGenerator {
       for (var i = 0; i < subLines.length && i < 2; i++) {
         final lineY = i * 32;
         buf.writeln(
-            '    <text x="0" y="$lineY" font-family="${_escape(theme.fontFamily)}" font-size="22" font-weight="400" fill="${_escape(theme.subtitleColor)}">${_escape(subLines[i])}</text>');
+          '    <text x="0" y="$lineY" font-family="${_escape(theme.fontFamily)}" font-size="22" font-weight="400" fill="${_escape(theme.subtitleColor)}">${_escape(subLines[i])}</text>',
+        );
       }
       buf.writeln('  </g>');
     }
@@ -207,18 +219,23 @@ class SocialImageGenerator {
     // Optional E-Commerce Product Image or Price Tag
     if (data.productImageUrl != null || data.priceTag != null) {
       buf.writeln(
-          '  <g id="productInfo" transform="translate(${w - 380}, 160)">');
+        '  <g id="productInfo" transform="translate(${w - 380}, 160)">',
+      );
       buf.writeln(
-          '    <rect width="300" height="300" rx="24" fill="#1e293b" filter="url(#cardShadow)" />');
+        '    <rect width="300" height="300" rx="24" fill="#1e293b" filter="url(#cardShadow)" />',
+      );
       if (data.productImageUrl != null) {
         buf.writeln(
-            '    <image href="${_escape(data.productImageUrl!)}" x="20" y="20" width="260" height="200" preserveAspectRatio="xMidYMid meet" />');
+          '    <image href="${_escape(data.productImageUrl!)}" x="20" y="20" width="260" height="200" preserveAspectRatio="xMidYMid meet" />',
+        );
       }
       if (data.priceTag != null) {
         buf.writeln(
-            '    <rect x="20" y="235" width="260" height="45" rx="12" fill="${_escape(theme.accentColor)}" />');
+          '    <rect x="20" y="235" width="260" height="45" rx="12" fill="${_escape(theme.accentColor)}" />',
+        );
         buf.writeln(
-            '    <text x="150" y="265" font-family="${_escape(theme.fontFamily)}" font-size="22" font-weight="800" fill="#0f172a" text-anchor="middle">${_escape(data.priceTag!)}</text>');
+          '    <text x="150" y="265" font-family="${_escape(theme.fontFamily)}" font-size="22" font-weight="800" fill="#0f172a" text-anchor="middle">${_escape(data.priceTag!)}</text>',
+        );
       }
       buf.writeln('  </g>');
     }
@@ -227,11 +244,14 @@ class SocialImageGenerator {
     if (data.authorName != null) {
       buf.writeln('  <g id="footer" transform="translate(80, ${h - 70})">');
       buf.writeln(
-          '    <circle cx="16" cy="0" r="16" fill="${_escape(theme.accentColor)}" />');
+        '    <circle cx="16" cy="0" r="16" fill="${_escape(theme.accentColor)}" />',
+      );
       buf.writeln(
-          '    <text x="16" y="6" font-family="${_escape(theme.fontFamily)}" font-size="14" font-weight="700" fill="#0f172a" text-anchor="middle">${_escape(data.authorName!.substring(0, 1).toUpperCase())}</text>');
+        '    <text x="16" y="6" font-family="${_escape(theme.fontFamily)}" font-size="14" font-weight="700" fill="#0f172a" text-anchor="middle">${_escape(data.authorName!.substring(0, 1).toUpperCase())}</text>',
+      );
       buf.writeln(
-          '    <text x="44" y="6" font-family="${_escape(theme.fontFamily)}" font-size="18" font-weight="500" fill="${_escape(theme.subtitleColor)}">Written by ${_escape(data.authorName!)}</text>');
+        '    <text x="44" y="6" font-family="${_escape(theme.fontFamily)}" font-size="18" font-weight="500" fill="${_escape(theme.subtitleColor)}">Written by ${_escape(data.authorName!)}</text>',
+      );
       buf.writeln('  </g>');
     }
 

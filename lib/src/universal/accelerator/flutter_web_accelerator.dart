@@ -17,12 +17,12 @@ class WebOptimizationFinding {
   final String? suggestedFix;
 
   Map<String, String?> toMap() => {
-        'severity': severity,
-        'category': category,
-        'title': title,
-        'description': description,
-        'suggestedFix': suggestedFix,
-      };
+    'severity': severity,
+    'category': category,
+    'title': title,
+    'description': description,
+    'suggestedFix': suggestedFix,
+  };
 }
 
 /// Comprehensive analysis report for Flutter Web applications.
@@ -44,24 +44,27 @@ class FlutterWebAnalysisReport {
   final Map<String, int> bundleMetrics; // file sizes in bytes
 
   Map<String, Object?> toMap() => {
-        'isFlutterProject': isFlutterProject,
-        'supportsWasm': supportsWasm,
-        'usesModernBootstrap': usesModernBootstrap,
-        'hasCrossOriginIsolationHeaders': hasCrossOriginIsolationHeaders,
-        'findings': findings.map((f) => f.toMap()).toList(),
-        'bundleMetrics': bundleMetrics,
-      };
+    'isFlutterProject': isFlutterProject,
+    'supportsWasm': supportsWasm,
+    'usesModernBootstrap': usesModernBootstrap,
+    'hasCrossOriginIsolationHeaders': hasCrossOriginIsolationHeaders,
+    'findings': findings.map((f) => f.toMap()).toList(),
+    'bundleMetrics': bundleMetrics,
+  };
 
   String toSummaryText() {
     final buf = StringBuffer();
     buf.writeln('=== MetaMantle Flutter Web Analysis Report ===');
     buf.writeln(
-        'Project: ${isFlutterProject ? "Valid Flutter Project" : "Not a Flutter Project"}');
+      'Project: ${isFlutterProject ? "Valid Flutter Project" : "Not a Flutter Project"}',
+    );
     buf.writeln('WebAssembly (Wasm) Ready: ${supportsWasm ? "YES" : "NO"}');
     buf.writeln(
-        'Modern Bootstrap (flutter_bootstrap.js): ${usesModernBootstrap ? "YES" : "NO"}');
+      'Modern Bootstrap (flutter_bootstrap.js): ${usesModernBootstrap ? "YES" : "NO"}',
+    );
     buf.writeln(
-        'Cross-Origin Isolation (COOP/COEP): ${hasCrossOriginIsolationHeaders ? "Configured" : "Missing"}');
+      'Cross-Origin Isolation (COOP/COEP): ${hasCrossOriginIsolationHeaders ? "Configured" : "Missing"}',
+    );
     buf.writeln('');
     if (bundleMetrics.isNotEmpty) {
       buf.writeln('--- Bundle Metrics (build/web) ---');
@@ -105,12 +108,14 @@ class FlutterWebAccelerator {
     final hasIsolation = false;
 
     if (!isFlutter) {
-      findings.add(const WebOptimizationFinding(
-        severity: 'error',
-        category: 'project',
-        title: 'Missing pubspec.yaml',
-        description: 'No pubspec.yaml found in the target directory.',
-      ));
+      findings.add(
+        const WebOptimizationFinding(
+          severity: 'error',
+          category: 'project',
+          title: 'Missing pubspec.yaml',
+          description: 'No pubspec.yaml found in the target directory.',
+        ),
+      );
       return FlutterWebAnalysisReport(
         isFlutterProject: false,
         supportsWasm: false,
@@ -126,15 +131,15 @@ class FlutterWebAccelerator {
     if (pubspecContent.contains('dart:html') ||
         pubspecContent.contains('package:js')) {
       supportsWasm = false;
-      findings.add(const WebOptimizationFinding(
-        severity: 'warning',
-        category: 'wasm',
-        title: 'Legacy Web Dependencies Detected',
-        description:
-            'Dependencies using legacy dart:html or package:js prevent dart2wasm compilation.',
-        suggestedFix:
-            'Migrate to package:web and dart:js_interop for Wasm compatibility.',
-      ));
+      findings.add(
+        const WebOptimizationFinding(
+          severity: 'warning',
+          category: 'wasm',
+          title: 'Legacy Web Dependencies Detected',
+          description: 'Dependencies using legacy dart:html or package:js prevent dart2wasm compilation.',
+          suggestedFix: 'Migrate to package:web and dart:js_interop for Wasm compatibility.',
+        ),
+      );
     }
 
     // 2. Inspect web/index.html
@@ -144,28 +149,28 @@ class FlutterWebAccelerator {
       if (htmlContent.contains('flutter_bootstrap.js')) {
         usesModernBootstrap = true;
       } else {
-        findings.add(const WebOptimizationFinding(
-          severity: 'recommendation',
-          category: 'bootstrap',
-          title: 'Legacy Flutter Web Initialization',
-          description:
-              'web/index.html uses legacy flutter.js initialization instead of modern flutter_bootstrap.js.',
-          suggestedFix:
-              'Update web/index.html to use {{flutter_bootstrap_js}} for faster engine startup.',
-        ));
+        findings.add(
+          const WebOptimizationFinding(
+            severity: 'recommendation',
+            category: 'bootstrap',
+            title: 'Legacy Flutter Web Initialization',
+            description: 'web/index.html uses legacy flutter.js initialization instead of modern flutter_bootstrap.js.',
+            suggestedFix: 'Update web/index.html to use {{flutter_bootstrap_js}} for faster engine startup.',
+          ),
+        );
       }
 
       if (!htmlContent.contains('rel="preconnect"') &&
           !htmlContent.contains('rel="preload"')) {
-        findings.add(const WebOptimizationFinding(
-          severity: 'info',
-          category: 'bootstrap',
-          title: 'Resource Hints Recommended',
-          description:
-              'web/index.html lacks preconnect or preload resource hints for CanvasKit or fonts.',
-          suggestedFix:
-              'Add <link rel="preconnect" href="https://fonts.gstatic.com"> for font acceleration.',
-        ));
+        findings.add(
+          const WebOptimizationFinding(
+            severity: 'info',
+            category: 'bootstrap',
+            title: 'Resource Hints Recommended',
+            description: 'web/index.html lacks preconnect or preload resource hints for CanvasKit or fonts.',
+            suggestedFix: 'Add <link rel="preconnect" href="https://fonts.gstatic.com"> for font acceleration.',
+          ),
+        );
       }
     }
 
@@ -198,28 +203,29 @@ class FlutterWebAccelerator {
       // Check for large main.dart.js
       final mainJsSize = bundleMetrics['main.dart.js'];
       if (mainJsSize != null && mainJsSize > 2 * 1024 * 1024) {
-        findings.add(WebOptimizationFinding(
-          severity: 'warning',
-          category: 'bundle',
-          title: 'Large JavaScript Bundle',
-          description:
-              'main.dart.js is ${(mainJsSize / (1024 * 1024)).toStringAsFixed(1)} MB. This impacts initial mobile download time.',
-          suggestedFix:
-              'Compile with "flutter build web --wasm" to leverage compact WebAssembly binaries.',
-        ));
+        findings.add(
+          WebOptimizationFinding(
+            severity: 'warning',
+            category: 'bundle',
+            title: 'Large JavaScript Bundle',
+            description:
+                'main.dart.js is ${(mainJsSize / (1024 * 1024)).toStringAsFixed(1)} MB. This impacts initial mobile download time.',
+            suggestedFix: 'Compile with "flutter build web --wasm" to leverage compact WebAssembly binaries.',
+          ),
+        );
       }
 
       // Check for wasm binary
       if (bundleMetrics.keys.any((k) => k.endsWith('.wasm'))) {
-        findings.add(const WebOptimizationFinding(
-          severity: 'info',
-          category: 'wasm',
-          title: 'WebAssembly Binary Available',
-          description:
-              'Native Wasm artifacts found in build/web. Ensure server emits COOP/COEP headers.',
-          suggestedFix:
-              'Serve with Cross-Origin-Embedder-Policy: require-corp and Cross-Origin-Opener-Policy: same-origin.',
-        ));
+        findings.add(
+          const WebOptimizationFinding(
+            severity: 'info',
+            category: 'wasm',
+            title: 'WebAssembly Binary Available',
+            description: 'Native Wasm artifacts found in build/web. Ensure server emits COOP/COEP headers.',
+            suggestedFix: 'Serve with Cross-Origin-Embedder-Policy: require-corp and Cross-Origin-Opener-Policy: same-origin.',
+          ),
+        );
       }
     }
 
@@ -236,15 +242,17 @@ class FlutterWebAccelerator {
   /// Generates recommended server headers (e.g. for Shelf, Nginx, or Firebase Hosting)
   /// required for high-performance multi-threaded Skwasm WebAssembly execution.
   Map<String, String> getRecommendedServerHeaders() => {
-        'Cross-Origin-Embedder-Policy': 'require-corp',
-        'Cross-Origin-Opener-Policy': 'same-origin',
-        'Cache-Control': 'public, max-age=3600',
-        'X-Content-Type-Options': 'nosniff',
-      };
+    'Cross-Origin-Embedder-Policy': 'require-corp',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cache-Control': 'public, max-age=3600',
+    'X-Content-Type-Options': 'nosniff',
+  };
 
   /// Suggests the optimized Flutter CLI build command.
-  String suggestOptimizedBuildCommand(
-      {bool wasm = true, bool stripUnusedFonts = true}) {
+  String suggestOptimizedBuildCommand({
+    bool wasm = true,
+    bool stripUnusedFonts = true,
+  }) {
     final buffer = StringBuffer('flutter build web');
     if (wasm) {
       buffer.write(' --wasm');

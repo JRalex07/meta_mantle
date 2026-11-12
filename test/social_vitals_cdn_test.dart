@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -10,8 +11,7 @@ void main() {
       final gen = SocialImageGenerator();
       final svg = gen.generateSvg(
         const SocialCardData(
-          title:
-              'How to Build Enterprise Flutter Web Applications <script>alert(1)</script>',
+          title: 'How to Build Enterprise Flutter Web Applications <script>alert(1)</script>',
           subtitle:
               'A practical architecture guide for production SEO & metadata.',
           siteName: 'MetaMantle & Co',
@@ -22,13 +22,18 @@ void main() {
       );
 
       expect(
-          svg,
-          contains(
-              '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">'));
+        svg,
+        contains(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">',
+        ),
+      );
       expect(svg, contains('width="1200"'));
       expect(svg, contains('height="630"'));
-      expect(svg, contains('&lt;script&gt;alert(1)&lt;/script&gt;'),
-          reason: 'Raw script tags must be safely XML-escaped');
+      expect(
+        svg,
+        contains('&lt;script&gt;alert(1)&lt;/script&gt;'),
+        reason: 'Raw script tags must be safely XML-escaped',
+      );
       expect(svg, contains('MetaMantle &amp; Co'));
       expect(svg, contains('\$49.00'));
       expect(svg, isNot(contains('<script>alert(1)</script>')));
@@ -36,9 +41,7 @@ void main() {
 
     test('Output caching stores and returns cached SVGs', () {
       final gen = SocialImageGenerator(maxCachedImages: 2);
-      final svg1 = gen.generateSvg(
-        const SocialCardData(title: 'Page One'),
-      );
+      final svg1 = gen.generateSvg(const SocialCardData(title: 'Page One'));
       expect(gen.cachedCount, equals(1));
 
       // Same data returns identical cached string
@@ -65,61 +68,74 @@ void main() {
   });
 
   group('Core Web Vitals Collector Tests', () {
-    test('Ingests metrics, sanitizes URLs, and calculates p75 CrUX ratings',
-        () {
-      final collector = CoreWebVitalsCollector();
+    test(
+      'Ingests metrics, sanitizes URLs, and calculates p75 CrUX ratings',
+      () {
+        final collector = CoreWebVitalsCollector();
 
-      // Ingest LCP observations (in milliseconds)
-      final lcpValues = [
-        1200.0,
-        1500.0,
-        1800.0,
-        2100.0,
-        2400.0,
-        2900.0,
-        4200.0
-      ];
-      for (final val in lcpValues) {
-        collector.record(
-          name: WebVitalName.lcp,
-          value: val,
-          path:
-              '/products/mug?token=secret123&user=42#reviews', // Contains PII/secrets
-        );
-      }
+        // Ingest LCP observations (in milliseconds)
+        final lcpValues = [
+          1200.0,
+          1500.0,
+          1800.0,
+          2100.0,
+          2400.0,
+          2900.0,
+          4200.0,
+        ];
+        for (final val in lcpValues) {
+          collector.record(
+            name: WebVitalName.lcp,
+            value: val,
+            path: '/products/mug?token=secret123&user=42#reviews', // Contains PII/secrets
+          );
+        }
 
-      final report = collector.summarize();
-      final lcpSummary = report[WebVitalName.lcp]!;
+        final report = collector.summarize();
+        final lcpSummary = report[WebVitalName.lcp]!;
 
-      expect(lcpSummary.sampleCount, equals(7));
-      expect(lcpSummary.min, equals(1200.0));
-      expect(lcpSummary.max, equals(4200.0));
-      // 75th percentile of 7 values is index 5 -> 2900.0
-      expect(lcpSummary.p75, equals(2900.0));
-      // 2900ms is between 2500ms and 4000ms -> needsImprovement
-      expect(lcpSummary.rating, equals(MetricRating.needsImprovement));
+        expect(lcpSummary.sampleCount, equals(7));
+        expect(lcpSummary.min, equals(1200.0));
+        expect(lcpSummary.max, equals(4200.0));
+        // 75th percentile of 7 values is index 5 -> 2900.0
+        expect(lcpSummary.p75, equals(2900.0));
+        // 2900ms is between 2500ms and 4000ms -> needsImprovement
+        expect(lcpSummary.rating, equals(MetricRating.needsImprovement));
 
-      // Verify privacy: path query params and fragments must be completely stripped
-      final jsonReport = collector.toJsonReport();
-      expect(jsonReport, contains('LCP'));
-      expect(jsonReport, isNot(contains('secret123')));
-      expect(jsonReport, isNot(contains('#reviews')));
-    });
+        // Verify privacy: path query params and fragments must be completely stripped
+        final jsonReport = collector.toJsonReport();
+        expect(jsonReport, contains('LCP'));
+        expect(jsonReport, isNot(contains('secret123')));
+        expect(jsonReport, isNot(contains('#reviews')));
+      },
+    );
 
     test('CrUX threshold rating evaluations', () {
-      expect(CoreWebVitalsCollector.rate(WebVitalName.cls, 0.05),
-          equals(MetricRating.good));
-      expect(CoreWebVitalsCollector.rate(WebVitalName.cls, 0.15),
-          equals(MetricRating.needsImprovement));
-      expect(CoreWebVitalsCollector.rate(WebVitalName.cls, 0.35),
-          equals(MetricRating.poor));
+      expect(
+        CoreWebVitalsCollector.rate(WebVitalName.cls, 0.05),
+        equals(MetricRating.good),
+      );
+      expect(
+        CoreWebVitalsCollector.rate(WebVitalName.cls, 0.15),
+        equals(MetricRating.needsImprovement),
+      );
+      expect(
+        CoreWebVitalsCollector.rate(WebVitalName.cls, 0.35),
+        equals(MetricRating.poor),
+      );
 
-      expect(CoreWebVitalsCollector.rate(WebVitalName.inp, 150),
-          equals(MetricRating.good));
-      expect(CoreWebVitalsCollector.rate(WebVitalName.inp, 350),
-          equals(MetricRating.needsImprovement));
-      expect(CoreWebVitalsCollector.rate(WebVitalName.inp, 650),
-          equals(MetricRating.poor));
+      expect(
+        CoreWebVitalsCollector.rate(WebVitalName.inp, 150),
+        equals(MetricRating.good),
+      );
+      expect(
+        CoreWebVitalsCollector.rate(WebVitalName.inp, 350),
+        equals(MetricRating.needsImprovement),
+      );
+      expect(
+        CoreWebVitalsCollector.rate(WebVitalName.inp, 650),
+        equals(MetricRating.poor),
+      );
     });
   });
 
@@ -145,16 +161,20 @@ void main() {
     test('CloudflareCdnInvalidator sends API v4 purge request', () async {
       final mockClient = MockClient((request) async {
         expect(
-            request.url.toString(), contains('zones/zone-abc-123/purge_cache'));
+          request.url.toString(),
+          contains('zones/zone-abc-123/purge_cache'),
+        );
         expect(
-            request.headers['Authorization'], equals('Bearer test-token-xyz'));
+          request.headers['Authorization'],
+          equals('Bearer test-token-xyz'),
+        );
         final body = json.decode(request.body) as Map<String, dynamic>;
         expect(body['files'], contains('https://example.com/products/mug'));
 
         return http.Response(
           json.encode({
             'success': true,
-            'result': {'id': 'cf-purge-001'}
+            'result': {'id': 'cf-purge-001'},
           }),
           200,
         );
@@ -171,28 +191,32 @@ void main() {
       expect(res.invalidationId, equals('cf-purge-001'));
     });
 
-    test('CloudFront placeholder reports unsupported instead of fake success',
-        () async {
-      final cdn = CloudFrontCdnInvalidator(distributionId: 'distribution');
-      final result = await cdn.purgeUrls(['https://example.com/path']);
+    test(
+      'CloudFront placeholder reports unsupported instead of fake success',
+      () async {
+        final cdn = CloudFrontCdnInvalidator(distributionId: 'distribution');
+        final result = await cdn.purgeUrls(['https://example.com/path']);
 
-      expect(result.success, isFalse);
-      expect(result.invalidationId, isNull);
-      expect(result.purgedCount, 0);
-      expect(result.errorMessage, contains('not implemented'));
-    });
+        expect(result.success, isFalse);
+        expect(result.invalidationId, isNull);
+        expect(result.purgedCount, 0);
+        expect(result.errorMessage, contains('not implemented'));
+      },
+    );
 
     test('Cloudflare HTTP error cannot report a successful purge', () async {
       final cdn = CloudflareCdnInvalidator(
         zoneId: 'zone',
         apiToken: 'test-token',
-        httpClient: MockClient((_) async => http.Response(
-              json.encode({
-                'success': true,
-                'result': {'id': 'fake'}
-              }),
-              500,
-            )),
+        httpClient: MockClient(
+          (_) async => http.Response(
+            json.encode({
+              'success': true,
+              'result': {'id': 'fake'},
+            }),
+            500,
+          ),
+        ),
       );
 
       final result = await cdn.purgeUrls(['/page']);
@@ -205,54 +229,64 @@ void main() {
 
   group('SEO Regression Tester Tests', () {
     test(
-        'Detects title changes, accidental noindex, and dropped JSON-LD schemas',
-        () {
-      const tester = SeoRegressionTester();
+      'Detects title changes, accidental noindex, and dropped JSON-LD schemas',
+      () {
+        const tester = SeoRegressionTester();
 
-      final baseline = <String, PageSeoSnapshot>{
-        'https://example.com/': const PageSeoSnapshot(
-          url: 'https://example.com/',
-          title: 'MetaMantle Store',
-          description: 'Official store for daily essentials.',
-          canonical: 'https://example.com/',
-          robots: 'index, follow',
-          ogImage: 'https://example.com/og.png',
-          jsonLdTypes: ['WebSite', 'Organization'],
-        ),
-      };
+        final baseline = <String, PageSeoSnapshot>{
+          'https://example.com/': const PageSeoSnapshot(
+            url: 'https://example.com/',
+            title: 'MetaMantle Store',
+            description: 'Official store for daily essentials.',
+            canonical: 'https://example.com/',
+            robots: 'index, follow',
+            ogImage: 'https://example.com/og.png',
+            jsonLdTypes: ['WebSite', 'Organization'],
+          ),
+        };
 
-      // Current build accidentally dropped description, changed title, and added noindex
-      final current = <String, PageSeoSnapshot>{
-        'https://example.com/': const PageSeoSnapshot(
-          url: 'https://example.com/',
-          title: 'MetaMantle - Home',
-          description: null, // Dropped!
-          canonical: 'https://example.com/',
-          robots: 'noindex, follow', // Accidental noindex!
-          ogImage: null, // Dropped!
-          jsonLdTypes: ['WebSite'], // Dropped Organization!
-        ),
-      };
+        // Current build accidentally dropped description, changed title, and added noindex
+        final current = <String, PageSeoSnapshot>{
+          'https://example.com/': const PageSeoSnapshot(
+            url: 'https://example.com/',
+            title: 'MetaMantle - Home',
+            description: null, // Dropped!
+            canonical: 'https://example.com/',
+            robots: 'noindex, follow', // Accidental noindex!
+            ogImage: null, // Dropped!
+            jsonLdTypes: ['WebSite'], // Dropped Organization!
+          ),
+        };
 
-      final findings =
-          tester.compareSnapshots(baseline: baseline, current: current);
+        final findings = tester.compareSnapshots(
+          baseline: baseline,
+          current: current,
+        );
 
-      expect(findings.any((f) => f.field == 'title'), isTrue);
-      expect(
-          findings
-              .any((f) => f.field == 'description' && f.severity == 'CRITICAL'),
-          isTrue);
-      expect(
-          findings.any((f) => f.field == 'robots' && f.severity == 'CRITICAL'),
-          isTrue);
-      expect(
-          findings
-              .any((f) => f.field == 'og:image' && f.severity == 'CRITICAL'),
-          isTrue);
-      expect(
+        expect(findings.any((f) => f.field == 'title'), isTrue);
+        expect(
           findings.any(
-              (f) => f.field == 'jsonLd' && f.baselineValue == 'Organization'),
-          isTrue);
-    });
+            (f) => f.field == 'description' && f.severity == 'CRITICAL',
+          ),
+          isTrue,
+        );
+        expect(
+          findings.any((f) => f.field == 'robots' && f.severity == 'CRITICAL'),
+          isTrue,
+        );
+        expect(
+          findings.any(
+            (f) => f.field == 'og:image' && f.severity == 'CRITICAL',
+          ),
+          isTrue,
+        );
+        expect(
+          findings.any(
+            (f) => f.field == 'jsonLd' && f.baselineValue == 'Organization',
+          ),
+          isTrue,
+        );
+      },
+    );
   });
 }

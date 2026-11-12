@@ -48,8 +48,7 @@ Configure static routes or server rendering pipelines.
   // 3. /llms.txt Generation for AI agent discovery
   const llmsGen = LlmsTxtGenerator(
     projectName: 'MetaMantle Documentation',
-    projectSummary:
-        'The universal SEO, document rendering, and indexing framework for Flutter & Dart.',
+    projectSummary: 'The universal SEO, document rendering, and indexing framework for Flutter & Dart.',
     documentationBaseUrl: 'https://docs.metamantle.dev',
   );
 
@@ -58,8 +57,7 @@ Configure static routes or server rendering pipelines.
       (
         title: 'Architecture Overview',
         path: '/docs/latest/architecture',
-        summary:
-            'Architecture breakdown of pure-Dart core, runtime engine, and SSR.',
+        summary: 'Architecture breakdown of pure-Dart core, runtime engine, and SSR.',
       ),
       (
         title: 'Jaspr Integration',
@@ -84,8 +82,7 @@ Configure static routes or server rendering pipelines.
   );
 
   final fullHtml = jasprDoc.renderDocumentShell(
-    bodyHtml:
-        '<header><h1>MetaMantle Documentation</h1></header><main><p>Search across docs.</p></main>',
+    bodyHtml: '<header><h1>MetaMantle Documentation</h1></header><main><p>Search across docs.</p></main>',
     currentUrl: 'https://docs.metamantle.dev/docs/latest/',
   );
 

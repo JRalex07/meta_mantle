@@ -47,7 +47,8 @@ class FeedGenerator {
     buf.writeln('    <link>${_escape(feedUrl)}</link>');
     buf.writeln('    <description>${_escape(feedDescription)}</description>');
     buf.writeln(
-        '    <atom:link href="${_escape(feedUrl)}/rss.xml" rel="self" type="application/rss+xml" />');
+      '    <atom:link href="${_escape(feedUrl)}/rss.xml" rel="self" type="application/rss+xml" />',
+    );
 
     for (final item in items) {
       buf.writeln('    <item>');
@@ -58,7 +59,8 @@ class FeedGenerator {
       buf.writeln('      <pubDate>${_toRfc822(item.publishedAt)}</pubDate>');
       if (item.author != null || authorName != null) {
         buf.writeln(
-            '      <author>${_escape(authorEmail ?? "noreply@example.com")} (${_escape(item.author ?? authorName!)})</author>');
+          '      <author>${_escape(authorEmail ?? "noreply@example.com")} (${_escape(item.author ?? authorName!)})</author>',
+        );
       }
       for (final cat in item.categories) {
         buf.writeln('      <category>${_escape(cat)}</category>');
@@ -82,7 +84,8 @@ class FeedGenerator {
     buf.writeln('  <link rel="self" href="${_escape(feedUrl)}/atom.xml" />');
     buf.writeln('  <subtitle>${_escape(feedDescription)}</subtitle>');
     buf.writeln(
-        '  <updated>${DateTime.now().toUtc().toIso8601String()}</updated>');
+      '  <updated>${DateTime.now().toUtc().toIso8601String()}</updated>',
+    );
 
     for (final item in items) {
       buf.writeln('  <entry>');
@@ -91,10 +94,12 @@ class FeedGenerator {
       buf.writeln('    <link href="${_escape(item.url)}" />');
       buf.writeln('    <summary>${_escape(item.summary)}</summary>');
       buf.writeln(
-          '    <updated>${item.publishedAt.toUtc().toIso8601String()}</updated>');
+        '    <updated>${item.publishedAt.toUtc().toIso8601String()}</updated>',
+      );
       if (item.author != null || authorName != null) {
         buf.writeln(
-            '    <author><name>${_escape(item.author ?? authorName!)}</name></author>');
+          '    <author><name>${_escape(item.author ?? authorName!)}</name></author>',
+        );
       }
       buf.writeln('  </entry>');
     }

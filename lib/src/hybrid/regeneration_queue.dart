@@ -60,46 +60,45 @@ class RegenerationJob {
     int? fencingEpoch,
     bool clearLease = false,
     bool clearError = false,
-  }) =>
-      RegenerationJob(
-        id: id,
-        siteId: siteId,
-        tenantId: tenantId,
-        path: path,
-        routeId: routeId,
-        tags: tags,
-        idempotencyKey: idempotencyKey,
-        sourceVersion: sourceVersion,
-        status: status ?? this.status,
-        attempts: attempts ?? this.attempts,
-        maxAttempts: maxAttempts,
-        createdAt: createdAt,
-        availableAt: availableAt ?? this.availableAt,
-        leaseUntil: clearLease ? null : leaseUntil ?? this.leaseUntil,
-        leaseToken: clearLease ? null : leaseToken ?? this.leaseToken,
-        errorCode: clearError ? null : errorCode ?? this.errorCode,
-        fencingEpoch: clearLease ? null : fencingEpoch ?? this.fencingEpoch,
-      );
+  }) => RegenerationJob(
+    id: id,
+    siteId: siteId,
+    tenantId: tenantId,
+    path: path,
+    routeId: routeId,
+    tags: tags,
+    idempotencyKey: idempotencyKey,
+    sourceVersion: sourceVersion,
+    status: status ?? this.status,
+    attempts: attempts ?? this.attempts,
+    maxAttempts: maxAttempts,
+    createdAt: createdAt,
+    availableAt: availableAt ?? this.availableAt,
+    leaseUntil: clearLease ? null : leaseUntil ?? this.leaseUntil,
+    leaseToken: clearLease ? null : leaseToken ?? this.leaseToken,
+    errorCode: clearError ? null : errorCode ?? this.errorCode,
+    fencingEpoch: clearLease ? null : fencingEpoch ?? this.fencingEpoch,
+  );
 
   Map<String, Object?> toJson() => {
-        'id': id,
-        'siteId': siteId,
-        'tenantId': tenantId,
-        'path': path,
-        'routeId': routeId,
-        'tags': tags,
-        'idempotencyKey': idempotencyKey,
-        'sourceVersion': sourceVersion,
-        'status': status.name,
-        'attempts': attempts,
-        'maxAttempts': maxAttempts,
-        'createdAt': createdAt.toUtc().toIso8601String(),
-        'availableAt': availableAt.toUtc().toIso8601String(),
-        'leaseUntil': leaseUntil?.toUtc().toIso8601String(),
-        'leaseToken': leaseToken,
-        'errorCode': errorCode,
-        'fencingEpoch': fencingEpoch,
-      };
+    'id': id,
+    'siteId': siteId,
+    'tenantId': tenantId,
+    'path': path,
+    'routeId': routeId,
+    'tags': tags,
+    'idempotencyKey': idempotencyKey,
+    'sourceVersion': sourceVersion,
+    'status': status.name,
+    'attempts': attempts,
+    'maxAttempts': maxAttempts,
+    'createdAt': createdAt.toUtc().toIso8601String(),
+    'availableAt': availableAt.toUtc().toIso8601String(),
+    'leaseUntil': leaseUntil?.toUtc().toIso8601String(),
+    'leaseToken': leaseToken,
+    'errorCode': errorCode,
+    'fencingEpoch': fencingEpoch,
+  };
 
   factory RegenerationJob.fromJson(Map<String, Object?> json) =>
       RegenerationJob(
@@ -146,14 +145,14 @@ class QueueRecoveryReport {
   final int idempotencyCount;
 
   Map<String, Object?> toJson() => {
-        'journalEntriesReplayed': journalEntriesReplayed,
-        'recoveredJobs': recoveredJobs,
-        'corruptedEntriesDiscarded': corruptedEntriesDiscarded,
-        'rebuiltFromDisk': rebuiltFromDisk,
-        'activePendingCount': activePendingCount,
-        'activeProcessingCount': activeProcessingCount,
-        'idempotencyCount': idempotencyCount,
-      };
+    'journalEntriesReplayed': journalEntriesReplayed,
+    'recoveredJobs': recoveredJobs,
+    'corruptedEntriesDiscarded': corruptedEntriesDiscarded,
+    'rebuiltFromDisk': rebuiltFromDisk,
+    'activePendingCount': activePendingCount,
+    'activeProcessingCount': activeProcessingCount,
+    'idempotencyCount': idempotencyCount,
+  };
 }
 
 /// Declares the operational capabilities of a regeneration queue implementation.
@@ -179,15 +178,15 @@ class QueueCapabilities {
   final bool supportsPersistentJournal;
 
   Map<String, bool> toMap() => {
-        'isDistributed': isDistributed,
-        'supportsFencing': supportsFencing,
-        'supportsBatchEnqueue': supportsBatchEnqueue,
-        'supportsIdempotencyIndex': supportsIdempotencyIndex,
-        'supportsLeaseRenewal': supportsLeaseRenewal,
-        'supportsScheduledRetries': supportsScheduledRetries,
-        'supportsCrashRecovery': supportsCrashRecovery,
-        'supportsPersistentJournal': supportsPersistentJournal,
-      };
+    'isDistributed': isDistributed,
+    'supportsFencing': supportsFencing,
+    'supportsBatchEnqueue': supportsBatchEnqueue,
+    'supportsIdempotencyIndex': supportsIdempotencyIndex,
+    'supportsLeaseRenewal': supportsLeaseRenewal,
+    'supportsScheduledRetries': supportsScheduledRetries,
+    'supportsCrashRecovery': supportsCrashRecovery,
+    'supportsPersistentJournal': supportsPersistentJournal,
+  };
 }
 
 /// One job request for batch enqueue operations.
@@ -232,13 +231,13 @@ class QueueMetrics {
   final int cancelledJobs;
 
   Map<String, int> toMap() => {
-        'totalJobs': totalJobs,
-        'queuedJobs': queuedJobs,
-        'processingJobs': processingJobs,
-        'completedJobs': completedJobs,
-        'failedJobs': failedJobs,
-        'cancelledJobs': cancelledJobs,
-      };
+    'totalJobs': totalJobs,
+    'queuedJobs': queuedJobs,
+    'processingJobs': processingJobs,
+    'completedJobs': completedJobs,
+    'failedJobs': failedJobs,
+    'cancelledJobs': cancelledJobs,
+  };
 }
 
 /// Abstract contract for durable and distributed job queues in MetaMantle.
@@ -309,7 +308,7 @@ abstract interface class RegenerationQueue {
 /// external database or Redis queue adapter with distributed locks.
 class FileRegenerationQueue implements RegenerationQueue {
   FileRegenerationQueue(Directory directory, {this.maxProcessingJobs = 4})
-      : directory = directory.absolute {
+    : directory = directory.absolute {
     if (maxProcessingJobs < 1 || maxProcessingJobs > 128) {
       throw ArgumentError('maxProcessingJobs must be between 1 and 128.');
     }
@@ -320,15 +319,15 @@ class FileRegenerationQueue implements RegenerationQueue {
 
   @override
   QueueCapabilities get capabilities => const QueueCapabilities(
-        isDistributed: false,
-        supportsFencing: true,
-        supportsBatchEnqueue: true,
-        supportsIdempotencyIndex: true,
-        supportsLeaseRenewal: true,
-        supportsScheduledRetries: true,
-        supportsCrashRecovery: true,
-        supportsPersistentJournal: true,
-      );
+    isDistributed: false,
+    supportsFencing: true,
+    supportsBatchEnqueue: true,
+    supportsIdempotencyIndex: true,
+    supportsLeaseRenewal: true,
+    supportsScheduledRetries: true,
+    supportsCrashRecovery: true,
+    supportsPersistentJournal: true,
+  );
 
   Directory get _jobsDir =>
       Directory('${directory.path}${Platform.pathSeparator}jobs');
@@ -359,281 +358,273 @@ class FileRegenerationQueue implements RegenerationQueue {
     String? sourceVersion,
     int maxAttempts = 5,
     DateTime? now,
-  }) async =>
-      _locked(() async {
-        _validateId(siteId, 'siteId');
-        _validateId(tenantId, 'tenantId');
-        _validateId(routeId, 'routeId');
-        _validateId(idempotencyKey, 'idempotencyKey');
-        final normalized = _normalizeQueuePath(path);
-        if (tags.any((tag) =>
-            tag.trim().isEmpty || tag.length > 200 || tag.contains('\u0000'))) {
-          throw const FormatException('Invalid job dependency tag.');
-        }
-        if (maxAttempts < 1 || maxAttempts > 20) {
-          throw ArgumentError('maxAttempts must be between 1 and 20.');
-        }
+  }) async => _locked(() async {
+    _validateId(siteId, 'siteId');
+    _validateId(tenantId, 'tenantId');
+    _validateId(routeId, 'routeId');
+    _validateId(idempotencyKey, 'idempotencyKey');
+    final normalized = _normalizeQueuePath(path);
+    if (tags.any(
+      (tag) => tag.trim().isEmpty || tag.length > 200 || tag.contains('\u0000'),
+    )) {
+      throw const FormatException('Invalid job dependency tag.');
+    }
+    if (maxAttempts < 1 || maxAttempts > 20) {
+      throw ArgumentError('maxAttempts must be between 1 and 20.');
+    }
 
-        final state = await _syncState();
-        final composite = '$siteId|$tenantId|$idempotencyKey';
-        final existingId = state.idempotency[composite];
-        if (existingId != null) {
-          final existing = await _tryRead(existingId);
-          if (existing != null &&
-              existing.status != RegenerationJobStatus.cancelled) {
-            return existing;
-          }
-        }
+    final state = await _syncState();
+    final composite = '$siteId|$tenantId|$idempotencyKey';
+    final existingId = state.idempotency[composite];
+    if (existingId != null) {
+      final existing = await _tryRead(existingId);
+      if (existing != null &&
+          existing.status != RegenerationJobStatus.cancelled) {
+        return existing;
+      }
+    }
 
-        final created = (now ?? DateTime.now()).toUtc();
-        final id = '${created.microsecondsSinceEpoch}_${pid}_${_queueNonce()}';
-        final job = RegenerationJob(
-          id: id,
-          siteId: siteId,
-          tenantId: tenantId,
-          path: normalized,
-          routeId: routeId,
-          tags: List.unmodifiable(tags.toSet().toList()..sort()),
-          idempotencyKey: idempotencyKey,
-          sourceVersion: sourceVersion,
-          status: RegenerationJobStatus.queued,
-          attempts: 0,
-          maxAttempts: maxAttempts,
-          createdAt: created,
-          availableAt: created,
-        );
+    final created = (now ?? DateTime.now()).toUtc();
+    final id = '${created.microsecondsSinceEpoch}_${pid}_${_queueNonce()}';
+    final job = RegenerationJob(
+      id: id,
+      siteId: siteId,
+      tenantId: tenantId,
+      path: normalized,
+      routeId: routeId,
+      tags: List.unmodifiable(tags.toSet().toList()..sort()),
+      idempotencyKey: idempotencyKey,
+      sourceVersion: sourceVersion,
+      status: RegenerationJobStatus.queued,
+      attempts: 0,
+      maxAttempts: maxAttempts,
+      createdAt: created,
+      availableAt: created,
+    );
 
-        await _save(job);
-        state.idempotency[composite] = id;
-        state.pending.add(id);
+    await _save(job);
+    state.idempotency[composite] = id;
+    state.pending.add(id);
 
-        await _appendJournal({
-          'seq': ++state.lastSeq,
-          'op': 'enqueue',
-          'id': id,
-          'composite': composite,
-          'time': created.toIso8601String(),
-        });
+    await _appendJournal({
+      'seq': ++state.lastSeq,
+      'op': 'enqueue',
+      'id': id,
+      'composite': composite,
+      'time': created.toIso8601String(),
+    });
 
-        if (state.lastSeq % 1000 == 0) {
-          await _checkpointInternal();
-        }
+    if (state.lastSeq % 1000 == 0) {
+      await _checkpointInternal();
+    }
 
-        return job;
-      });
+    return job;
+  });
 
   @override
   Future<List<RegenerationJob>> enqueueAll(
     List<RegenerationJobRequest> requests, {
     DateTime? now,
-  }) async =>
-      _locked(() async {
-        if (requests.isEmpty) return const [];
-        final state = await _syncState();
-        final createdTime = (now ?? DateTime.now()).toUtc();
-        final results = <RegenerationJob>[];
-        final jobsToWrite = <RegenerationJob>[];
-        final journalBatchEntries = <Map<String, Object?>>[];
+  }) async => _locked(() async {
+    if (requests.isEmpty) return const [];
+    final state = await _syncState();
+    final createdTime = (now ?? DateTime.now()).toUtc();
+    final results = <RegenerationJob>[];
+    final jobsToWrite = <RegenerationJob>[];
+    final journalBatchEntries = <Map<String, Object?>>[];
 
-        for (final req in requests) {
-          _validateId(req.siteId, 'siteId');
-          _validateId(req.tenantId, 'tenantId');
-          _validateId(req.routeId, 'routeId');
-          _validateId(req.idempotencyKey, 'idempotencyKey');
-          final normalized = _normalizeQueuePath(req.path);
-          if (req.tags.any((tag) =>
-              tag.trim().isEmpty ||
-              tag.length > 200 ||
-              tag.contains('\u0000'))) {
-            throw const FormatException('Invalid job dependency tag.');
-          }
-          if (req.maxAttempts < 1 || req.maxAttempts > 20) {
-            throw ArgumentError('maxAttempts must be between 1 and 20.');
-          }
+    for (final req in requests) {
+      _validateId(req.siteId, 'siteId');
+      _validateId(req.tenantId, 'tenantId');
+      _validateId(req.routeId, 'routeId');
+      _validateId(req.idempotencyKey, 'idempotencyKey');
+      final normalized = _normalizeQueuePath(req.path);
+      if (req.tags.any(
+        (tag) =>
+            tag.trim().isEmpty || tag.length > 200 || tag.contains('\u0000'),
+      )) {
+        throw const FormatException('Invalid job dependency tag.');
+      }
+      if (req.maxAttempts < 1 || req.maxAttempts > 20) {
+        throw ArgumentError('maxAttempts must be between 1 and 20.');
+      }
 
-          final composite =
-              '${req.siteId}|${req.tenantId}|${req.idempotencyKey}';
-          final existingId = state.idempotency[composite];
-          if (existingId != null) {
-            final existing = await _tryRead(existingId);
-            if (existing != null &&
-                existing.status != RegenerationJobStatus.cancelled) {
-              results.add(existing);
-              continue;
-            }
-          }
-
-          final id =
-              '${createdTime.microsecondsSinceEpoch}_${pid}_${_queueNonce()}';
-          final job = RegenerationJob(
-            id: id,
-            siteId: req.siteId,
-            tenantId: req.tenantId,
-            path: normalized,
-            routeId: req.routeId,
-            tags: List.unmodifiable(req.tags.toSet().toList()..sort()),
-            idempotencyKey: req.idempotencyKey,
-            sourceVersion: req.sourceVersion,
-            status: RegenerationJobStatus.queued,
-            attempts: 0,
-            maxAttempts: req.maxAttempts,
-            createdAt: createdTime,
-            availableAt: createdTime,
-          );
-
-          jobsToWrite.add(job);
-          state.idempotency[composite] = id;
-          state.pending.add(id);
-          results.add(job);
-          journalBatchEntries.add({
-            'id': id,
-            'composite': composite,
-          });
+      final composite = '${req.siteId}|${req.tenantId}|${req.idempotencyKey}';
+      final existingId = state.idempotency[composite];
+      if (existingId != null) {
+        final existing = await _tryRead(existingId);
+        if (existing != null &&
+            existing.status != RegenerationJobStatus.cancelled) {
+          results.add(existing);
+          continue;
         }
+      }
 
-        // Write new job files concurrently in bounded chunks
-        for (var i = 0; i < jobsToWrite.length; i += 64) {
-          final chunk = jobsToWrite.skip(i).take(64);
-          await Future.wait(chunk.map(_save));
-        }
+      final id =
+          '${createdTime.microsecondsSinceEpoch}_${pid}_${_queueNonce()}';
+      final job = RegenerationJob(
+        id: id,
+        siteId: req.siteId,
+        tenantId: req.tenantId,
+        path: normalized,
+        routeId: req.routeId,
+        tags: List.unmodifiable(req.tags.toSet().toList()..sort()),
+        idempotencyKey: req.idempotencyKey,
+        sourceVersion: req.sourceVersion,
+        status: RegenerationJobStatus.queued,
+        attempts: 0,
+        maxAttempts: req.maxAttempts,
+        createdAt: createdTime,
+        availableAt: createdTime,
+      );
 
-        if (journalBatchEntries.isNotEmpty) {
-          await _appendJournal({
-            'seq': ++state.lastSeq,
-            'op': 'enqueue_batch',
-            'jobs': journalBatchEntries,
-          });
-        }
+      jobsToWrite.add(job);
+      state.idempotency[composite] = id;
+      state.pending.add(id);
+      results.add(job);
+      journalBatchEntries.add({'id': id, 'composite': composite});
+    }
 
-        if (state.lastSeq % 1000 == 0) {
-          await _checkpointInternal();
-        }
+    // Write new job files concurrently in bounded chunks
+    for (var i = 0; i < jobsToWrite.length; i += 64) {
+      final chunk = jobsToWrite.skip(i).take(64);
+      await Future.wait(chunk.map(_save));
+    }
 
-        return results;
+    if (journalBatchEntries.isNotEmpty) {
+      await _appendJournal({
+        'seq': ++state.lastSeq,
+        'op': 'enqueue_batch',
+        'jobs': journalBatchEntries,
       });
+    }
+
+    if (state.lastSeq % 1000 == 0) {
+      await _checkpointInternal();
+    }
+
+    return results;
+  });
 
   @override
   Future<RegenerationJob?> claimNext({
     DateTime? now,
     Duration lease = const Duration(minutes: 2),
-  }) async =>
-      _locked(() async {
-        if (lease <= Duration.zero) {
-          throw ArgumentError('lease must be positive.');
+  }) async => _locked(() async {
+    if (lease <= Duration.zero) {
+      throw ArgumentError('lease must be positive.');
+    }
+    final time = (now ?? DateTime.now()).toUtc();
+    final state = await _syncState();
+
+    // 1. Recover expired leases from processing jobs
+    final expiredJobIds = <String>[];
+    for (final entry in state.processing.entries) {
+      final leaseUntil = entry.value;
+      if (!leaseUntil.isAfter(time)) {
+        expiredJobIds.add(entry.key);
+      }
+    }
+
+    for (final id in expiredJobIds) {
+      state.processing.remove(id);
+      final job = await _tryRead(id);
+      if (job != null && job.status == RegenerationJobStatus.processing) {
+        final recovered = job.attempts >= job.maxAttempts
+            ? job.copyWith(
+                status: RegenerationJobStatus.failed,
+                clearLease: true,
+                errorCode: 'worker_lease_expired',
+              )
+            : job.copyWith(
+                status: RegenerationJobStatus.queued,
+                availableAt: time,
+                clearLease: true,
+                errorCode: 'worker_lease_expired',
+              );
+        await _save(recovered);
+        if (recovered.status == RegenerationJobStatus.queued) {
+          state.pending.add(id);
         }
-        final time = (now ?? DateTime.now()).toUtc();
-        final state = await _syncState();
-
-        // 1. Recover expired leases from processing jobs
-        final expiredJobIds = <String>[];
-        for (final entry in state.processing.entries) {
-          final leaseUntil = entry.value;
-          if (!leaseUntil.isAfter(time)) {
-            expiredJobIds.add(entry.key);
-          }
-        }
-
-        for (final id in expiredJobIds) {
-          state.processing.remove(id);
-          final job = await _tryRead(id);
-          if (job != null && job.status == RegenerationJobStatus.processing) {
-            final recovered = job.attempts >= job.maxAttempts
-                ? job.copyWith(
-                    status: RegenerationJobStatus.failed,
-                    clearLease: true,
-                    errorCode: 'worker_lease_expired',
-                  )
-                : job.copyWith(
-                    status: RegenerationJobStatus.queued,
-                    availableAt: time,
-                    clearLease: true,
-                    errorCode: 'worker_lease_expired',
-                  );
-            await _save(recovered);
-            if (recovered.status == RegenerationJobStatus.queued) {
-              state.pending.add(id);
-            }
-            await _appendJournal({
-              'seq': ++state.lastSeq,
-              'op': 'fail',
-              'id': id,
-              'status': recovered.status.name,
-              'token': job.leaseToken,
-            });
-          }
-        }
-
-        // 2. Enforce concurrency limits
-        if (state.processing.length >= maxProcessingJobs) {
-          return null;
-        }
-
-        // 3. Track active processing paths for mutual exclusion
-        final workingPaths = <String>{};
-        for (final id in state.processing.keys) {
-          final job = await _tryRead(id);
-          if (job != null &&
-              job.status == RegenerationJobStatus.processing &&
-              job.leaseUntil != null &&
-              job.leaseUntil!.isAfter(time)) {
-            workingPaths.add('${job.siteId}|${job.tenantId}|${job.path}');
-          }
-        }
-
-        // 4. Find the first eligible pending job
-        String? claimedId;
-        RegenerationJob? readyJob;
-
-        for (final id in state.pending) {
-          final job = await _tryRead(id);
-          if (job == null || job.status != RegenerationJobStatus.queued) {
-            continue;
-          }
-          if (!job.availableAt.isAfter(time) &&
-              !workingPaths
-                  .contains('${job.siteId}|${job.tenantId}|${job.path}')) {
-            claimedId = id;
-            readyJob = job;
-            break;
-          }
-        }
-
-        if (claimedId == null || readyJob == null) {
-          return null;
-        }
-
-        state.currentEpoch++;
-        final leaseUntil = time.add(lease);
-        final token =
-            'epoch_${state.currentEpoch}_${readyJob.id}_${_queueNonce()}';
-        final claimedJob = readyJob.copyWith(
-          status: RegenerationJobStatus.processing,
-          attempts: readyJob.attempts + 1,
-          leaseUntil: leaseUntil,
-          leaseToken: token,
-          fencingEpoch: state.currentEpoch,
-          clearLease: false,
-        );
-
-        await _save(claimedJob);
-        state.pending.remove(claimedId);
-        state.processing[claimedId] = leaseUntil;
-
         await _appendJournal({
           'seq': ++state.lastSeq,
-          'op': 'claim',
-          'id': claimedId,
-          'leaseUntil': leaseUntil.toIso8601String(),
-          'token': token,
-          'epoch': state.currentEpoch,
+          'op': 'fail',
+          'id': id,
+          'status': recovered.status.name,
+          'token': job.leaseToken,
         });
+      }
+    }
 
-        if (state.lastSeq % 1000 == 0) {
-          await _checkpointInternal();
-        }
+    // 2. Enforce concurrency limits
+    if (state.processing.length >= maxProcessingJobs) {
+      return null;
+    }
 
-        return claimedJob;
-      });
+    // 3. Track active processing paths for mutual exclusion
+    final workingPaths = <String>{};
+    for (final id in state.processing.keys) {
+      final job = await _tryRead(id);
+      if (job != null &&
+          job.status == RegenerationJobStatus.processing &&
+          job.leaseUntil != null &&
+          job.leaseUntil!.isAfter(time)) {
+        workingPaths.add('${job.siteId}|${job.tenantId}|${job.path}');
+      }
+    }
+
+    // 4. Find the first eligible pending job
+    String? claimedId;
+    RegenerationJob? readyJob;
+
+    for (final id in state.pending) {
+      final job = await _tryRead(id);
+      if (job == null || job.status != RegenerationJobStatus.queued) {
+        continue;
+      }
+      if (!job.availableAt.isAfter(time) &&
+          !workingPaths.contains('${job.siteId}|${job.tenantId}|${job.path}')) {
+        claimedId = id;
+        readyJob = job;
+        break;
+      }
+    }
+
+    if (claimedId == null || readyJob == null) {
+      return null;
+    }
+
+    state.currentEpoch++;
+    final leaseUntil = time.add(lease);
+    final token = 'epoch_${state.currentEpoch}_${readyJob.id}_${_queueNonce()}';
+    final claimedJob = readyJob.copyWith(
+      status: RegenerationJobStatus.processing,
+      attempts: readyJob.attempts + 1,
+      leaseUntil: leaseUntil,
+      leaseToken: token,
+      fencingEpoch: state.currentEpoch,
+      clearLease: false,
+    );
+
+    await _save(claimedJob);
+    state.pending.remove(claimedId);
+    state.processing[claimedId] = leaseUntil;
+
+    await _appendJournal({
+      'seq': ++state.lastSeq,
+      'op': 'claim',
+      'id': claimedId,
+      'leaseUntil': leaseUntil.toIso8601String(),
+      'token': token,
+      'epoch': state.currentEpoch,
+    });
+
+    if (state.lastSeq % 1000 == 0) {
+      await _checkpointInternal();
+    }
+
+    return claimedJob;
+  });
 
   @override
   Future<RegenerationJob> renewLease(
@@ -641,32 +632,29 @@ class FileRegenerationQueue implements RegenerationQueue {
     required String leaseToken,
     Duration extension = const Duration(minutes: 2),
     DateTime? now,
-  }) =>
-      _locked(() async {
-        final job = await _read(id);
-        if (job.status != RegenerationJobStatus.processing) {
-          throw StateError('Only processing jobs can renew their lease.');
-        }
-        _checkLeaseToken(job, leaseToken);
-        final time = (now ?? DateTime.now()).toUtc();
-        final newLeaseUntil = time.add(extension);
-        final renewed = job.copyWith(
-          leaseUntil: newLeaseUntil,
-        );
-        await _save(renewed);
+  }) => _locked(() async {
+    final job = await _read(id);
+    if (job.status != RegenerationJobStatus.processing) {
+      throw StateError('Only processing jobs can renew their lease.');
+    }
+    _checkLeaseToken(job, leaseToken);
+    final time = (now ?? DateTime.now()).toUtc();
+    final newLeaseUntil = time.add(extension);
+    final renewed = job.copyWith(leaseUntil: newLeaseUntil);
+    await _save(renewed);
 
-        final state = await _syncState();
-        state.processing[id] = newLeaseUntil;
-        await _appendJournal({
-          'seq': ++state.lastSeq,
-          'op': 'renew',
-          'id': id,
-          'leaseUntil': newLeaseUntil.toIso8601String(),
-          'token': leaseToken,
-        });
+    final state = await _syncState();
+    state.processing[id] = newLeaseUntil;
+    await _appendJournal({
+      'seq': ++state.lastSeq,
+      'op': 'renew',
+      'id': id,
+      'leaseUntil': newLeaseUntil.toIso8601String(),
+      'token': leaseToken,
+    });
 
-        return renewed;
-      });
+    return renewed;
+  });
 
   @override
   Future<RegenerationJob> complete(String id, {required String leaseToken}) =>
@@ -703,75 +691,74 @@ class FileRegenerationQueue implements RegenerationQueue {
     required String leaseToken,
     required String errorCode,
     DateTime? now,
-  }) =>
-      _locked(() async {
-        final job = await _read(id);
-        if (job.status != RegenerationJobStatus.processing) {
-          throw StateError('Only processing jobs can fail.');
-        }
-        _checkLeaseToken(job, leaseToken);
-        if (!RegExp(r'^[a-z0-9_]{1,48}$').hasMatch(errorCode)) {
-          throw ArgumentError('errorCode must be a safe identifier.');
-        }
-        final time = (now ?? DateTime.now()).toUtc();
-        final exhausted = job.attempts >= job.maxAttempts;
-        final exponent = job.attempts.clamp(0, 10).toInt();
-        final delay = Duration(seconds: 1 << exponent);
+  }) => _locked(() async {
+    final job = await _read(id);
+    if (job.status != RegenerationJobStatus.processing) {
+      throw StateError('Only processing jobs can fail.');
+    }
+    _checkLeaseToken(job, leaseToken);
+    if (!RegExp(r'^[a-z0-9_]{1,48}$').hasMatch(errorCode)) {
+      throw ArgumentError('errorCode must be a safe identifier.');
+    }
+    final time = (now ?? DateTime.now()).toUtc();
+    final exhausted = job.attempts >= job.maxAttempts;
+    final exponent = job.attempts.clamp(0, 10).toInt();
+    final delay = Duration(seconds: 1 << exponent);
 
-        final updated = job.copyWith(
-          status: exhausted
-              ? RegenerationJobStatus.failed
-              : RegenerationJobStatus.queued,
-          availableAt: time.add(delay),
-          clearLease: true,
-          errorCode: errorCode,
-        );
-        await _save(updated);
+    final updated = job.copyWith(
+      status: exhausted
+          ? RegenerationJobStatus.failed
+          : RegenerationJobStatus.queued,
+      availableAt: time.add(delay),
+      clearLease: true,
+      errorCode: errorCode,
+    );
+    await _save(updated);
 
-        final state = await _syncState();
-        state.processing.remove(id);
-        if (!exhausted) {
-          state.pending.add(id);
-        } else {
-          state.pending.remove(id);
-        }
+    final state = await _syncState();
+    state.processing.remove(id);
+    if (!exhausted) {
+      state.pending.add(id);
+    } else {
+      state.pending.remove(id);
+    }
 
-        await _appendJournal({
-          'seq': ++state.lastSeq,
-          'op': 'fail',
-          'id': id,
-          'token': leaseToken,
-          'status': updated.status.name,
-          'availableAt': updated.availableAt.toIso8601String(),
-          'errorCode': errorCode,
-        });
+    await _appendJournal({
+      'seq': ++state.lastSeq,
+      'op': 'fail',
+      'id': id,
+      'token': leaseToken,
+      'status': updated.status.name,
+      'availableAt': updated.availableAt.toIso8601String(),
+      'errorCode': errorCode,
+    });
 
-        return updated;
-      });
+    return updated;
+  });
 
   @override
   Future<RegenerationJob> cancel(String id) => _locked(() async {
-        final job = await _read(id);
-        if (job.status != RegenerationJobStatus.queued) {
-          throw StateError('Only queued jobs can be cancelled.');
-        }
-        final cancelled = job.copyWith(status: RegenerationJobStatus.cancelled);
-        await _save(cancelled);
+    final job = await _read(id);
+    if (job.status != RegenerationJobStatus.queued) {
+      throw StateError('Only queued jobs can be cancelled.');
+    }
+    final cancelled = job.copyWith(status: RegenerationJobStatus.cancelled);
+    await _save(cancelled);
 
-        final state = await _syncState();
-        state.pending.remove(id);
-        final composite = '${job.siteId}|${job.tenantId}|${job.idempotencyKey}';
-        state.idempotency.remove(composite);
+    final state = await _syncState();
+    state.pending.remove(id);
+    final composite = '${job.siteId}|${job.tenantId}|${job.idempotencyKey}';
+    state.idempotency.remove(composite);
 
-        await _appendJournal({
-          'seq': ++state.lastSeq,
-          'op': 'cancel',
-          'id': id,
-          'composite': composite,
-        });
+    await _appendJournal({
+      'seq': ++state.lastSeq,
+      'op': 'cancel',
+      'id': id,
+      'composite': composite,
+    });
 
-        return cancelled;
-      });
+    return cancelled;
+  });
 
   @override
   Future<List<RegenerationJob>> list() => _locked(_allJobs);
@@ -782,74 +769,74 @@ class FileRegenerationQueue implements RegenerationQueue {
   @override
   Future<int> cleanupCompleted({
     Duration maxAge = const Duration(days: 7),
-  }) async =>
-      _locked(() async {
-        final now = DateTime.now().toUtc();
-        final all = await _allJobs();
-        final state = await _syncState();
-        var deletedCount = 0;
-        final deletedIds = <String>[];
+  }) async => _locked(() async {
+    final now = DateTime.now().toUtc();
+    final all = await _allJobs();
+    final state = await _syncState();
+    var deletedCount = 0;
+    final deletedIds = <String>[];
 
-        for (final job in all) {
-          if (job.status == RegenerationJobStatus.completed ||
-              job.status == RegenerationJobStatus.cancelled) {
-            if (now.difference(job.createdAt) > maxAge) {
-              final file = _jobFile(job.id);
-              if (await file.exists()) await file.delete();
-              state.idempotency.remove(
-                  '${job.siteId}|${job.tenantId}|${job.idempotencyKey}');
-              state.pending.remove(job.id);
-              state.processing.remove(job.id);
-              deletedIds.add(job.id);
-              deletedCount++;
-            }
-          }
+    for (final job in all) {
+      if (job.status == RegenerationJobStatus.completed ||
+          job.status == RegenerationJobStatus.cancelled) {
+        if (now.difference(job.createdAt) > maxAge) {
+          final file = _jobFile(job.id);
+          if (await file.exists()) await file.delete();
+          state.idempotency.remove(
+            '${job.siteId}|${job.tenantId}|${job.idempotencyKey}',
+          );
+          state.pending.remove(job.id);
+          state.processing.remove(job.id);
+          deletedIds.add(job.id);
+          deletedCount++;
         }
+      }
+    }
 
-        if (deletedCount > 0) {
-          await _appendJournal({
-            'seq': ++state.lastSeq,
-            'op': 'cleanup',
-            'deletedIds': deletedIds,
-          });
-          await _checkpointInternal();
-        }
-        return deletedCount;
+    if (deletedCount > 0) {
+      await _appendJournal({
+        'seq': ++state.lastSeq,
+        'op': 'cleanup',
+        'deletedIds': deletedIds,
       });
+      await _checkpointInternal();
+    }
+    return deletedCount;
+  });
 
   @override
   Future<QueueMetrics> metrics() => _locked(() async {
-        final all = await _allJobs();
-        var queued = 0;
-        var processing = 0;
-        var completed = 0;
-        var failed = 0;
-        var cancelled = 0;
+    final all = await _allJobs();
+    var queued = 0;
+    var processing = 0;
+    var completed = 0;
+    var failed = 0;
+    var cancelled = 0;
 
-        for (final job in all) {
-          switch (job.status) {
-            case RegenerationJobStatus.queued:
-              queued++;
-            case RegenerationJobStatus.processing:
-              processing++;
-            case RegenerationJobStatus.completed:
-              completed++;
-            case RegenerationJobStatus.failed:
-              failed++;
-            case RegenerationJobStatus.cancelled:
-              cancelled++;
-          }
-        }
+    for (final job in all) {
+      switch (job.status) {
+        case RegenerationJobStatus.queued:
+          queued++;
+        case RegenerationJobStatus.processing:
+          processing++;
+        case RegenerationJobStatus.completed:
+          completed++;
+        case RegenerationJobStatus.failed:
+          failed++;
+        case RegenerationJobStatus.cancelled:
+          cancelled++;
+      }
+    }
 
-        return QueueMetrics(
-          totalJobs: all.length,
-          queuedJobs: queued,
-          processingJobs: processing,
-          completedJobs: completed,
-          failedJobs: failed,
-          cancelledJobs: cancelled,
-        );
-      });
+    return QueueMetrics(
+      totalJobs: all.length,
+      queuedJobs: queued,
+      processingJobs: processing,
+      completedJobs: completed,
+      failedJobs: failed,
+      cancelledJobs: cancelled,
+    );
+  });
 
   /// Forces an atomic compaction checkpoint of the write-ahead journal to a snapshot.
   @override
@@ -867,69 +854,70 @@ class FileRegenerationQueue implements RegenerationQueue {
   /// Recovers persistent queue state by validating journal entries and reconciling stored jobs.
   @override
   Future<QueueRecoveryReport> recover() => _locked(() async {
-        var corruptedEntriesDiscarded = 0;
-        var recoveredJobs = 0;
+    var corruptedEntriesDiscarded = 0;
+    var recoveredJobs = 0;
 
-        // 1. Truncate incomplete journal line if present
-        if (await _journalFile.exists()) {
-          final bytes = await _journalFile.readAsBytes();
-          if (bytes.isNotEmpty && bytes.last != 10) {
-            final lastNewline = bytes.lastIndexOf(10);
-            if (lastNewline >= 0) {
-              await _journalFile.writeAsBytes(bytes.sublist(0, lastNewline + 1),
-                  flush: true);
-              corruptedEntriesDiscarded++;
-            } else {
-              await _journalFile.delete();
-              corruptedEntriesDiscarded++;
-            }
-          }
+    // 1. Truncate incomplete journal line if present
+    if (await _journalFile.exists()) {
+      final bytes = await _journalFile.readAsBytes();
+      if (bytes.isNotEmpty && bytes.last != 10) {
+        final lastNewline = bytes.lastIndexOf(10);
+        if (lastNewline >= 0) {
+          await _journalFile.writeAsBytes(
+            bytes.sublist(0, lastNewline + 1),
+            flush: true,
+          );
+          corruptedEntriesDiscarded++;
+        } else {
+          await _journalFile.delete();
+          corruptedEntriesDiscarded++;
         }
+      }
+    }
 
-        // 2. Reload state
-        _state = null;
-        final state = await _syncState();
+    // 2. Reload state
+    _state = null;
+    final state = await _syncState();
 
-        // 3. Scan jobs directory for unindexed or uncommitted jobs
-        final diskJobs = await _allJobs();
-        for (final job in diskJobs) {
-          if (job.status == RegenerationJobStatus.queued) {
-            final composite =
-                '${job.siteId}|${job.tenantId}|${job.idempotencyKey}';
-            if (!state.idempotency.containsKey(composite) ||
-                !state.pending.contains(job.id)) {
-              state.idempotency[composite] = job.id;
-              state.pending.add(job.id);
-              recoveredJobs++;
-            }
-          } else if (job.status == RegenerationJobStatus.processing &&
-              job.leaseUntil != null) {
-            if (!state.processing.containsKey(job.id)) {
-              state.processing[job.id] = job.leaseUntil!;
-              recoveredJobs++;
-            }
-          }
+    // 3. Scan jobs directory for unindexed or uncommitted jobs
+    final diskJobs = await _allJobs();
+    for (final job in diskJobs) {
+      if (job.status == RegenerationJobStatus.queued) {
+        final composite = '${job.siteId}|${job.tenantId}|${job.idempotencyKey}';
+        if (!state.idempotency.containsKey(composite) ||
+            !state.pending.contains(job.id)) {
+          state.idempotency[composite] = job.id;
+          state.pending.add(job.id);
+          recoveredJobs++;
         }
+      } else if (job.status == RegenerationJobStatus.processing &&
+          job.leaseUntil != null) {
+        if (!state.processing.containsKey(job.id)) {
+          state.processing[job.id] = job.leaseUntil!;
+          recoveredJobs++;
+        }
+      }
+    }
 
-        await _checkpointInternal();
+    await _checkpointInternal();
 
-        return QueueRecoveryReport(
-          journalEntriesReplayed: state.lastSeq,
-          recoveredJobs: recoveredJobs,
-          corruptedEntriesDiscarded: corruptedEntriesDiscarded,
-          rebuiltFromDisk: true,
-          activePendingCount: state.pending.length,
-          activeProcessingCount: state.processing.length,
-          idempotencyCount: state.idempotency.length,
-        );
-      });
+    return QueueRecoveryReport(
+      journalEntriesReplayed: state.lastSeq,
+      recoveredJobs: recoveredJobs,
+      corruptedEntriesDiscarded: corruptedEntriesDiscarded,
+      rebuiltFromDisk: true,
+      activePendingCount: state.pending.length,
+      activeProcessingCount: state.processing.length,
+      idempotencyCount: state.idempotency.length,
+    );
+  });
 
   /// Reconstructs corrupted or missing queue indexes from stored job records.
   Future<void> rebuildIndexes() => _locked(() async {
-        final state = await _rebuildStateFromDisk();
-        _state = state;
-        await _checkpointInternal();
-      });
+    final state = await _rebuildStateFromDisk();
+    _state = state;
+    await _checkpointInternal();
+  });
 
   Future<_QueueState> _syncState() async {
     await _indexesDir.create(recursive: true);
@@ -940,12 +928,15 @@ class FileRegenerationQueue implements RegenerationQueue {
       if (await _snapshotFile.exists()) {
         try {
           final decoded = jsonDecode(await _snapshotFile.readAsString()) as Map;
-          final idempotencyMap = (decoded['idempotency'] as Map? ?? {})
-              .map((k, v) => MapEntry(k as String, v as String));
-          final pendingSet =
-              Set<String>.from(decoded['pending'] as List? ?? []);
+          final idempotencyMap = (decoded['idempotency'] as Map? ?? {}).map(
+            (k, v) => MapEntry(k as String, v as String),
+          );
+          final pendingSet = Set<String>.from(
+            decoded['pending'] as List? ?? [],
+          );
           final processingMap = (decoded['processing'] as Map? ?? {}).map(
-              (k, v) => MapEntry(k as String, DateTime.parse(v as String)));
+            (k, v) => MapEntry(k as String, DateTime.parse(v as String)),
+          );
           final epoch = (decoded['epoch'] as int?) ?? 0;
           final lastSeq = (decoded['lastSeq'] as int?) ?? 0;
           state = _QueueState(
@@ -974,8 +965,9 @@ class FileRegenerationQueue implements RegenerationQueue {
         await _replayJournal(state, seekOffset: 0);
       }
       _state = state;
-      _journalOffset =
-          await _journalFile.exists() ? await _journalFile.length() : 0;
+      _journalOffset = await _journalFile.exists()
+          ? await _journalFile.length()
+          : 0;
       return _state!;
     }
 
@@ -1077,8 +1069,9 @@ class FileRegenerationQueue implements RegenerationQueue {
               state.lastSeq = seq;
               replayedCount++;
             case 'cleanup':
-              final ids =
-                  (entry['deletedIds'] as List? ?? []).cast<String>().toSet();
+              final ids = (entry['deletedIds'] as List? ?? [])
+                  .cast<String>()
+                  .toSet();
               state.pending.removeAll(ids);
               state.processing.removeWhere((k, _) => ids.contains(k));
               state.idempotency.removeWhere((_, v) => ids.contains(v));
@@ -1115,8 +1108,9 @@ class FileRegenerationQueue implements RegenerationQueue {
       'epoch': state.currentEpoch,
       'idempotency': state.idempotency,
       'pending': state.pending.toList(),
-      'processing': state.processing
-          .map((k, v) => MapEntry(k, v.toUtc().toIso8601String())),
+      'processing': state.processing.map(
+        (k, v) => MapEntry(k, v.toUtc().toIso8601String()),
+      ),
     };
     final jsonStr = jsonEncode(data);
     final temp = File('${_snapshotFile.path}.${_queueNonce()}.tmp');
@@ -1140,9 +1134,9 @@ class FileRegenerationQueue implements RegenerationQueue {
     await _writeAtomicJson(_idempotencyFile, state.idempotency);
     await _writeAtomicJson(_pendingFile, state.pending.toList());
     await _writeAtomicJson(
-        _processingFile,
-        state.processing
-            .map((k, v) => MapEntry(k, v.toUtc().toIso8601String())));
+      _processingFile,
+      state.processing.map((k, v) => MapEntry(k, v.toUtc().toIso8601String())),
+    );
   }
 
   Future<_QueueState> _rebuildStateFromDisk() async {
@@ -1205,8 +1199,9 @@ class FileRegenerationQueue implements RegenerationQueue {
       try {
         final decoded = jsonDecode(await _processingFile.readAsString()) as Map;
         for (final entry in decoded.entries) {
-          processingMap[entry.key as String] =
-              DateTime.parse(entry.value as String);
+          processingMap[entry.key as String] = DateTime.parse(
+            entry.value as String,
+          );
         }
       } catch (_) {}
     }
@@ -1272,8 +1267,9 @@ class FileRegenerationQueue implements RegenerationQueue {
       await for (final entity in _jobsDir.list(followLinks: false)) {
         if (entity is! File || !entity.path.endsWith('.job.json')) continue;
         final decoded = jsonDecode(await entity.readAsString()) as Map;
-        final job =
-            RegenerationJob.fromJson(Map<String, Object?>.from(decoded));
+        final job = RegenerationJob.fromJson(
+          Map<String, Object?>.from(decoded),
+        );
         seen.add(job.id);
         result.add(job);
       }
@@ -1283,8 +1279,9 @@ class FileRegenerationQueue implements RegenerationQueue {
       await for (final entity in directory.list(followLinks: false)) {
         if (entity is! File || !entity.path.endsWith('.job.json')) continue;
         final decoded = jsonDecode(await entity.readAsString()) as Map;
-        final job =
-            RegenerationJob.fromJson(Map<String, Object?>.from(decoded));
+        final job = RegenerationJob.fromJson(
+          Map<String, Object?>.from(decoded),
+        );
         if (!seen.contains(job.id)) {
           result.add(job);
         }
@@ -1297,13 +1294,17 @@ class FileRegenerationQueue implements RegenerationQueue {
     if (!RegExp(r'^[A-Za-z0-9_-]{1,120}$').hasMatch(id)) return null;
     final file = _jobFile(id);
     if (await file.exists()) {
-      return RegenerationJob.fromJson(Map<String, Object?>.from(
-          jsonDecode(await file.readAsString()) as Map));
+      return RegenerationJob.fromJson(
+        Map<String, Object?>.from(jsonDecode(await file.readAsString()) as Map),
+      );
     }
     final legacy = _legacyJobFile(id);
     if (await legacy.exists()) {
-      return RegenerationJob.fromJson(Map<String, Object?>.from(
-          jsonDecode(await legacy.readAsString()) as Map));
+      return RegenerationJob.fromJson(
+        Map<String, Object?>.from(
+          jsonDecode(await legacy.readAsString()) as Map,
+        ),
+      );
     }
     return null;
   }
@@ -1382,7 +1383,7 @@ enum RegenerationWorkerResult {
   completed,
   retryScheduled,
   failed,
-  leaseLost
+  leaseLost,
 }
 
 /// Executes one durable job. The handler must load authoritative current data;
@@ -1394,18 +1395,18 @@ class RegenerationWorker {
     this.errorCode = 'regeneration_failed',
     this.heartbeatInterval,
     this.leaseDuration = const Duration(minutes: 2),
-    DateTime Function()? clock,
-  }) : _clock = clock;
+    this.clock,
+  });
 
   final RegenerationQueue queue;
   final Future<void> Function(RegenerationJob job) handle;
   final String errorCode;
   final Duration? heartbeatInterval;
   final Duration leaseDuration;
-  final DateTime Function()? _clock;
+  final DateTime Function()? clock;
 
   Future<RegenerationWorkerResult> processNext({DateTime? now}) async {
-    final effectiveNow = now ?? _clock?.call();
+    final effectiveNow = now ?? clock?.call();
     final job = await queue.claimNext(now: effectiveNow, lease: leaseDuration);
     if (job == null) return RegenerationWorkerResult.idle;
     final token = job.leaseToken;
@@ -1414,7 +1415,8 @@ class RegenerationWorker {
     Timer? heartbeatTimer;
     var leaseLost = false;
 
-    final interval = heartbeatInterval ??
+    final interval =
+        heartbeatInterval ??
         (leaseDuration > const Duration(seconds: 4)
             ? Duration(milliseconds: leaseDuration.inMilliseconds ~/ 2)
             : null);
@@ -1426,7 +1428,7 @@ class RegenerationWorker {
             job.id,
             leaseToken: token,
             extension: leaseDuration,
-            now: _clock?.call(),
+            now: clock?.call(),
           );
         } on Object {
           leaseLost = true;
@@ -1451,7 +1453,7 @@ class RegenerationWorker {
           job.id,
           leaseToken: token,
           errorCode: errorCode,
-          now: _clock?.call() ?? now,
+          now: clock?.call() ?? now,
         );
         return failed.status == RegenerationJobStatus.failed
             ? RegenerationWorkerResult.failed

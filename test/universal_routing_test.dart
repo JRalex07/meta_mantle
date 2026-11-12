@@ -72,8 +72,9 @@ void main() {
       final match = router.match('/unregistered/route/path');
       expect(match, isNotNull);
       expect(match!.route.title, equals('Not Found'));
-      final context =
-          MantleNavigationContext(currentPath: '/unregistered/route/path');
+      final context = MantleNavigationContext(
+        currentPath: '/unregistered/route/path',
+      );
       final component = match.build(context);
       expect(component, isA<MantleText>());
     });
@@ -118,11 +119,13 @@ void main() {
       expect(backCalled, isTrue);
     });
 
-    test('getDiscoverableRoutes extracts all non-parameterized routes for SSG',
-        () {
-      final discoverable = router.getDiscoverableRoutes();
-      expect(discoverable, containsAll(['/', '/about']));
-      expect(discoverable.contains('/products/:id'), isFalse);
-    });
+    test(
+      'getDiscoverableRoutes extracts all non-parameterized routes for SSG',
+      () {
+        final discoverable = router.getDiscoverableRoutes();
+        expect(discoverable, containsAll(['/', '/about']));
+        expect(discoverable.contains('/products/:id'), isFalse);
+      },
+    );
   });
 }

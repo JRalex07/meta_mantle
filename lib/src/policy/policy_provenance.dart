@@ -20,9 +20,10 @@ class PolicyProvenance {
   PolicyTier? originOf(String field) => fieldOrigins[field];
 
   Map<String, dynamic> toDiagnosticMap() => {
-        'fieldOrigins': fieldOrigins.map((k, v) => MapEntry(k, v.name)),
-        'conflicts': conflicts,
-        'appliedPolicies':
-            appliedPolicies.map((p) => p.name ?? p.tier.name).toList(),
-      };
+    'fieldOrigins': fieldOrigins.map((k, v) => MapEntry(k, v.name)),
+    'conflicts': conflicts,
+    'appliedPolicies': appliedPolicies
+        .map((p) => p.name ?? p.tier.name)
+        .toList(),
+  };
 }

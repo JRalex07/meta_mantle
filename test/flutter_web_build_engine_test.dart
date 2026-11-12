@@ -9,9 +9,10 @@ void main() {
   group('BootstrapAdapter Tests', () {
     const adapter = BootstrapAdapter();
 
-    test('preserves Flutter bootstrap tokens and scripts in Mode C (hybrid)',
-        () {
-      const templateHtml = '''
+    test(
+      'preserves Flutter bootstrap tokens and scripts in Mode C (hybrid)',
+      () {
+        const templateHtml = '''
 <!DOCTYPE html>
 <html>
 <head>
@@ -26,48 +27,55 @@ void main() {
 </html>
 ''';
 
-      const metadata = WebMetadata(
-        title: 'Product Landing',
-        description: 'World-class universal Dart framework',
-        canonical: 'https://example.com/product',
-      );
+        const metadata = WebMetadata(
+          title: 'Product Landing',
+          description: 'World-class universal Dart framework',
+          canonical: 'https://example.com/product',
+        );
 
-      final renderedHtml = adapter.buildPrerenderBootstrapHtml(
-        templateHtml: templateHtml,
-        metadata: metadata,
-        semanticHtml: '<article><h1>Super Product</h1></article>',
-        mode: BuildMode.hybrid,
-        baseHref: '/',
-      );
+        final renderedHtml = adapter.buildPrerenderBootstrapHtml(
+          templateHtml: templateHtml,
+          metadata: metadata,
+          semanticHtml: '<article><h1>Super Product</h1></article>',
+          mode: BuildMode.hybrid,
+          baseHref: '/',
+        );
 
-      // Verify template token preservation
-      expect(renderedHtml, contains('{{flutter_js}}'));
-      expect(renderedHtml, contains('{{flutter_build_config}}'));
-      expect(renderedHtml, contains('flutter_bootstrap.js'));
-      expect(renderedHtml, contains('async'));
+        // Verify template token preservation
+        expect(renderedHtml, contains('{{flutter_js}}'));
+        expect(renderedHtml, contains('{{flutter_build_config}}'));
+        expect(renderedHtml, contains('flutter_bootstrap.js'));
+        expect(renderedHtml, contains('async'));
 
-      // Verify head metadata injection
-      expect(renderedHtml, contains('<title>Product Landing</title>'));
-      expect(
+        // Verify head metadata injection
+        expect(renderedHtml, contains('<title>Product Landing</title>'));
+        expect(
           renderedHtml,
           contains(
-              '<meta name="description" content="World-class universal Dart framework"'));
-      expect(renderedHtml,
-          contains('<link rel="canonical" href="https://example.com/product"'));
+            '<meta name="description" content="World-class universal Dart framework"',
+          ),
+        );
+        expect(
+          renderedHtml,
+          contains('<link rel="canonical" href="https://example.com/product"'),
+        );
 
-      // Verify CSS injection
-      expect(renderedHtml, contains('id="mantle-prerender-style"'));
-      expect(renderedHtml, contains('#mantle-prerender-root'));
+        // Verify CSS injection
+        expect(renderedHtml, contains('id="mantle-prerender-style"'));
+        expect(renderedHtml, contains('#mantle-prerender-root'));
 
-      // Verify semantic HTML prerender container
-      expect(renderedHtml, contains('id="mantle-prerender-root"'));
-      expect(
-          renderedHtml, contains('<article><h1>Super Product</h1></article>'));
+        // Verify semantic HTML prerender container
+        expect(renderedHtml, contains('id="mantle-prerender-root"'));
+        expect(
+          renderedHtml,
+          contains('<article><h1>Super Product</h1></article>'),
+        );
 
-      // Verify client handshake script for hybrid mode
-      expect(renderedHtml, contains('window.__mantleClientReady'));
-      expect(renderedHtml, contains('mantle-fade-out'));
-    });
+        // Verify client handshake script for hybrid mode
+        expect(renderedHtml, contains('window.__mantleClientReady'));
+        expect(renderedHtml, contains('mantle-fade-out'));
+      },
+    );
 
     test('Mode A (metadata) omits prerender root container and styles', () {
       const templateHtml = '''
@@ -97,8 +105,10 @@ void main() {
       expect(renderedHtml, contains('<title>Only Metadata</title>'));
       expect(renderedHtml, contains('<meta name="description"'));
       expect(renderedHtml, isNot(contains('#mantle-prerender-root')));
-      expect(renderedHtml,
-          isNot(contains('<article>Should Not Appear</article>')));
+      expect(
+        renderedHtml,
+        isNot(contains('<article>Should Not Appear</article>')),
+      );
       expect(renderedHtml, isNot(contains('window.__mantleClientReady')));
     });
 
@@ -143,8 +153,10 @@ void main() {
       );
 
       expect(manifest.routes.length, equals(3));
-      expect(manifest.routes.map((r) => r.path).toList(),
-          containsAll(['/', '/items/101', '/items/102']));
+      expect(
+        manifest.routes.map((r) => r.path).toList(),
+        containsAll(['/', '/items/101', '/items/102']),
+      );
     });
   });
 
@@ -153,8 +165,9 @@ void main() {
     late Directory tempWeb;
 
     setUp(() {
-      tempProject =
-          Directory.systemTemp.createTempSync('meta_mantle_engine_test_');
+      tempProject = Directory.systemTemp.createTempSync(
+        'meta_mantle_engine_test_',
+      );
       tempWeb = Directory('${tempProject.path}/web')
         ..createSync(recursive: true);
 
@@ -193,137 +206,142 @@ dependencies:
       } catch (_) {}
     });
 
-    test('executes complete build pipeline, generating artifacts and report',
-        () async {
-      final manifest = StaticRouteManifest(
-        initialRoutes: const [
-          StaticPageRoute(
-            path: '/',
-            metadata: WebMetadata(
-              title: 'Home Page',
-              description: 'Universal Flutter Web Application',
-              canonical: 'https://example.com/',
+    test(
+      'executes complete build pipeline, generating artifacts and report',
+      () async {
+        final manifest = StaticRouteManifest(
+          initialRoutes: const [
+            StaticPageRoute(
+              path: '/',
+              metadata: WebMetadata(
+                title: 'Home Page',
+                description: 'Universal Flutter Web Application',
+                canonical: 'https://example.com/',
+              ),
+              component: MantleArticle(
+                title: 'Welcome to MetaMantle',
+                children: [
+                  MantleText('Full static prerendering for Flutter Web.'),
+                ],
+              ),
             ),
-            component: MantleArticle(
-              title: 'Welcome to MetaMantle',
-              children: [
-                MantleText('Full static prerendering for Flutter Web.'),
-              ],
+            StaticPageRoute(
+              path: '/about',
+              metadata: WebMetadata(
+                title: 'About Us',
+                description: 'Company information and mission.',
+                canonical: 'https://example.com/about',
+              ),
+              component: MantleText('About our mission.'),
             ),
+          ],
+        );
+
+        final executedCommands = <String>[];
+        final engine = FlutterWebBuildEngine(
+          processRunner:
+              (executable, arguments, {environment, workingDirectory}) async {
+                executedCommands.add('$executable ${arguments.join(' ')}');
+                return ProcessResult(100, 0, 'Flutter build succeeded', '');
+              },
+        );
+
+        final outputDir = '${tempProject.path}/build/web';
+
+        final result = await engine.build(
+          BuildWebOptions(
+            projectDir: tempProject.path,
+            output: outputDir,
+            mode: BuildMode.hybrid,
+            dryRun: false,
           ),
-          StaticPageRoute(
-            path: '/about',
-            metadata: WebMetadata(
-              title: 'About Us',
-              description: 'Company information and mission.',
-              canonical: 'https://example.com/about',
+          routeManifest: manifest,
+        );
+
+        expect(result.success, isTrue);
+        expect(result.mode, equals(BuildMode.hybrid));
+        expect(result.routes.length, equals(2));
+        expect(result.generatedFiles, isNotEmpty);
+        expect(result.reportPath, isNotNull);
+        expect(executedCommands, contains('flutter build web --release'));
+
+        // Verify root index.html
+        final rootHtml = File('$outputDir/index.html').readAsStringSync();
+        expect(rootHtml, contains('<title>Home Page</title>'));
+        expect(rootHtml, contains('id="mantle-prerender-root"'));
+        expect(rootHtml, contains('Welcome to MetaMantle'));
+        expect(rootHtml, contains('Full static prerendering for Flutter Web.'));
+        expect(rootHtml, contains('window.__mantleClientReady'));
+
+        // Verify sub-route /about/index.html
+        final aboutHtml = File('$outputDir/about/index.html')
+            .readAsStringSync();
+        expect(aboutHtml, contains('<title>About Us</title>'));
+        expect(aboutHtml, contains('About our mission.'));
+
+        // Verify sitemap.xml
+        final sitemapFile = File('$outputDir/sitemap.xml');
+        expect(sitemapFile.existsSync(), isTrue);
+        final sitemap = sitemapFile.readAsStringSync();
+        expect(sitemap, contains('<loc>https://example.com/</loc>'));
+        expect(sitemap, contains('<loc>https://example.com/about</loc>'));
+
+        // Verify robots.txt
+        final robotsFile = File('$outputDir/robots.txt');
+        expect(robotsFile.existsSync(), isTrue);
+        final robots = robotsFile.readAsStringSync();
+        expect(robots, contains('User-agent: *'));
+        expect(robots, contains('Sitemap: https://example.com/sitemap.xml'));
+
+        // Verify meta_mantle_report.json
+        final reportFile = File(result.reportPath!);
+        expect(reportFile.existsSync(), isTrue);
+        final report =
+            jsonDecode(reportFile.readAsStringSync()) as Map<String, dynamic>;
+        expect(report['mode'], equals('hybrid'));
+        expect(report['routesCount'], equals(2));
+        expect(report['success'], isTrue);
+      },
+    );
+
+    test(
+      'dry-run mode does not invoke flutter CLI and does not write files',
+      () async {
+        final manifest = StaticRouteManifest(
+          initialRoutes: const [
+            StaticPageRoute(
+              path: '/',
+              metadata: WebMetadata(title: 'Home Dry Run'),
+              component: MantleText('Dry run content'),
             ),
-            component: MantleText('About our mission.'),
+          ],
+        );
+
+        var processCalled = false;
+        final engine = FlutterWebBuildEngine(
+          processRunner:
+              (executable, arguments, {environment, workingDirectory}) async {
+                processCalled = true;
+                return ProcessResult(101, 0, '', '');
+              },
+        );
+
+        final outputDir = '${tempProject.path}/build/web_dry';
+
+        final result = await engine.build(
+          BuildWebOptions(
+            projectDir: tempProject.path,
+            output: outputDir,
+            mode: BuildMode.prerender,
+            dryRun: true,
           ),
-        ],
-      );
+          routeManifest: manifest,
+        );
 
-      final executedCommands = <String>[];
-      final engine = FlutterWebBuildEngine(
-        processRunner: (executable, arguments,
-            {environment, workingDirectory}) async {
-          executedCommands.add('$executable ${arguments.join(' ')}');
-          return ProcessResult(100, 0, 'Flutter build succeeded', '');
-        },
-      );
-
-      final outputDir = '${tempProject.path}/build/web';
-
-      final result = await engine.build(
-        BuildWebOptions(
-          projectDir: tempProject.path,
-          output: outputDir,
-          mode: BuildMode.hybrid,
-          dryRun: false,
-        ),
-        routeManifest: manifest,
-      );
-
-      expect(result.success, isTrue);
-      expect(result.mode, equals(BuildMode.hybrid));
-      expect(result.routes.length, equals(2));
-      expect(result.generatedFiles, isNotEmpty);
-      expect(result.reportPath, isNotNull);
-      expect(executedCommands, contains('flutter build web --release'));
-
-      // Verify root index.html
-      final rootHtml = File('$outputDir/index.html').readAsStringSync();
-      expect(rootHtml, contains('<title>Home Page</title>'));
-      expect(rootHtml, contains('id="mantle-prerender-root"'));
-      expect(rootHtml, contains('Welcome to MetaMantle'));
-      expect(rootHtml, contains('Full static prerendering for Flutter Web.'));
-      expect(rootHtml, contains('window.__mantleClientReady'));
-
-      // Verify sub-route /about/index.html
-      final aboutHtml = File('$outputDir/about/index.html').readAsStringSync();
-      expect(aboutHtml, contains('<title>About Us</title>'));
-      expect(aboutHtml, contains('About our mission.'));
-
-      // Verify sitemap.xml
-      final sitemapFile = File('$outputDir/sitemap.xml');
-      expect(sitemapFile.existsSync(), isTrue);
-      final sitemap = sitemapFile.readAsStringSync();
-      expect(sitemap, contains('<loc>https://example.com/</loc>'));
-      expect(sitemap, contains('<loc>https://example.com/about</loc>'));
-
-      // Verify robots.txt
-      final robotsFile = File('$outputDir/robots.txt');
-      expect(robotsFile.existsSync(), isTrue);
-      final robots = robotsFile.readAsStringSync();
-      expect(robots, contains('User-agent: *'));
-      expect(robots, contains('Sitemap: https://example.com/sitemap.xml'));
-
-      // Verify meta_mantle_report.json
-      final reportFile = File(result.reportPath!);
-      expect(reportFile.existsSync(), isTrue);
-      final report =
-          jsonDecode(reportFile.readAsStringSync()) as Map<String, dynamic>;
-      expect(report['mode'], equals('hybrid'));
-      expect(report['routesCount'], equals(2));
-      expect(report['success'], isTrue);
-    });
-
-    test('dry-run mode does not invoke flutter CLI and does not write files',
-        () async {
-      final manifest = StaticRouteManifest(
-        initialRoutes: const [
-          StaticPageRoute(
-            path: '/',
-            metadata: WebMetadata(title: 'Home Dry Run'),
-            component: MantleText('Dry run content'),
-          ),
-        ],
-      );
-
-      var processCalled = false;
-      final engine = FlutterWebBuildEngine(
-        processRunner: (executable, arguments,
-            {environment, workingDirectory}) async {
-          processCalled = true;
-          return ProcessResult(101, 0, '', '');
-        },
-      );
-
-      final outputDir = '${tempProject.path}/build/web_dry';
-
-      final result = await engine.build(
-        BuildWebOptions(
-          projectDir: tempProject.path,
-          output: outputDir,
-          mode: BuildMode.prerender,
-          dryRun: true,
-        ),
-        routeManifest: manifest,
-      );
-
-      expect(result.success, isTrue);
-      expect(processCalled, isFalse);
-      expect(File('$outputDir/index.html').existsSync(), isFalse);
-    });
+        expect(result.success, isTrue);
+        expect(processCalled, isFalse);
+        expect(File('$outputDir/index.html').existsSync(), isFalse);
+      },
+    );
   });
 }

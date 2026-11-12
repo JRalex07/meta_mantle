@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:meta_mantle/meta_mantle.dart';
 
 void main() {
@@ -113,7 +113,8 @@ class HomePage extends StatelessWidget {
                   label: const Text('Product (Basmati Rice)'),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                        builder: (_) => const ProductPage()),
+                      builder: (_) => const ProductPage(),
+                    ),
                   ),
                 ),
                 ElevatedButton.icon(
@@ -142,22 +143,22 @@ class AboutPage extends StatelessWidget {
     return WebHead(
       metadata: const WebMetadata(
         title: 'About Us',
-        description:
-            'Learn about MetaMantle, its features, architecture and tools for managing Flutter Web metadata and SEO.',
+        description: 'Learn about MetaMantle, its features, architecture and tools for managing Flutter Web metadata and SEO.',
         canonical: 'https://metamantle.alex.runs-on.dev/about/',
         alternates: [
           AlternateUrl(
-              language: 'hi',
-              url: 'https://metamantle.alex.runs-on.dev/hi/about/'),
+            language: 'hi',
+            url: 'https://metamantle.alex.runs-on.dev/hi/about/',
+          ),
           AlternateUrl(
-              language: 'es',
-              url: 'https://metamantle.alex.runs-on.dev/es/about/'),
+            language: 'es',
+            url: 'https://metamantle.alex.runs-on.dev/es/about/',
+          ),
         ],
         openGraph: OpenGraph(
           type: OpenGraphType.article,
           title: 'About MetaMantle',
-          description:
-              'Learn about MetaMantle, its features, architecture and tools for managing Flutter Web metadata and SEO.',
+          description: 'Learn about MetaMantle, its features, architecture and tools for managing Flutter Web metadata and SEO.',
         ),
       ),
       child: Scaffold(
@@ -167,8 +168,10 @@ class AboutPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Our Mission',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Text(
+                'Our Mission',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
               const Text(
                 'We connect consumers directly with sustainable organic producers. Notice how the page title, description, and canonical hreflang alternate links updated automatically.',
@@ -306,10 +309,8 @@ class BlogPage extends StatelessWidget {
     return WebHead(
       metadata: WebMetadata(
         title: 'How to Cook Fluffy Basmati Rice',
-        description:
-            'Step-by-step master guide to cooking fluffy, long-grain basmati rice.',
-        canonical:
-            'https://metamantle.alex.runs-on.dev/blog/cook-fluffy-basmati-rice/',
+        description: 'Step-by-step master guide to cooking fluffy, long-grain basmati rice.',
+        canonical: 'https://metamantle.alex.runs-on.dev/blog/cook-fluffy-basmati-rice/',
         author: 'Chef Antonio',
         publisher: 'MetaMantle Store Culinary Team',
         openGraph: const OpenGraph(
@@ -336,8 +337,10 @@ class BlogPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('How to Cook Fluffy Basmati Rice',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Text(
+                'How to Cook Fluffy Basmati Rice',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
               const Text('By Chef Antonio • Published Feb 15, 2026'),
               const SizedBox(height: 16),
@@ -388,8 +391,10 @@ class _MetadataInspectorState extends State<MetadataInspector> {
                     SizedBox(width: 8),
                     Text(
                       'Live Metadata Inspector',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ],
                 ),
@@ -409,7 +414,9 @@ class _MetadataInspectorState extends State<MetadataInspector> {
               _buildRow('OG Image', active?.openGraph?.image ?? '(None)'),
               _buildRow('Twitter Card', active?.twitter?.card ?? '(None)'),
               _buildRow(
-                  'JSON-LD Schemas', '${active?.jsonLd.length ?? 0} active'),
+                'JSON-LD Schemas',
+                '${active?.jsonLd.length ?? 0} active',
+              ),
               _buildRow('Generation Token', '${MetaMantle.generationToken}'),
               const SizedBox(height: 8),
               Wrap(

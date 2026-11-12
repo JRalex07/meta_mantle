@@ -173,11 +173,7 @@ class _MantleBuilderState<T> extends MantleState<MantleBuilder<T>> {
 
 /// Asynchronous state wrapper for Futures.
 class MantleAsyncSnapshot<T> {
-  const MantleAsyncSnapshot({
-    this.data,
-    this.error,
-    this.isLoading = false,
-  });
+  const MantleAsyncSnapshot({this.data, this.error, this.isLoading = false});
 
   final T? data;
   final Object? error;
@@ -198,7 +194,10 @@ class MantleFutureBuilder<T> extends StatefulMantleComponent {
 
   final Future<T> future;
   final MantleComponent Function(
-      MantleContext context, MantleAsyncSnapshot<T> snapshot) builder;
+    MantleContext context,
+    MantleAsyncSnapshot<T> snapshot,
+  )
+  builder;
   final T? initialData;
 
   @override
@@ -221,19 +220,21 @@ class _MantleFutureBuilderState<T> extends MantleState<MantleFutureBuilder<T>> {
   }
 
   void _subscribe() {
-    component.future.then((data) {
-      if (!_cancelled) {
-        setState(() {
-          _snapshot = MantleAsyncSnapshot<T>(data: data, isLoading: false);
+    component.future
+        .then((data) {
+          if (!_cancelled) {
+            setState(() {
+              _snapshot = MantleAsyncSnapshot<T>(data: data, isLoading: false);
+            });
+          }
+        })
+        .catchError((err) {
+          if (!_cancelled) {
+            setState(() {
+              _snapshot = MantleAsyncSnapshot<T>(error: err, isLoading: false);
+            });
+          }
         });
-      }
-    }).catchError((err) {
-      if (!_cancelled) {
-        setState(() {
-          _snapshot = MantleAsyncSnapshot<T>(error: err, isLoading: false);
-        });
-      }
-    });
   }
 
   @override

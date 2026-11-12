@@ -38,10 +38,7 @@ class MantleArticle extends StatelessMantleComponent {
         MantleElementNode(
           tag: 'header',
           children: [
-            MantleElementNode(
-              tag: 'h1',
-              children: [MantleTextNode(title!)],
-            ),
+            MantleElementNode(tag: 'h1', children: [MantleTextNode(title!)]),
             if (author != null || publishedDate != null)
               MantleElementNode(
                 tag: 'p',
@@ -107,10 +104,7 @@ class MantleList extends StatelessMantleComponent {
 
 /// Single item within a [MantleList] (`<li>`).
 class MantleListItem extends StatelessMantleComponent {
-  const MantleListItem({
-    required this.child,
-    super.key,
-  });
+  const MantleListItem({required this.child, super.key});
 
   final MantleComponent child;
 
@@ -133,8 +127,10 @@ class MantleTextArea extends StatelessMantleComponent {
     this.rows = 4,
     this.cols,
     this.onChanged,
-    this.padding =
-        const MantleEdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    this.padding = const MantleEdgeInsets.symmetric(
+      horizontal: 12,
+      vertical: 8,
+    ),
     this.border = const MantleBorder.all(color: MantleColor.grey),
     this.borderRadius = const MantleBorderRadius.circular(4),
     super.key,
@@ -284,11 +280,7 @@ class MantleProduct extends StatelessMantleComponent {
       children.add(
         MantleElementNode(
           tag: 'img',
-          attributes: {
-            'src': imageUrl!,
-            'alt': name,
-            'itemprop': 'image',
-          },
+          attributes: {'src': imageUrl!, 'alt': name, 'itemprop': 'image'},
           styles: const {
             'max-width': '100%',
             'height': 'auto',
@@ -378,6 +370,176 @@ class MantleProduct extends StatelessMantleComponent {
       attributes: attrs,
       styles: styles,
       children: children,
+      key: key,
+    );
+  }
+}
+
+/// Semantic HTML Table component (`<table>`).
+class MantleTable extends StatelessMantleComponent {
+  const MantleTable({
+    required this.rows,
+    this.headers,
+    this.caption,
+    this.border = const MantleBorder.all(color: MantleColor.grey),
+    this.padding = const MantleEdgeInsets.all(8),
+    super.key,
+  });
+
+  final List<MantleTableRow> rows;
+  final List<MantleTableCell>? headers;
+  final String? caption;
+  final MantleBorder border;
+  final MantleEdgeInsets padding;
+
+  @override
+  MantleNode build(MantleContext context) {
+    final tableChildren = <MantleNode>[];
+    if (caption != null && caption!.isNotEmpty) {
+      tableChildren.add(
+        MantleElementNode(
+          tag: 'caption',
+          styles: const {'font-weight': 'bold', 'margin-bottom': '8px'},
+          children: [MantleTextNode(caption!)],
+        ),
+      );
+    }
+
+    if (headers != null && headers!.isNotEmpty) {
+      tableChildren.add(
+        MantleElementNode(
+          tag: 'thead',
+          children: [
+            MantleElementNode(
+              tag: 'tr',
+              children: headers!.map((h) => h.toNode(context)).toList(),
+            ),
+          ],
+        ),
+      );
+    }
+
+    tableChildren.add(
+      MantleElementNode(
+        tag: 'tbody',
+        children: rows.map((r) => r.toNode(context)).toList(),
+      ),
+    );
+
+    return MantleElementNode(
+      tag: 'table',
+      classes: const ['mantle-table'],
+      styles: {
+        'border-collapse': 'collapse',
+        'width': '100%',
+        'border': border.toCss(),
+      },
+      children: tableChildren,
+      key: key,
+    );
+  }
+}
+
+/// A row inside a [MantleTable] (`<tr>`).
+class MantleTableRow extends StatelessMantleComponent {
+  const MantleTableRow({required this.cells, this.backgroundColor, super.key});
+
+  final List<MantleTableCell> cells;
+  final MantleColor? backgroundColor;
+
+  @override
+  MantleNode build(MantleContext context) {
+    final styles = <String, String>{};
+    if (backgroundColor != null) {
+      styles['background-color'] = backgroundColor!.toCssRgba();
+    }
+    return MantleElementNode(
+      tag: 'tr',
+      classes: const ['mantle-table-row'],
+      styles: styles,
+      children: cells.map((c) => c.toNode(context)).toList(),
+      key: key,
+    );
+  }
+}
+
+/// A cell inside a [MantleTableRow] (`<td>` or `<th>`).
+class MantleTableCell extends StatelessMantleComponent {
+  const MantleTableCell({
+    required this.child,
+    this.isHeader = false,
+    this.colSpan,
+    this.rowSpan,
+    this.padding = const MantleEdgeInsets.all(8),
+    this.border = const MantleBorder.all(color: MantleColor.grey),
+    super.key,
+  });
+
+  const MantleTableCell.header({
+    required this.child,
+    this.colSpan,
+    this.rowSpan,
+    this.padding = const MantleEdgeInsets.all(8),
+    this.border = const MantleBorder.all(color: MantleColor.grey),
+    super.key,
+  }) : isHeader = true;
+
+  final MantleComponent child;
+  final bool isHeader;
+  final int? colSpan;
+  final int? rowSpan;
+  final MantleEdgeInsets padding;
+  final MantleBorder border;
+
+  @override
+  MantleNode build(MantleContext context) {
+    final attrs = <String, String>{};
+    if (colSpan != null && colSpan! > 1) attrs['colspan'] = '$colSpan';
+    if (rowSpan != null && rowSpan! > 1) attrs['rowspan'] = '$rowSpan';
+
+    return MantleElementNode(
+      tag: isHeader ? 'th' : 'td',
+      classes: [isHeader ? 'mantle-th' : 'mantle-td'],
+      attributes: attrs,
+      styles: {
+        'padding': padding.toCssPadding(),
+        'border': border.toCss(),
+        if (isHeader) 'font-weight': 'bold',
+      },
+      children: [child.toNode(context)],
+      key: key,
+    );
+  }
+}
+
+/// Escape hatch allowing rendering of arbitrary custom HTML elements, Web Components, or SVG tags.
+class MantleCustomElement extends StatelessMantleComponent {
+  const MantleCustomElement({
+    required this.tag,
+    this.attributes = const {},
+    this.styles = const {},
+    this.classes = const [],
+    this.children = const [],
+    this.events = const {},
+    super.key,
+  });
+
+  final String tag;
+  final Map<String, String> attributes;
+  final Map<String, String> styles;
+  final List<String> classes;
+  final List<MantleComponent> children;
+  final Map<String, MantleEventCallback> events;
+
+  @override
+  MantleNode build(MantleContext context) {
+    return MantleElementNode(
+      tag: tag,
+      attributes: attributes,
+      styles: styles,
+      classes: classes,
+      children: children.map((c) => c.toNode(context)).toList(),
+      events: events,
       key: key,
     );
   }

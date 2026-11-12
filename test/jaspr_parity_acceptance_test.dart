@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:meta_mantle/meta_mantle_server.dart';
@@ -25,10 +26,7 @@ void main() {
           availability: ItemAvailability.inStock,
         ),
       ],
-      rating: ProductRating(
-        ratingValue: 4.9,
-        reviewCount: 42,
-      ),
+      rating: ProductRating(ratingValue: 4.9, reviewCount: 42),
       shipping: ShippingDetails(
         shippingRate: 0.00, // Free shipping
         currency: 'USD',
@@ -61,14 +59,10 @@ void main() {
         card: TwitterCardType.summaryLargeImage,
         site: '@KyotoStore',
       ),
-      jsonLd: [
-        product.toJsonLd(baseUrl: 'https://store.example.com'),
-      ],
+      jsonLd: [product.toJsonLd(baseUrl: 'https://store.example.com')],
     );
 
-    test(
-        'Identical Product Route rendered via Native Engine vs Jaspr Adapter produces zero metadata conflicts',
-        () {
+    test('Identical Product Route rendered via Native Engine vs Jaspr Adapter produces zero metadata conflicts', () {
       // 1. Render through Native MetaMantle Server HTML Engine
       final nativeRoute = MetaRoute<ProductItem>(
         pattern: '/products/:slug',
@@ -125,19 +119,25 @@ void main() {
       expect(nativeDesc, equals(product.description));
 
       // Verify Canonical Link
-      final nativeCanonical =
-          nativeDom.querySelector('link[rel="canonical"]')?.attributes['href'];
-      final jasprCanonical =
-          jasprDom.querySelector('link[rel="canonical"]')?.attributes['href'];
+      final nativeCanonical = nativeDom
+          .querySelector('link[rel="canonical"]')
+          ?.attributes['href'];
+      final jasprCanonical = jasprDom
+          .querySelector('link[rel="canonical"]')
+          ?.attributes['href'];
       expect(nativeCanonical, equals(jasprCanonical));
-      expect(nativeCanonical,
-          equals('https://store.example.com/products/ceramic-teapot/'));
+      expect(
+        nativeCanonical,
+        equals('https://store.example.com/products/ceramic-teapot/'),
+      );
 
       // Verify Robots Directive
-      final nativeRobots =
-          nativeDom.querySelector('meta[name="robots"]')?.attributes['content'];
-      final jasprRobots =
-          jasprDom.querySelector('meta[name="robots"]')?.attributes['content'];
+      final nativeRobots = nativeDom
+          .querySelector('meta[name="robots"]')
+          ?.attributes['content'];
+      final jasprRobots = jasprDom
+          .querySelector('meta[name="robots"]')
+          ?.attributes['content'];
       expect(nativeRobots, equals(jasprRobots));
       expect(nativeRobots, equals('index, follow'));
 
@@ -193,30 +193,37 @@ void main() {
       expect(nativeH1, equals('Artisan Terracotta Teapot'));
     });
 
-    test(
-        'JasprTagDescriptor renders valid HTML component tags without escaping errors',
-        () {
+    test('JasprTagDescriptor renders valid HTML component tags without escaping errors', () {
       final head = MetaMantleHead(metadata: metadata);
       final descriptors = head.renderDescriptors();
 
       expect(descriptors.any((d) => d.tag == 'title'), isTrue);
       expect(
-          descriptors.any(
-              (d) => d.tag == 'meta' && d.attributes['name'] == 'description'),
-          isTrue);
+        descriptors.any(
+          (d) => d.tag == 'meta' && d.attributes['name'] == 'description',
+        ),
+        isTrue,
+      );
       expect(
-          descriptors.any(
-              (d) => d.tag == 'link' && d.attributes['rel'] == 'canonical'),
-          isTrue);
+        descriptors.any(
+          (d) => d.tag == 'link' && d.attributes['rel'] == 'canonical',
+        ),
+        isTrue,
+      );
       expect(
-          descriptors.any((d) =>
+        descriptors.any(
+          (d) =>
               d.tag == 'script' &&
-              d.attributes['type'] == 'application/ld+json'),
-          isTrue);
+              d.attributes['type'] == 'application/ld+json',
+        ),
+        isTrue,
+      );
 
       final titleDescriptor = descriptors.firstWhere((d) => d.tag == 'title');
-      expect(titleDescriptor.toHtml(),
-          equals('<title>Artisan Terracotta Teapot</title>'));
+      expect(
+        titleDescriptor.toHtml(),
+        equals('<title>Artisan Terracotta Teapot</title>'),
+      );
     });
   });
 }

@@ -19,13 +19,13 @@ class SearchIndexEntry {
   final List<String> tags;
 
   Map<String, dynamic> toJson() => {
-        'title': title,
-        'url': url,
-        'section': section,
-        'content': content,
-        'hierarchy': hierarchy,
-        if (tags.isNotEmpty) 'tags': tags,
-      };
+    'title': title,
+    'url': url,
+    'section': section,
+    'content': content,
+    'hierarchy': hierarchy,
+    if (tags.isNotEmpty) 'tags': tags,
+  };
 }
 
 /// Generates client-side and full-text search indexes (`search.json`).

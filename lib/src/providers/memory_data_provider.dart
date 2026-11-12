@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'data_provider.dart';
 
 class _MemoryRecord<T> {
@@ -43,7 +44,8 @@ class MemoryDataProvider<T> implements MetaMantleDataProvider<T> {
     _store[key] = _MemoryRecord<T>(
       data: data,
       lastModified: lastModified ?? DateTime.now().toUtc(),
-      etag: etag ??
+      etag:
+          etag ??
           'w/"${data.hashCode}-${DateTime.now().millisecondsSinceEpoch}"',
       cacheTags: cacheTags,
       isGone: false,
@@ -87,7 +89,8 @@ class MemoryDataProvider<T> implements MetaMantleDataProvider<T> {
       await Future<void>.delayed(simulatedLatency!);
     }
 
-    final key = context.parameters[lookupParam] ??
+    final key =
+        context.parameters[lookupParam] ??
         context.queryParameters[lookupParam] ??
         context.path;
 

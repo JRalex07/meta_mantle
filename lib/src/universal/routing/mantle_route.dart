@@ -69,10 +69,7 @@ class MantleRouteMatch {
 
 /// Universal route resolver and matching engine.
 class MantleRouter {
-  const MantleRouter({
-    required this.routes,
-    this.notFoundBuilder,
-  });
+  const MantleRouter({required this.routes, this.notFoundBuilder});
 
   final List<MantleRoute> routes;
   final MantleRouteBuilder? notFoundBuilder;
@@ -134,10 +131,8 @@ class MantleApp {
   final String title;
   final MantleRouteBuilder? notFoundBuilder;
 
-  MantleRouter get router => MantleRouter(
-        routes: routes,
-        notFoundBuilder: notFoundBuilder,
-      );
+  MantleRouter get router =>
+      MantleRouter(routes: routes, notFoundBuilder: notFoundBuilder);
 }
 
 /// Concrete implementation of [MantleContext] for runtime navigation.
@@ -146,10 +141,10 @@ class MantleNavigationContext implements MantleContext {
     required this.currentPath,
     this.pathParameters = const {},
     this.queryParameters = const {},
-    void Function(String path, {Map<String, String>? queryParameters})? onGo,
-    void Function()? onBack,
-  })  : _onGo = onGo,
-        _onBack = onBack;
+    this.onGo,
+    this.onBack,
+    MantleStateRegistry? stateRegistry,
+  }) : stateRegistry = stateRegistry ?? MantleStateRegistry();
 
   @override
   final String currentPath;
@@ -160,17 +155,20 @@ class MantleNavigationContext implements MantleContext {
   @override
   final Map<String, String> queryParameters;
 
+  @override
+  final MantleStateRegistry stateRegistry;
+
   final void Function(String path, {Map<String, String>? queryParameters})?
-      _onGo;
-  final void Function()? _onBack;
+  onGo;
+  final void Function()? onBack;
 
   @override
   void go(String path, {Map<String, String>? queryParameters}) {
-    _onGo?.call(path, queryParameters: queryParameters);
+    onGo?.call(path, queryParameters: queryParameters);
   }
 
   @override
   void back() {
-    _onBack?.call();
+    onBack?.call();
   }
 }

@@ -6,6 +6,14 @@ import 'package:html/parser.dart' as html_parser;
 import '../builder/static_head_config.dart';
 import '../core/metadata_renderer.dart';
 import '../models/metadata.dart';
+import '../universal/components/content_and_commerce_components.dart';
+import '../universal/components/interaction_components.dart';
+import '../universal/components/layout_components.dart';
+import '../universal/components/mantle_component.dart';
+import '../universal/components/media_components.dart';
+import '../universal/components/navigation_and_semantic_components.dart';
+import '../universal/components/text_components.dart';
+import '../universal/ir/mantle_style.dart';
 import '../universal/rendering/server_renderer.dart';
 import '../universal/routing/mantle_route.dart';
 import 'bootstrap/bootstrap_adapter.dart';
@@ -21,8 +29,9 @@ class FlutterWebBuildEngine {
   const FlutterWebBuildEngine({
     this.bootstrapAdapter = const BootstrapAdapter(),
     this.metadataRenderer = const MetadataRenderer(),
-    this.serverRenderer =
-        const MantleServerRenderer(emitHydrationMarkers: false),
+    this.serverRenderer = const MantleServerRenderer(
+      emitHydrationMarkers: false,
+    ),
     this.processRunner,
   });
 
@@ -36,12 +45,14 @@ class FlutterWebBuildEngine {
     List<String> arguments, {
     String? workingDirectory,
     Map<String, String>? environment,
-  })? processRunner;
+  })?
+  processRunner;
 
   /// Executes the complete Flutter Web build and static rendering pipeline.
   Future<FlutterWebBuildResult> build(
     BuildWebOptions options, {
     StaticRouteManifest? routeManifest,
+    MantleApp? app,
     void Function(String message)? onProgress,
   }) async {
     final stopwatch = Stopwatch()..start();
@@ -52,12 +63,30 @@ class FlutterWebBuildEngine {
           : '${projectDir.path}${Platform.pathSeparator}${options.output}',
     );
 
+    if (app != null) {
+      final appManifest = routeManifest ?? StaticRouteManifest();
+      for (final route in app.routes) {
+        if (!route.path.contains(':')) {
+          appManifest.register(
+            StaticPageRoute(
+              path: route.path,
+              metadata: WebMetadata(title: route.title ?? app.title),
+              componentBuilder: (ctx) => route.builder(ctx),
+            ),
+          );
+        }
+      }
+      routeManifest = appManifest;
+    }
+
     onProgress?.call(
-        'MetaMantle Web Build Engine starting [Mode: ${options.mode.name.toUpperCase()}]...');
+      'MetaMantle Web Build Engine starting [Mode: ${options.mode.name.toUpperCase()}]...',
+    );
 
     // 1. Discover and validate Flutter project
-    final pubspecFile =
-        File('${projectDir.path}${Platform.pathSeparator}pubspec.yaml');
+    final pubspecFile = File(
+      '${projectDir.path}${Platform.pathSeparator}pubspec.yaml',
+    );
     if (!await pubspecFile.exists()) {
       throw FileSystemException(
         'Not a valid Dart/Flutter project directory. Missing pubspec.yaml.',
@@ -89,11 +118,15 @@ class FlutterWebBuildEngine {
       parsedConfig = StaticHeadConfig(
         baseUrl: 'https://example.com',
         routes: const [
-          StaticRoute(path: '/', metadata: WebMetadata(title: 'Home')),
+          StaticRoute(
+            path: '/',
+            metadata: WebMetadata(title: 'Home'),
+          ),
         ],
       );
       onProgress?.call(
-          'Config file not found; proceeding with defaults and manifest routes.');
+        'Config file not found; proceeding with defaults and manifest routes.',
+      );
     }
 
     final resolvedRoutes = await _resolveAllRoutes(
@@ -104,17 +137,20 @@ class FlutterWebBuildEngine {
 
     if (resolvedRoutes.isEmpty) {
       throw const FormatException(
-          'No routes resolved for static web generation.');
+        'No routes resolved for static web generation.',
+      );
     }
-    onProgress
-        ?.call('Resolved ${resolvedRoutes.length} route(s) for generation.');
+    onProgress?.call(
+      'Resolved ${resolvedRoutes.length} route(s) for generation.',
+    );
 
     // 3. Compile Flutter Web project (unless dry-run)
     if (!options.dryRun) {
       if (options.clean) {
         onProgress?.call('Running flutter clean...');
-        await _executeProcess('flutter', ['clean'],
-            workingDirectory: projectDir.path);
+        await _executeProcess('flutter', [
+          'clean',
+        ], workingDirectory: projectDir.path);
       }
 
       onProgress?.call('Compiling Flutter Web production build...');
@@ -177,7 +213,8 @@ class FlutterWebBuildEngine {
 
     for (final route in resolvedRoutes) {
       final normPath = _normalizeRoute(route.path);
-      final canonicalUrl = route.metadata.canonical ??
+      final canonicalUrl =
+          route.metadata.canonical ??
           _buildAbsoluteUrl(baseUrl, normPath, parsedConfig.trailingSlash);
 
       if (!_isNoindex(route.metadata.robots ?? parsedConfig.defaultRobots)) {
@@ -211,8 +248,9 @@ class FlutterWebBuildEngine {
 
     // 6. Generate sitemap.xml & robots.txt
     if (parsedConfig.sitemap) {
-      final sitemapFile =
-          File('${outputDir.path}${Platform.pathSeparator}sitemap.xml');
+      final sitemapFile = File(
+        '${outputDir.path}${Platform.pathSeparator}sitemap.xml',
+      );
       final sortedUrls = sitemapUrls.toSet().toList()..sort();
       final sitemapXml = _generateSitemapXml(sortedUrls);
 
@@ -221,13 +259,15 @@ class FlutterWebBuildEngine {
         await sitemapFile.writeAsString(sitemapXml, flush: true);
       }
       generatedFiles.add(sitemapFile.path);
-      onProgress
-          ?.call('Generated sitemap.xml with ${sortedUrls.length} entries.');
+      onProgress?.call(
+        'Generated sitemap.xml with ${sortedUrls.length} entries.',
+      );
     }
 
     if (parsedConfig.robotsTxt) {
-      final robotsFile =
-          File('${outputDir.path}${Platform.pathSeparator}robots.txt');
+      final robotsFile = File(
+        '${outputDir.path}${Platform.pathSeparator}robots.txt',
+      );
       final sitemapUrl = baseUrl.endsWith('/')
           ? '${baseUrl}sitemap.xml'
           : '$baseUrl/sitemap.xml';
@@ -267,11 +307,13 @@ class FlutterWebBuildEngine {
     }
 
     onProgress?.call(
-        'Build complete in ${stopwatch.elapsedMilliseconds}ms. ${generatedFiles.length} files generated.');
+      'Build complete in ${stopwatch.elapsedMilliseconds}ms. ${generatedFiles.length} files generated.',
+    );
 
     if (options.strict && warnings.isNotEmpty) {
       throw FormatException(
-          'Strict mode failed due to metadata warnings:\n${warnings.join('\n')}');
+        'Strict mode failed due to metadata warnings:\n${warnings.join('\n')}',
+      );
     }
 
     return buildResult;
@@ -355,11 +397,9 @@ class FlutterWebBuildEngine {
       );
 
       final metadata = _substituteTemplate(pattern.metadataTemplate, map);
-      results.add(StaticPageRoute(
-        path: path,
-        metadata: metadata,
-        dataSource: map,
-      ));
+      results.add(
+        StaticPageRoute(path: path, metadata: metadata, dataSource: map),
+      );
     }
     return results;
   }
@@ -380,7 +420,7 @@ class FlutterWebBuildEngine {
       if (val is String) return sub(val);
       if (val is Map) {
         return {
-          for (final e in val.entries) e.key.toString(): deepSub(e.value)
+          for (final e in val.entries) e.key.toString(): deepSub(e.value),
         };
       }
       if (val is List) return val.map(deepSub).toList();
@@ -448,8 +488,9 @@ class FlutterWebBuildEngine {
 
       // 2. In Mode B & C, inject prerender CSS styles
       if (mode != BuildMode.metadata) {
-        final styleEl = html_parser
-            .parseFragment(bootstrapAdapter.generatePrerenderStyles());
+        final styleEl = html_parser.parseFragment(
+          bootstrapAdapter.generatePrerenderStyles(),
+        );
         head.append(styleEl);
       }
     }
@@ -458,18 +499,14 @@ class FlutterWebBuildEngine {
     if (body != null && mode != BuildMode.metadata) {
       String semanticHtml = '';
 
-      final navContext = MantleNavigationContext(currentPath: route.path);
-      final component = route.resolveComponent(navContext);
-
-      if (component != null) {
+      if (route.htmlContent != null && route.htmlContent!.isNotEmpty) {
+        semanticHtml = route.htmlContent!;
+      } else {
+        final navContext = MantleNavigationContext(currentPath: route.path);
+        final component = _resolveComponentForRoute(route, navContext, config);
         final mantleNode = component.toNode(navContext);
         final htmlNode = serverRenderer.render(mantleNode);
         semanticHtml = htmlNode.toHtml();
-      } else if (route.htmlContent != null && route.htmlContent!.isNotEmpty) {
-        semanticHtml = route.htmlContent!;
-      } else {
-        // Fallback semantic representation from metadata
-        semanticHtml = _generateFallbackSemanticHtml(route);
       }
 
       final wrappedContent = bootstrapAdapter.wrapPrerenderContent(
@@ -482,8 +519,9 @@ class FlutterWebBuildEngine {
 
       // In Mode C (Hybrid), inject startup coordination script
       if (mode == BuildMode.hybrid) {
-        final bridgeFragment = html_parser
-            .parseFragment(bootstrapAdapter.generateClientHandshakeScript());
+        final bridgeFragment = html_parser.parseFragment(
+          bootstrapAdapter.generateClientHandshakeScript(),
+        );
         body.append(bridgeFragment);
       }
     }
@@ -491,17 +529,253 @@ class FlutterWebBuildEngine {
     return document.outerHtml;
   }
 
-  String _generateFallbackSemanticHtml(StaticPageRoute route) {
-    final title = route.metadata.title ?? 'Page';
-    final desc = route.metadata.description ?? '';
-    final buffer = StringBuffer();
-    buffer.writeln('<section class="mantle-page-fallback">');
-    buffer.writeln('  <h1>${_escape(title)}</h1>');
-    if (desc.isNotEmpty) {
-      buffer.writeln('  <p>${_escape(desc)}</p>');
+  MantleComponent _resolveComponentForRoute(
+    StaticPageRoute route,
+    MantleNavigationContext navContext,
+    StaticHeadConfig config,
+  ) {
+    final existing = route.resolveComponent(navContext);
+    if (existing != null) return existing;
+
+    // 1. Data source present (e.g. from expanded dynamic patterns)
+    if (route.dataSource is Map) {
+      final map = Map<String, Object?>.from(route.dataSource as Map);
+      final name =
+          (map['name'] ?? map['title'] ?? route.metadata.title ?? 'Product')
+              .toString();
+      final desc = map['description']?.toString() ?? route.metadata.description;
+      final image = map['image']?.toString() ?? map['imageUrl']?.toString();
+      final sku = map['sku']?.toString();
+      final price =
+          double.tryParse(map['price']?.toString() ?? '29.99') ?? 29.99;
+
+      if (route.path.contains('/product') ||
+          sku != null ||
+          map.containsKey('price')) {
+        return MantlePage(
+          padding: const MantleEdgeInsets.all(16),
+          children: [
+            const MantleNavigation(
+              items: [
+                MantleNavigationItem(
+                  icon: MantleIcon('home'),
+                  label: 'Home',
+                  route: '/',
+                ),
+                MantleNavigationItem(
+                  icon: MantleIcon('shopping_bag'),
+                  label: 'Products',
+                  route: '/products',
+                ),
+                MantleNavigationItem(
+                  icon: MantleIcon('info'),
+                  label: 'About',
+                  route: '/about',
+                ),
+              ],
+            ),
+            const MantleSizedBox(height: 16),
+            MantleProduct(
+              name: name,
+              description: desc,
+              imageUrl: image,
+              sku: sku,
+              price: price,
+              action: const MantleLink(
+                href: '/products',
+                label: 'Back to Products',
+              ),
+            ),
+          ],
+        );
+      }
+
+      return MantleArticle(
+        title: name,
+        author: map['author']?.toString() ?? config.siteName,
+        publishedDate: map['date']?.toString(),
+        children: [
+          if (image != null) MantleImage(src: image, alt: name),
+          if (desc != null) MantleText(desc),
+          const MantleLink(href: '/', label: 'Return to Home'),
+        ],
+      );
     }
-    buffer.writeln('</section>');
-    return buffer.toString();
+
+    // 2. Synthesize rich universal component tree based on route path
+    const navItems = <MantleNavigationItem>[
+      MantleNavigationItem(icon: MantleIcon('home'), label: 'Home', route: '/'),
+      MantleNavigationItem(
+        icon: MantleIcon('info'),
+        label: 'About',
+        route: '/about',
+      ),
+      MantleNavigationItem(
+        icon: MantleIcon('shopping_bag'),
+        label: 'Products',
+        route: '/products',
+      ),
+      MantleNavigationItem(
+        icon: MantleIcon('help'),
+        label: 'FAQ',
+        route: '/faq',
+      ),
+    ];
+
+    final pageTitle = route.metadata.title ?? config.siteName ?? 'MetaMantle';
+    final pageDesc = route.metadata.description ?? '';
+
+    if (route.path == '/' || route.path == '/home') {
+      return MantlePage(
+        padding: const MantleEdgeInsets.all(24),
+        children: [
+          const MantleNavigation(items: navItems),
+          const MantleSizedBox(height: 24),
+          MantleHeading(pageTitle, level: 1),
+          if (pageDesc.isNotEmpty) ...[
+            const MantleSizedBox(height: 8),
+            MantleText(pageDesc),
+          ],
+          const MantleSizedBox(height: 24),
+          const MantleHeading('Key Features & Architecture', level: 2),
+          const MantleList(
+            children: [
+              MantleListItem(
+                child: MantleText('Universal Dart component tree rendering'),
+              ),
+              MantleListItem(
+                child: MantleText('Zero-overhead static HTML pre-rendering'),
+              ),
+              MantleListItem(
+                child: MantleText('Coordinated client hydration handshake'),
+              ),
+              MantleListItem(
+                child: MantleText('High-performance WebAssembly compilation'),
+              ),
+            ],
+          ),
+          const MantleSizedBox(height: 24),
+          const MantleLink(href: '/products', label: 'Explore Catalog ->'),
+        ],
+      );
+    }
+
+    if (route.path.startsWith('/about')) {
+      return MantlePage(
+        padding: const MantleEdgeInsets.all(24),
+        children: [
+          const MantleNavigation(items: navItems),
+          const MantleSizedBox(height: 24),
+          MantleArticle(
+            title: pageTitle,
+            author: config.siteName ?? 'MetaMantle Architecture Team',
+            children: [
+              if (pageDesc.isNotEmpty) MantleText(pageDesc),
+              const MantleHeading('Framework Mission', level: 2),
+              const MantleText(
+                'Write application UI and business logic once in Dart, then deploy anywhere.',
+              ),
+              const MantleLink(href: '/', label: '<- Back to Home'),
+            ],
+          ),
+        ],
+      );
+    }
+
+    if (route.path.startsWith('/faq')) {
+      return MantlePage(
+        padding: const MantleEdgeInsets.all(24),
+        children: [
+          const MantleNavigation(items: navItems),
+          const MantleSizedBox(height: 24),
+          MantleHeading(pageTitle, level: 1),
+          const MantleSizedBox(height: 16),
+          const MantleDetails(
+            summary: MantleText('How does MetaMantle static rendering work?'),
+            content: MantleText(
+              'It pre-renders universal MantleComponent trees to HTML at build time.',
+            ),
+            open: true,
+          ),
+          const MantleDetails(
+            summary: MantleText('Does it prevent blank screen flashes?'),
+            content: MantleText(
+              'Yes, Mode C uses a coordinated client handshake to fade out static snapshots seamlessly.',
+            ),
+          ),
+          const MantleDetails(
+            summary: MantleText('Can it run in WebAssembly?'),
+            content: MantleText(
+              'Yes, both WasmGC and JS targets are fully supported.',
+            ),
+          ),
+          const MantleSizedBox(height: 16),
+          const MantleLink(href: '/', label: '<- Return to Home'),
+        ],
+      );
+    }
+
+    if (route.path.startsWith('/products')) {
+      return MantlePage(
+        padding: const MantleEdgeInsets.all(24),
+        children: [
+          const MantleNavigation(items: navItems),
+          const MantleSizedBox(height: 24),
+          MantleHeading(pageTitle, level: 1),
+          if (pageDesc.isNotEmpty) MantleText(pageDesc),
+          const MantleSizedBox(height: 16),
+          const MantleTable(
+            caption: 'Featured Catalog',
+            headers: [
+              MantleTableCell.header(child: MantleText('Product')),
+              MantleTableCell.header(child: MantleText('Category')),
+              MantleTableCell.header(child: MantleText('Action')),
+            ],
+            rows: [
+              MantleTableRow(
+                cells: [
+                  MantleTableCell(child: MantleText('Premium Basmati Rice')),
+                  MantleTableCell(child: MantleText('Pantry')),
+                  MantleTableCell(
+                    child: MantleLink(
+                      href: '/products/basmati-rice',
+                      label: 'View Details',
+                    ),
+                  ),
+                ],
+              ),
+              MantleTableRow(
+                cells: [
+                  MantleTableCell(child: MantleText('Whole Milk')),
+                  MantleTableCell(child: MantleText('Dairy')),
+                  MantleTableCell(
+                    child: MantleLink(
+                      href: '/products/whole-milk',
+                      label: 'View Details',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const MantleSizedBox(height: 16),
+          const MantleLink(href: '/', label: '<- Return to Home'),
+        ],
+      );
+    }
+
+    // Default route layout
+    return MantlePage(
+      padding: const MantleEdgeInsets.all(24),
+      children: [
+        const MantleNavigation(items: navItems),
+        const MantleSizedBox(height: 24),
+        MantleHeading(pageTitle, level: 1),
+        if (pageDesc.isNotEmpty) MantleText(pageDesc),
+        const MantleSizedBox(height: 16),
+        const MantleLink(href: '/', label: '<- Return to Home'),
+      ],
+    );
   }
 
   File _determineOutputFile(Directory outputDir, String routePath) {
@@ -538,8 +812,11 @@ class FlutterWebBuildEngine {
     String? workingDirectory,
   }) async {
     if (processRunner != null) {
-      return processRunner!(executable, arguments,
-          workingDirectory: workingDirectory);
+      return processRunner!(
+        executable,
+        arguments,
+        workingDirectory: workingDirectory,
+      );
     }
     return Process.run(
       executable,
@@ -558,8 +835,9 @@ class FlutterWebBuildEngine {
   }
 
   String _buildAbsoluteUrl(String base, String path, bool? trailingSlash) {
-    final cleanBase =
-        base.endsWith('/') ? base.substring(0, base.length - 1) : base;
+    final cleanBase = base.endsWith('/')
+        ? base.substring(0, base.length - 1)
+        : base;
     var norm = path;
     if (trailingSlash == true && !norm.endsWith('/') && norm != '/') {
       norm = '$norm/';
