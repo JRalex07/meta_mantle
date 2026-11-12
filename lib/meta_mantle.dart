@@ -5,6 +5,7 @@
 library;
 
 export 'meta_mantle_core.dart';
+export 'meta_mantle_universal.dart';
 export 'src/integrations/meta_mantle_navigator_observer.dart';
 export 'src/runtime/meta_head.dart';
 export 'src/runtime/meta_mantle.dart';

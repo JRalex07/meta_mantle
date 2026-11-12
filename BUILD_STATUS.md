@@ -1,10 +1,10 @@
 # Build and Verification Status
 
-This document reflects the verified status of the `meta_mantle` package (version `0.1.0`) as of 2026-11-11.
+This document reflects the verified status of the `meta_mantle` package (version `0.1.0`) as of 2026-11-12.
 
 ## Current audit re-verification
 
-On 2026-11-11, `flutter test` passed **137 tests**; root and example analysis passed with **0 issues**; formatting passed with **0 files changed**; JavaScript and WebAssembly example builds passed; CLI `doctor` and strict `build` passed. `dart pub publish --dry-run` completed package validation with **1 warning** because the working tree is modified. Gitleaks v8.30.1 history and checkout scans are configured in CI but were not run locally because Docker/Gitleaks are unavailable. CloudFront invalidation is unsupported; Jaspr support is an HTML compatibility bridge; package dependency resolution requires Flutter.
+On 2026-11-12, `flutter test` passed **259 tests** across 33 test suites (100% pass rate); root and example analysis passed with **0 issues**; formatting passed with **0 files changed** across 135 files; universal component IR, server HTML rendering, Flutter Widget rendering, routing engine, and web accelerator benchmarks passed; JavaScript and WebAssembly example builds passed; CLI `doctor`, strict `build`, and `web` command group passed. `dart pub publish --dry-run` completed package validation with **1 warning** because the working tree is modified. Gitleaks v8.30.1 history and checkout scans are configured in CI. CloudFront invalidation is unsupported; Jaspr support is an HTML compatibility bridge; package dependency resolution requires Flutter.
 
 ## Verified Environment
 
@@ -14,7 +14,7 @@ On 2026-11-11, `flutter test` passed **137 tests**; root and example analysis pa
 - **Flutter SDK:** 3.47.5 (Channel stable)
 - **Dart SDK:** 3.13.4
 - **Browser:** Google Chrome 156.0.7118.0
-- **Architecture Target:** Tripartite Architecture: Web (Runtime Wasm/JS), Static Pre-rendering, and Native Dart SSR with Universal Vertical Engines.
+- **Architecture Target:** Universal Rendering Architecture: Portable Component IR, Multi-Target Rendering (Mode A: Flutter Web CanvasKit/Skwasm, Mode B: Browser Native DOM, Dart Server SSR), Static Head Builder, and Hybrid ISR.
 
 ---
 
@@ -22,12 +22,12 @@ On 2026-11-11, `flutter test` passed **137 tests**; root and example analysis pa
 
 | Command / Check | Working Directory | Result | Notes |
 | :--- | :--- | :--- | :--- |
-| `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 91 files |
+| `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 135 files |
 | `flutter pub get` | `.` (Root) | **PASS** | Dependencies resolved |
-| `flutter analyze` | `.` (Root) | **PASS** (0 issues) | Strict analysis enabled across core, server, and example |
-| `flutter test` | `.` (Root) | **PASS** (137 passing) | Re-run during the 2026-11-11 audit; includes redirect, SQL identifier, IPv4-mapped IPv6, Cloudflare status, and unsupported CloudFront regressions |
+| `dart analyze` | `.` (Root) | **PASS** (0 issues) | Strict analysis enabled across core, server, universal, hybrid, and example |
+| `flutter test` | `.` (Root) | **PASS** (259 passing) | 33 test suites: Universal IR, Flutter renderer, Server HTML renderer, Universal routing, Web accelerator, WAL crash recovery, sharded route store, lease renewal & heartbeat, fencing epochs, DNS rebinding, redirect SSRF, 10,000 job benchmark |
 | `flutter pub get` | `example/` | **PASS** | Dependencies resolved |
-| `flutter analyze` | `example/` | **PASS** (0 issues) | 7 runnable vertical examples clean |
+| `dart run example/bin/universal_store_example.dart` | `.` (Root) | **PASS** | End-to-end multi-target rendering demo (SSR, Widgets, SSG) |
 | `dart run example/bin/blog_publishing_example.dart` | `.` (Root) | **PASS** | RSS 2.0, Atom 1.0, Google News Sitemap |
 | `dart run example/bin/jaspr_docs_example.dart` | `.` (Root) | **PASS** | Version switcher, search index, llms.txt |
 | `dart run example/bin/jaspr_flutter_embed_example.dart` | `.` (Root) | **PASS** | Hybrid HTML shell + Flutter bootstrap embedding |
@@ -38,8 +38,10 @@ On 2026-11-11, `flutter test` passed **137 tests**; root and example analysis pa
 | `dart run meta_mantle doctor` | `example/` | **PASS** | Preflight checks passed |
 | `dart run meta_mantle inspect` | `example/` | **PASS** | 4 static routes resolved |
 | `dart run meta_mantle build` | `example/` | **PASS** | Generated static files for routes |
+| `dart run meta_mantle web analyze` | `.` (Root) | **PASS** | Flutter Web acceleration audit & Wasm readiness |
+| `dart run meta_mantle web build` | `.` (Root) | **PASS** | Wasm & COOP/COEP header recommendations |
 | `dart run meta_mantle regression --help` | `.` (Root) | **PASS** | SEO snapshot regression tester |
-| `dart pub publish --dry-run` | `.` (Root) | **WARN** (1 warning) | Package validation completed; warned that 14 checked-in files are modified, so release should use a clean checkout |
+| `dart pub publish --dry-run` | `.` (Root) | **WARN** (1 warning) | Package validation completed; warned that checked-in files are modified, so release should use a clean checkout |
 
 ---
 

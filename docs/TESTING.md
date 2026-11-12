@@ -24,8 +24,19 @@ MetaMantle enforces automated test coverage spanning unit, widget, contract, con
 | `test/runtime_lifecycle_test.dart` | 10 | Flutter WebHead widget lifecycle, DOM interop, stack restoration. |
 | `test/static_head_builder_test.dart` | 10 | Static HTML file injection, strict validation, route replacement. |
 | `test/isr_hardening_and_benchmark_test.dart` | 11 | Content-addressed artifact immutability, atomic rollback, garbage collection, storage capabilities, O(1) queue idempotency/batching/cleanup/rebuild, 10,000 jobs benchmark, multi-worker lease fencing, and REST/GraphQL socket IP pinning. |
+| `test/queue_crash_consistency_test.dart` | 3 | WAL corrupted journal tail truncation, reconciliation of unindexed on-disk job files, and recovery from interrupted snapshot compaction. |
+| `test/worker_heartbeat_test.dart` | 4 | Explicit lease renewal, rejection of stolen leases, periodic background heartbeat during lengthy operations, and `leaseLost` detection. |
+| `test/publication_fencing_test.dart` | 2 | Monotonic epoch verification in `publishVersion`, rejection of stale workers via `StaleFencingEpochException`, and preservation of newer publications. |
+| `test/sharded_route_store_test.dart` | 3 | 256-shard partitioning for route artifacts and dependencies, single-page update isolation (modifying only 1 shard and 1 object), and route deletion pruning. |
+| `test/dns_rebinding_verification_test.dart` | 6 | Stateful DNS resolver rebinding attack simulation, IPv4-mapped IPv6 loopback/metadata blocking, internal redirect protection, and URL protocol/userinfo validation. |
+| `test/universal_component_ir_test.dart` | 14 | Universal component model, MantleNode IR, MantleStyle bidirectional CSS/Flutter mapping, flex alignments, and progressive component catalogue. |
+| `test/universal_flutter_renderer_test.dart` | 9 | MantleFlutterRenderer Widget compilation: Text, ElevatedButton, TextFormField, Checkbox, Row, Column, Container, and InkWell. |
+| `test/universal_server_renderer_test.dart` | 7 | MantleServerRenderer semantic HTML generation, XSS escaping, void tags, inline CSS, and complete HTML document wrapping. |
+| `test/universal_routing_test.dart` | 9 | Universal routing, parameterized path matching (`:id`), query parameters, MantleApp, and navigation context callbacks. |
+| `test/flutter_web_accelerator_test.dart` | 6 | Mode A web project analysis, Wasm compatibility checks, bundle size auditing, COOP/COEP headers, and build suggestions. |
+| `test/universal_store_example_test.dart` | 1 | End-to-end multi-target execution verification of the universal store example. |
 
-The current checkout has **195 automated tests**; the full serial run passed all 195 on 2026-11-12. This directory matrix highlights the principal suites and may not list every test file.
+The current checkout has **259 automated tests**; the full test suite passed all 259 on 2026-11-12. This directory matrix highlights the principal suites across 33 test files.
 
 ---
 

@@ -308,7 +308,26 @@ class FileHtmlArtifactStore {
     return version;
   }
 
-  Future<void> publishVersion(String version) async {
+  File get _publishEpochsFile =>
+      File('${root.path}${Platform.pathSeparator}.publish_epochs.json');
+
+  Future<Map<String, int>> _loadPublishEpochs() async {
+    if (!await _publishEpochsFile.exists()) return {};
+    try {
+      final decoded =
+          jsonDecode(await _publishEpochsFile.readAsString()) as Map;
+      return decoded.map((k, v) => MapEntry(k as String, v as int));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<void> _savePublishEpochs(Map<String, int> epochs) async {
+    await _writeJsonIndex(root, '.publish_epochs.json', epochs);
+  }
+
+  Future<void> publishVersion(String version,
+      {int? fencingEpoch, String? routePath}) async {
     final draft = _versionDir(version);
     if (!await draft.exists()) {
       throw StateError('Artifact draft does not exist.');
@@ -321,6 +340,21 @@ class FileHtmlArtifactStore {
         File('${root.path}${Platform.pathSeparator}.active_version');
     final temp = File('${pointer.path}.${_nonce()}.tmp');
     try {
+      if (fencingEpoch != null) {
+        final epochs = await _loadPublishEpochs();
+        final epochKey = routePath != null ? _normalizePath(routePath) : '*';
+        final currentEpoch = epochs[epochKey] ?? epochs['*'] ?? 0;
+        if (fencingEpoch < currentEpoch) {
+          throw StaleFencingEpochException(fencingEpoch, currentEpoch,
+              routePath: routePath);
+        }
+        epochs[epochKey] = fencingEpoch;
+        if (fencingEpoch > (epochs['*'] ?? 0)) {
+          epochs['*'] = fencingEpoch;
+        }
+        await _savePublishEpochs(epochs);
+      }
+
       final baseFile =
           File('${draft.path}${Platform.pathSeparator}.base_version');
       final expectedBase =
@@ -329,6 +363,7 @@ class FileHtmlArtifactStore {
       if (current != expectedBase) {
         throw StaleArtifactVersionException(expectedBase, current);
       }
+
       await temp.writeAsString(version, flush: true);
       // Replace through rename without unlinking the old pointer first.
       await temp.rename(pointer.path);
@@ -368,6 +403,160 @@ class FileHtmlArtifactStore {
     if (await draft.exists()) await draft.delete(recursive: true);
   }
 
+  String _shardKey(String path) {
+    final norm = _normalizePath(path);
+    final bytes = sha256.convert(utf8.encode(norm)).bytes;
+    return bytes[0].toRadixString(16).padLeft(2, '0');
+  }
+
+  Directory _routeShardsDir(Directory dir) =>
+      Directory('${dir.path}${Platform.pathSeparator}.route_shards');
+
+  Directory _depShardsDir(Directory dir) =>
+      Directory('${dir.path}${Platform.pathSeparator}.dep_shards');
+
+  Future<RouteArtifactEntry?> _findRouteArtifact(
+      Directory dir, String path) async {
+    final shardsDir = _routeShardsDir(dir);
+    if (await shardsDir.exists()) {
+      final key = _shardKey(path);
+      final file = File('${shardsDir.path}${Platform.pathSeparator}$key.json');
+      if (await file.exists()) {
+        try {
+          final decoded = jsonDecode(await file.readAsString()) as Map;
+          final val = decoded[path];
+          if (val != null) {
+            return RouteArtifactEntry.fromJson(
+                Map<String, Object?>.from(val as Map));
+          }
+        } catch (_) {}
+      }
+      return null;
+    }
+    final all = await _loadRouteArtifacts(dir);
+    return all[path];
+  }
+
+  Future<void> _saveRouteArtifactShard(
+      Directory dir, String path, RouteArtifactEntry entry) async {
+    final shardsDir = _routeShardsDir(dir);
+    await shardsDir.create(recursive: true);
+    final key = _shardKey(path);
+    final file = File('${shardsDir.path}${Platform.pathSeparator}$key.json');
+    final map = <String, Map<String, Object?>>{};
+    if (await file.exists()) {
+      try {
+        final decoded = jsonDecode(await file.readAsString()) as Map;
+        for (final e in decoded.entries) {
+          map[e.key as String] = Map<String, Object?>.from(e.value as Map);
+        }
+      } catch (_) {}
+    }
+    map[path] = entry.toJson();
+    await _writeJsonFile(file, map);
+  }
+
+  Future<RouteDependency?> _findRouteDependency(
+      Directory dir, String path) async {
+    final shardsDir = _depShardsDir(dir);
+    if (await shardsDir.exists()) {
+      final key = _shardKey(path);
+      final file = File('${shardsDir.path}${Platform.pathSeparator}$key.json');
+      if (await file.exists()) {
+        try {
+          final decoded = jsonDecode(await file.readAsString()) as Map;
+          final val = decoded[path];
+          if (val != null) {
+            return RouteDependency.fromJson(
+                Map<String, Object?>.from(val as Map));
+          }
+        } catch (_) {}
+      }
+      return null;
+    }
+    final all = await _loadIndex(dir);
+    return all[path];
+  }
+
+  Future<void> _saveRouteDependencyShard(
+      Directory dir, String path, RouteDependency dep) async {
+    final shardsDir = _depShardsDir(dir);
+    await shardsDir.create(recursive: true);
+    final key = _shardKey(path);
+    final file = File('${shardsDir.path}${Platform.pathSeparator}$key.json');
+    final map = <String, Map<String, Object?>>{};
+    if (await file.exists()) {
+      try {
+        final decoded = jsonDecode(await file.readAsString()) as Map;
+        for (final e in decoded.entries) {
+          map[e.key as String] = Map<String, Object?>.from(e.value as Map);
+        }
+      } catch (_) {}
+    }
+    map[path] = dep.toJson();
+    await _writeJsonFile(file, map);
+  }
+
+  Future<void> _cleanAndWriteShards(
+    Directory shardsDir,
+    Map<String, Map<String, Map<String, Object?>>> newShards,
+    Set<String> validPaths,
+  ) async {
+    await shardsDir.create(recursive: true);
+    final touchedKeys = <String>{...newShards.keys};
+    if (await shardsDir.exists()) {
+      await for (final entity in shardsDir.list()) {
+        if (entity is File && entity.path.endsWith('.json')) {
+          final shardName = entity.uri.pathSegments.last;
+          final key = shardName.substring(0, shardName.length - 5);
+          try {
+            final decoded = jsonDecode(await entity.readAsString()) as Map;
+            final map = <String, Map<String, Object?>>{};
+            for (final e in decoded.entries) {
+              if (validPaths.contains(e.key)) {
+                map[e.key as String] =
+                    Map<String, Object?>.from(e.value as Map);
+              }
+            }
+            if (newShards.containsKey(key)) {
+              map.addAll(newShards[key]!);
+            }
+            if (map.isEmpty) {
+              await entity.delete();
+            } else {
+              await _writeJsonFile(entity, map);
+            }
+            touchedKeys.remove(key);
+          } catch (_) {}
+        }
+      }
+    }
+    for (final key in touchedKeys) {
+      final file = File('${shardsDir.path}${Platform.pathSeparator}$key.json');
+      await _writeJsonFile(file, newShards[key]!);
+    }
+  }
+
+  Future<void> _writeJsonFile(File file, Object value) async {
+    await file.parent.create(recursive: true);
+    final temp = File('${file.path}.${_nonce()}.tmp');
+    try {
+      await temp.writeAsString(jsonEncode(value), flush: true);
+      if (await file.exists()) {
+        try {
+          await file.delete();
+        } catch (_) {}
+      }
+      await temp.rename(file.path);
+    } finally {
+      if (await temp.exists()) {
+        try {
+          await temp.delete();
+        } catch (_) {}
+      }
+    }
+  }
+
   Future<void> writeVersion(String version, String path, String html) async {
     final normPath = _normalizePath(path);
     final hash = sha256.convert(utf8.encode(html)).toString();
@@ -380,6 +569,15 @@ class FileHtmlArtifactStore {
     final draft = _versionDir(version);
     // Write direct path file for this specific route for concurrency and fast read
     await _writeFile(_artifactFile(draft, normPath), html);
+
+    // Write sharded route entry
+    final entry = RouteArtifactEntry(
+      path: normPath,
+      objectHash: hash,
+      contentLength: utf8.encode(html).length,
+      generatedAt: DateTime.now().toUtc(),
+    );
+    await _saveRouteArtifactShard(draft, normPath, entry);
   }
 
   Future<String?> readVersion(String version, String path) async {
@@ -389,8 +587,7 @@ class FileHtmlArtifactStore {
     if (await file.exists()) {
       return await file.readAsString();
     }
-    final entries = await _loadRouteArtifacts(draft);
-    final entry = entries[normPath];
+    final entry = await _findRouteArtifact(draft, normPath);
     if (entry != null) {
       final objFile = File(
           '${_objectsDir.path}${Platform.pathSeparator}${entry.objectHash}.html');
@@ -406,32 +603,100 @@ class FileHtmlArtifactStore {
     final draft = _versionDir(version);
     final file = _artifactFile(draft, normPath);
     if (await file.exists()) await file.delete();
+
+    final key = _shardKey(normPath);
+    final routeShard = File(
+        '${_routeShardsDir(draft).path}${Platform.pathSeparator}$key.json');
+    if (await routeShard.exists()) {
+      try {
+        final decoded = jsonDecode(await routeShard.readAsString()) as Map;
+        final map = Map<String, Object?>.from(decoded);
+        if (map.remove(normPath) != null) {
+          if (map.isEmpty) {
+            await routeShard.delete();
+          } else {
+            await _writeJsonFile(routeShard, map);
+          }
+        }
+      } catch (_) {}
+    }
+
+    final depShard =
+        File('${_depShardsDir(draft).path}${Platform.pathSeparator}$key.json');
+    if (await depShard.exists()) {
+      try {
+        final decoded = jsonDecode(await depShard.readAsString()) as Map;
+        final map = Map<String, Object?>.from(decoded);
+        if (map.remove(normPath) != null) {
+          if (map.isEmpty) {
+            await depShard.delete();
+          } else {
+            await _writeJsonFile(depShard, map);
+          }
+        }
+      } catch (_) {}
+    }
+
+    final entries = await _loadRouteArtifacts(draft);
+    if (entries.remove(normPath) != null) {
+      await _saveRouteArtifacts(draft, entries);
+    }
   }
 
   Future<Map<String, RouteDependency>> loadVersionDependencies(
           String version) async =>
       _loadIndex(_versionDir(version));
 
+  /// Incrementally saves or updates a single route dependency in [version]
+  /// shard without rewriting the entire route catalogue.
+  Future<void> saveRouteDependency(String version, RouteDependency dep) async {
+    final normPath = _normalizePath(dep.path);
+    final directory = _versionDir(version);
+    await _saveRouteDependencyShard(directory, normPath, dep);
+  }
+
   Future<void> saveVersionDependencies(
       String version, Map<String, RouteDependency> deps) async {
     final directory = _versionDir(version);
     await _saveIndex(directory, deps);
+
+    final shardsDep = <String, Map<String, Map<String, Object?>>>{};
+    final shardsRoute = <String, Map<String, Map<String, Object?>>>{};
+
     final entries = await _loadRouteArtifacts(directory);
     for (final dependency in deps.values) {
       final file = _artifactFile(directory, dependency.path);
       if (await file.exists()) {
         final content = await file.readAsString();
         final hash = sha256.convert(utf8.encode(content)).toString();
-        entries[dependency.path] = RouteArtifactEntry(
+        final entry = RouteArtifactEntry(
           path: dependency.path,
           objectHash: hash,
           contentLength: utf8.encode(content).length,
           generatedAt: dependency.generatedAt,
         );
+        entries[dependency.path] = entry;
+
+        final key = _shardKey(dependency.path);
+        shardsRoute.putIfAbsent(key, () => {})[dependency.path] =
+            entry.toJson();
+      } else if (entries.containsKey(dependency.path)) {
+        final existing = entries[dependency.path]!;
+        final key = _shardKey(dependency.path);
+        shardsRoute.putIfAbsent(key, () => {})[dependency.path] =
+            existing.toJson();
       }
+      final key = _shardKey(dependency.path);
+      shardsDep.putIfAbsent(key, () => {})[dependency.path] =
+          dependency.toJson();
     }
     entries.removeWhere((path, _) => !deps.containsKey(path));
     await _saveRouteArtifacts(directory, entries);
+
+    final validPaths = deps.keys.toSet();
+    await _cleanAndWriteShards(
+        _routeShardsDir(directory), shardsRoute, validPaths);
+    await _cleanAndWriteShards(_depShardsDir(directory), shardsDep, validPaths);
 
     final reverse = <String, List<String>>{};
     final routes = <String, List<String>>{};
@@ -702,10 +967,9 @@ class FileHtmlArtifactStore {
   /// Reads HTML and its dependency record from the same active version.
   Future<PublishedHtmlArtifact?> readPublished(String path) async {
     final version = await activeVersion;
-    final dependencies = version == null
-        ? await _loadIndex(root)
-        : await loadVersionDependencies(version);
-    final dependency = dependencies[_normalizePath(path)];
+    final dir = version == null ? root : _versionDir(version);
+    final normPath = _normalizePath(path);
+    final dependency = await _findRouteDependency(dir, normPath);
     if (dependency == null) return null;
     final html = version == null
         ? await _readLegacy(path)
@@ -836,6 +1100,24 @@ class FileHtmlArtifactStore {
       final src = File('${from.path}${Platform.pathSeparator}$name');
       if (await src.exists()) {
         await src.copy('${to.path}${Platform.pathSeparator}$name');
+      }
+    }
+
+    const shardDirs = {'.route_shards', '.dep_shards'};
+    for (final dirName in shardDirs) {
+      final srcDir = Directory('${from.path}${Platform.pathSeparator}$dirName');
+      if (await srcDir.exists()) {
+        final destDir =
+            Directory('${to.path}${Platform.pathSeparator}$dirName');
+        await destDir.create(recursive: true);
+        await for (final entity in srcDir.list(followLinks: false)) {
+          if (entity is File) {
+            final fileName =
+                entity.uri.pathSegments.where((s) => s.isNotEmpty).last;
+            await entity
+                .copy('${destDir.path}${Platform.pathSeparator}$fileName');
+          }
+        }
       }
     }
   }
@@ -1222,10 +1504,14 @@ class HybridRevalidator {
   final int Function(String candidate, String current)? compareSourceVersions;
   final DateTime Function() _clock;
 
-  Future<List<String>> revalidatePath(String path) async {
+  Future<List<String>> revalidatePath(String path, {int? fencingEpoch}) async {
     final normalized = _normalizePath(path);
-    return _revalidateSelection((_, dependencies) async =>
-        dependencies.containsKey(normalized) ? [normalized] : const []);
+    return _revalidateSelection(
+      (_, dependencies) async =>
+          dependencies.containsKey(normalized) ? [normalized] : const [],
+      fencingEpoch: fencingEpoch,
+      routePath: normalized,
+    );
   }
 
   Future<List<String>> revalidateTag(String tag) async {
@@ -1286,8 +1572,10 @@ class HybridRevalidator {
     Future<List<String>> Function(
       String version,
       Map<String, RouteDependency> dependencies,
-    ) select,
-  ) async {
+    ) select, {
+    int? fencingEpoch,
+    String? routePath,
+  }) async {
     final version = await store.beginVersion();
     try {
       final deps = await store.loadVersionDependencies(version);
@@ -1335,7 +1623,8 @@ class HybridRevalidator {
           deps.values.any((dependency) => dependency.canonicalUrl != null)) {
         await store.writeVersionSitemap(version, deps.values);
       }
-      await store.publishVersion(version);
+      await store.publishVersion(version,
+          fencingEpoch: fencingEpoch, routePath: routePath);
       return List.unmodifiable(paths);
     } catch (_) {
       await store.discardVersion(version);
@@ -1405,6 +1694,20 @@ String _normalizePath(String path) {
 }
 
 String _nonce() => '${DateTime.now().microsecondsSinceEpoch}_$pid';
+
+/// Thrown when an artifact publication attempt presents an obsolete or lower fencing epoch.
+class StaleFencingEpochException implements Exception {
+  const StaleFencingEpochException(this.candidateEpoch, this.currentEpoch,
+      {this.routePath});
+
+  final int candidateEpoch;
+  final int currentEpoch;
+  final String? routePath;
+
+  @override
+  String toString() =>
+      'StaleFencingEpochException: Publication with epoch $candidateEpoch was rejected because current active epoch is $currentEpoch${routePath != null ? " for route $routePath" : ""}.';
+}
 
 /// Thrown when a draft was based on a publication that is no longer active.
 class StaleArtifactVersionException implements Exception {

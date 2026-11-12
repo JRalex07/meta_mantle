@@ -1,10 +1,46 @@
 # Changelog
 
-## 0.1.0 - 2026-11-11
+## 0.1.0 - 2026-11-12
 
 Official release of **MetaMantle** (`meta_mantle`), the typed metadata management, native server rendering, and universal SEO infrastructure framework for Flutter Web and Dart applications.
 
 **Integration limits:** The package currently requires Flutter SDK resolution (Dart `>=3.6.0`, Flutter `>=3.27.0`). Core/server source entrypoints avoid Flutter imports, but are not independently installable with the Dart SDK alone. Database adapters require application-supplied callbacks and drivers. Jaspr helpers produce metadata descriptors/HTML strings rather than native Jaspr components. CloudFront invalidation is unsupported and returns failure until a genuine AWS API implementation is added.
+
+### Universal Dart Rendering Architecture & Flutter Web Acceleration
+- **Universal Component Model & Intermediate Representation (IR):**
+  - Portable, platform-agnostic component base classes (`MantleComponent`, `StatelessMantleComponent`, `StatefulMantleComponent`, `MantleState`, `MantleContext`).
+  - Strict IR tree hierarchy (`MantleNode`, `MantleElementNode`, `MantleTextNode`, `MantleFragment`, `MantleKey`, `MantleNodeVisitor`).
+  - Bidirectional universal styling abstractions (`MantleStyle`, `MantleColor`, `MantleEdgeInsets`, `MantleBorder`, `MantleBorderRadius`, `MantleBoxShadow`, `MantleOffset`, `MantleTextStyle`, flex alignments) mapping cleanly between CSS and Flutter properties.
+  - Cross-platform event abstraction (`MantleEvent`, `MantleEventCallback`, `MantleValueCallback`).
+- **Dual-Mode Web Strategy (Modes A & B):**
+  - **Mode A (Flutter Web Compatibility & Acceleration):** Preserves Flutter CanvasKit/Skwasm; includes `FlutterWebAccelerator` and CLI suite (`meta_mantle web analyze`, `meta_mantle web build`, `meta_mantle web report`) to diagnose Wasm readiness, legacy dependencies, bootstrap optimization (`flutter_bootstrap.js`), and emit required multi-threading headers (`Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Embedder-Policy: require-corp`).
+  - **Mode B (MetaMantle Native DOM & Universal Components):** Native semantic DOM compilation via `package:web` and `dart:js_interop` with selective hydration (`MantleDomRenderer` & `MantleHydrator`).
+- **Multi-Target Rendering Backends:**
+  - `MantleServerRenderer`: Compiles `MantleNode` trees into semantic `HtmlNode`s and complete production-ready HTML documents with metadata and XSS protection.
+  - `MantleFlutterRenderer`: Converts `MantleNode` trees into standard Flutter `Widget`s (`ElevatedButton`, `TextFormField`, `Checkbox`, `Row`, `Column`, `Container`, `Image`, `InkWell`, `Text`).
+  - `MantleDomRenderer` & `MantleHydrator`: Directly creates and mounts browser DOM elements with non-destructive hydration.
+- **Cross-Platform Routing & Single Entrypoint:**
+  - `MantleApp`, `MantleRoute`, `MantleRouter`, `MantleRouteMatch`, `MantleNavigationContext` supporting parameterized segments (`:id`), query parameters, and not-found fallbacks.
+  - Unified runtime entrypoint `runMantleApp(app)` with platform-adaptive branching.
+- **Progressive Component Catalogue:**
+  - Layout: `MantleContainer`, `MantleRow`, `MantleColumn`, `MantlePadding`, `MantleCenter`, `MantleExpanded`, `MantleSizedBox`, `MantleSpacer`, `MantleWrap`, `MantleGrid`, `MantleStack`.
+  - Text: `MantleText`, `MantleHeading`, `MantleRichText`, `MantleTextSpan`.
+  - Media: `MantleImage`, `MantleIcon`.
+  - Interaction: `MantleButton`, `MantleIconButton`, `MantleLink`, `MantleGestureDetector`.
+  - Forms: `MantleTextField`, `MantleCheckbox`, `MantleSwitch`, `MantleRadio`, `MantleSelect`, `MantleForm`.
+  - Navigation & Semantics: `MantlePage`, `MantleAppBar`, `MantleRouteLink`, `MantleLandmark`, `MantleSemantics`, `MantleLabel`.
+- **End-to-End Sample & Test Suite Expansion:**
+  - Added runnable e-commerce catalog sample in `example/bin/universal_store_example.dart`.
+  - Expanded automated test coverage from 213 to **259 passing tests** (100% pass rate).
+  - Strict static analysis: 0 warnings, 0 errors, 100% clean formatting.
+
+### Final ISR Reliability, Persistence, Concurrency & Security Hardening
+- **Transactional Queue Write-Ahead Journaling (WAL):** Implemented `.queue.journal` with atomic compaction checkpoints (`checkpoint()`) into `indexes/snapshot.json`. On process crash, restart, or unindexed files on disk, `queue.recover()` reconciles jobs, discards corrupted trailing bytes, and restores queue state.
+- **Worker Lease Renewal & Heartbeat:** Added `renewLease()` on `RegenerationQueue` and a managed periodic heartbeat timer in `RegenerationWorker` (`heartbeatInterval`), detecting lease theft and reporting `RegenerationWorkerResult.leaseLost`.
+- **Publication Fencing Epochs:** Added monotonic fencing epoch validation to `FileHtmlArtifactStore.publishVersion(version, {fencingEpoch, routePath})`, rejecting stale workers with `StaleFencingEpochException` and preserving newer publications.
+- **Sharded Route & Dependency Indexing:** Partitioned route-to-artifact mapping and route dependencies across 256 shards under `.route_shards/` and `.dep_shards/`, bounding reads and writes to O(1) shard files. Incremental route updates (`saveRouteDependency`) touch only the targeted shard.
+- **DNS Rebinding & Security Hardening:** Verified stateful DNS resolver protection with socket IP pinning in `SsrfGuard.createPinnedClient()`, blocking IPv4-mapped IPv6 loopbacks/metadata (`::ffff:127.0.0.1`, `::ffff:169.254.169.254`), validating redirect targets, and rejecting invalid protocols/userinfo.
+- **Comprehensive Automated Test Coverage:** Expanded test suite from 195 to **213 passing tests** across 27 test suites with 100% pass rate.
 
 ### Incremental Static Regeneration (ISR) Production Hardening & Scalability
 - **Content-Addressed Immutable Artifact Storage:** Completely redesigned `FileHtmlArtifactStore` to avoid full-directory copies during version publication. Rendered documents are stored as immutable SHA-256 content-addressed objects (`.objects/{hash}.html`) linked through versioned route manifests (`.route_artifacts.json`). `beginVersion()` copies zero HTML files and shares unchanged objects across iterations.

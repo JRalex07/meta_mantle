@@ -13,7 +13,7 @@ Every gate must be evaluated and verified against live execution evidence before
 | **1. Formatting** | `dart format --output=none --set-exit-if-changed .` | 0 files modified | :white_check_mark: PASS |
 | **2. Static Analysis (Root)** | `flutter analyze` | 0 issues | :white_check_mark: PASS |
 | **3. Static Analysis (Example)** | `flutter analyze example` | 0 issues | :white_check_mark: PASS |
-| **4. Unit & Integration Tests** | `flutter test --concurrency=1` | All tests pass | :white_check_mark: PASS (195/195, 2026-11-12) |
+| **4. Unit & Integration Tests** | `flutter test --concurrency=1` | All tests pass | :white_check_mark: PASS (259/259, 2026-11-12) |
 | **5. Package Dry-Run** | `dart pub publish --dry-run` | 0 errors, 0 warnings | WARN: 1 working-tree warning; no package published |
 | **6. Flutter Web JS Build** | `flutter build web --release` in `example/` | Clean build in `build/web` | :white_check_mark: PASS |
 | **7. Flutter Web Wasm Build** | `flutter build web --release --wasm` in `example/` | `main.dart.wasm` emitted | :white_check_mark: PASS |
@@ -28,6 +28,8 @@ Every gate must be evaluated and verified against live execution evidence before
 ### A. Architectural Isolation
 - [x] `lib/meta_mantle_core.dart` imports zero `package:flutter`, zero `dart:io`, and zero `package:web`.
 - [x] `lib/meta_mantle_server.dart` imports zero `package:flutter` and zero `package:web`.
+- [x] `lib/meta_mantle_universal.dart` provides clean multi-target rendering across browser DOM, server HTML, and Flutter widgets.
+- [x] `MantleDomRenderer` uses `package:web` and `dart:js_interop` with conditional export (`dom_renderer_stub.dart`) for platform safety.
 - [x] `lib/meta_mantle.dart` uses conditional imports for non-web platforms (`src/runtime/web_dom_stub.dart`).
 - [x] Zero deprecated `dart:html` imports across the codebase.
 

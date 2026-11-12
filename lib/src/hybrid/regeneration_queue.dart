@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -22,6 +23,7 @@ class RegenerationJob {
     this.leaseUntil,
     this.leaseToken,
     this.errorCode,
+    this.fencingEpoch,
   });
 
   final String id;
@@ -45,6 +47,9 @@ class RegenerationJob {
   /// Sanitized identifier only; never store exception text or source data here.
   final String? errorCode;
 
+  /// Monotonic fence epoch indicating the ownership revision of this leased job.
+  final int? fencingEpoch;
+
   RegenerationJob copyWith({
     RegenerationJobStatus? status,
     int? attempts,
@@ -52,6 +57,7 @@ class RegenerationJob {
     DateTime? leaseUntil,
     String? leaseToken,
     String? errorCode,
+    int? fencingEpoch,
     bool clearLease = false,
     bool clearError = false,
   }) =>
@@ -72,6 +78,7 @@ class RegenerationJob {
         leaseUntil: clearLease ? null : leaseUntil ?? this.leaseUntil,
         leaseToken: clearLease ? null : leaseToken ?? this.leaseToken,
         errorCode: clearError ? null : errorCode ?? this.errorCode,
+        fencingEpoch: clearLease ? null : fencingEpoch ?? this.fencingEpoch,
       );
 
   Map<String, Object?> toJson() => {
@@ -91,6 +98,7 @@ class RegenerationJob {
         'leaseUntil': leaseUntil?.toUtc().toIso8601String(),
         'leaseToken': leaseToken,
         'errorCode': errorCode,
+        'fencingEpoch': fencingEpoch,
       };
 
   factory RegenerationJob.fromJson(Map<String, Object?> json) =>
@@ -113,7 +121,39 @@ class RegenerationJob {
             : DateTime.parse(json['leaseUntil']! as String),
         leaseToken: json['leaseToken'] as String?,
         errorCode: json['errorCode'] as String?,
+        fencingEpoch: json['fencingEpoch'] as int?,
       );
+}
+
+/// Diagnostic report emitted when recovering persistent queue state after restart or crash.
+class QueueRecoveryReport {
+  const QueueRecoveryReport({
+    required this.journalEntriesReplayed,
+    required this.recoveredJobs,
+    required this.corruptedEntriesDiscarded,
+    required this.rebuiltFromDisk,
+    required this.activePendingCount,
+    required this.activeProcessingCount,
+    required this.idempotencyCount,
+  });
+
+  final int journalEntriesReplayed;
+  final int recoveredJobs;
+  final int corruptedEntriesDiscarded;
+  final bool rebuiltFromDisk;
+  final int activePendingCount;
+  final int activeProcessingCount;
+  final int idempotencyCount;
+
+  Map<String, Object?> toJson() => {
+        'journalEntriesReplayed': journalEntriesReplayed,
+        'recoveredJobs': recoveredJobs,
+        'corruptedEntriesDiscarded': corruptedEntriesDiscarded,
+        'rebuiltFromDisk': rebuiltFromDisk,
+        'activePendingCount': activePendingCount,
+        'activeProcessingCount': activeProcessingCount,
+        'idempotencyCount': idempotencyCount,
+      };
 }
 
 /// Declares the operational capabilities of a regeneration queue implementation.
@@ -125,6 +165,8 @@ class QueueCapabilities {
     required this.supportsIdempotencyIndex,
     required this.supportsLeaseRenewal,
     required this.supportsScheduledRetries,
+    this.supportsCrashRecovery = true,
+    this.supportsPersistentJournal = true,
   });
 
   final bool isDistributed;
@@ -133,6 +175,8 @@ class QueueCapabilities {
   final bool supportsIdempotencyIndex;
   final bool supportsLeaseRenewal;
   final bool supportsScheduledRetries;
+  final bool supportsCrashRecovery;
+  final bool supportsPersistentJournal;
 
   Map<String, bool> toMap() => {
         'isDistributed': isDistributed,
@@ -141,6 +185,8 @@ class QueueCapabilities {
         'supportsIdempotencyIndex': supportsIdempotencyIndex,
         'supportsLeaseRenewal': supportsLeaseRenewal,
         'supportsScheduledRetries': supportsScheduledRetries,
+        'supportsCrashRecovery': supportsCrashRecovery,
+        'supportsPersistentJournal': supportsPersistentJournal,
       };
 }
 
@@ -221,6 +267,14 @@ abstract interface class RegenerationQueue {
     Duration lease = const Duration(minutes: 2),
   });
 
+  /// Extends the lease duration of an actively processing job owned by [leaseToken].
+  Future<RegenerationJob> renewLease(
+    String id, {
+    required String leaseToken,
+    Duration extension = const Duration(minutes: 2),
+    DateTime? now,
+  });
+
   Future<RegenerationJob> complete(String id, {required String leaseToken});
 
   Future<RegenerationJob> fail(
@@ -239,6 +293,12 @@ abstract interface class RegenerationQueue {
   Future<int> cleanupCompleted({Duration maxAge = const Duration(days: 7)});
 
   Future<QueueMetrics> metrics();
+
+  /// Validates journal and index consistency, repairing any crash-interrupted writes.
+  Future<QueueRecoveryReport> recover();
+
+  /// Forces an atomic compaction checkpoint of the write-ahead journal to a snapshot.
+  Future<void> checkpoint();
 }
 
 /// Persistent single-host filesystem queue with an O(1) persistent idempotency
@@ -266,18 +326,27 @@ class FileRegenerationQueue implements RegenerationQueue {
         supportsIdempotencyIndex: true,
         supportsLeaseRenewal: true,
         supportsScheduledRetries: true,
+        supportsCrashRecovery: true,
+        supportsPersistentJournal: true,
       );
 
   Directory get _jobsDir =>
       Directory('${directory.path}${Platform.pathSeparator}jobs');
   Directory get _indexesDir =>
       Directory('${directory.path}${Platform.pathSeparator}indexes');
+  File get _journalFile =>
+      File('${directory.path}${Platform.pathSeparator}.queue.journal');
+  File get _snapshotFile =>
+      File('${_indexesDir.path}${Platform.pathSeparator}snapshot.json');
   File get _idempotencyFile =>
       File('${_indexesDir.path}${Platform.pathSeparator}idempotency.json');
   File get _pendingFile =>
       File('${_indexesDir.path}${Platform.pathSeparator}pending.json');
   File get _processingFile =>
       File('${_indexesDir.path}${Platform.pathSeparator}processing.json');
+
+  _QueueState? _state;
+  int _journalOffset = 0;
 
   @override
   Future<RegenerationJob> enqueue({
@@ -305,9 +374,9 @@ class FileRegenerationQueue implements RegenerationQueue {
           throw ArgumentError('maxAttempts must be between 1 and 20.');
         }
 
-        final indexes = await _loadIndexes();
+        final state = await _syncState();
         final composite = '$siteId|$tenantId|$idempotencyKey';
-        final existingId = indexes.idempotency[composite];
+        final existingId = state.idempotency[composite];
         if (existingId != null) {
           final existing = await _tryRead(existingId);
           if (existing != null &&
@@ -335,9 +404,21 @@ class FileRegenerationQueue implements RegenerationQueue {
         );
 
         await _save(job);
-        indexes.idempotency[composite] = id;
-        indexes.pending.add(id);
-        await _saveIndexes(indexes);
+        state.idempotency[composite] = id;
+        state.pending.add(id);
+
+        await _appendJournal({
+          'seq': ++state.lastSeq,
+          'op': 'enqueue',
+          'id': id,
+          'composite': composite,
+          'time': created.toIso8601String(),
+        });
+
+        if (state.lastSeq % 1000 == 0) {
+          await _checkpointInternal();
+        }
+
         return job;
       });
 
@@ -348,10 +429,11 @@ class FileRegenerationQueue implements RegenerationQueue {
   }) async =>
       _locked(() async {
         if (requests.isEmpty) return const [];
-        final indexes = await _loadIndexes();
+        final state = await _syncState();
         final createdTime = (now ?? DateTime.now()).toUtc();
         final results = <RegenerationJob>[];
         final jobsToWrite = <RegenerationJob>[];
+        final journalBatchEntries = <Map<String, Object?>>[];
 
         for (final req in requests) {
           _validateId(req.siteId, 'siteId');
@@ -371,7 +453,7 @@ class FileRegenerationQueue implements RegenerationQueue {
 
           final composite =
               '${req.siteId}|${req.tenantId}|${req.idempotencyKey}';
-          final existingId = indexes.idempotency[composite];
+          final existingId = state.idempotency[composite];
           if (existingId != null) {
             final existing = await _tryRead(existingId);
             if (existing != null &&
@@ -400,9 +482,13 @@ class FileRegenerationQueue implements RegenerationQueue {
           );
 
           jobsToWrite.add(job);
-          indexes.idempotency[composite] = id;
-          indexes.pending.add(id);
+          state.idempotency[composite] = id;
+          state.pending.add(id);
           results.add(job);
+          journalBatchEntries.add({
+            'id': id,
+            'composite': composite,
+          });
         }
 
         // Write new job files concurrently in bounded chunks
@@ -411,7 +497,18 @@ class FileRegenerationQueue implements RegenerationQueue {
           await Future.wait(chunk.map(_save));
         }
 
-        await _saveIndexes(indexes);
+        if (journalBatchEntries.isNotEmpty) {
+          await _appendJournal({
+            'seq': ++state.lastSeq,
+            'op': 'enqueue_batch',
+            'jobs': journalBatchEntries,
+          });
+        }
+
+        if (state.lastSeq % 1000 == 0) {
+          await _checkpointInternal();
+        }
+
         return results;
       });
 
@@ -425,11 +522,11 @@ class FileRegenerationQueue implements RegenerationQueue {
           throw ArgumentError('lease must be positive.');
         }
         final time = (now ?? DateTime.now()).toUtc();
-        final indexes = await _loadIndexes();
+        final state = await _syncState();
 
         // 1. Recover expired leases from processing jobs
         final expiredJobIds = <String>[];
-        for (final entry in indexes.processing.entries) {
+        for (final entry in state.processing.entries) {
           final leaseUntil = entry.value;
           if (!leaseUntil.isAfter(time)) {
             expiredJobIds.add(entry.key);
@@ -437,7 +534,7 @@ class FileRegenerationQueue implements RegenerationQueue {
         }
 
         for (final id in expiredJobIds) {
-          indexes.processing.remove(id);
+          state.processing.remove(id);
           final job = await _tryRead(id);
           if (job != null && job.status == RegenerationJobStatus.processing) {
             final recovered = job.attempts >= job.maxAttempts
@@ -454,20 +551,26 @@ class FileRegenerationQueue implements RegenerationQueue {
                   );
             await _save(recovered);
             if (recovered.status == RegenerationJobStatus.queued) {
-              indexes.pending.add(id);
+              state.pending.add(id);
             }
+            await _appendJournal({
+              'seq': ++state.lastSeq,
+              'op': 'fail',
+              'id': id,
+              'status': recovered.status.name,
+              'token': job.leaseToken,
+            });
           }
         }
 
         // 2. Enforce concurrency limits
-        if (indexes.processing.length >= maxProcessingJobs) {
-          await _saveIndexes(indexes);
+        if (state.processing.length >= maxProcessingJobs) {
           return null;
         }
 
         // 3. Track active processing paths for mutual exclusion
         final workingPaths = <String>{};
-        for (final id in indexes.processing.keys) {
+        for (final id in state.processing.keys) {
           final job = await _tryRead(id);
           if (job != null &&
               job.status == RegenerationJobStatus.processing &&
@@ -481,7 +584,7 @@ class FileRegenerationQueue implements RegenerationQueue {
         String? claimedId;
         RegenerationJob? readyJob;
 
-        for (final id in indexes.pending) {
+        for (final id in state.pending) {
           final job = await _tryRead(id);
           if (job == null || job.status != RegenerationJobStatus.queued) {
             continue;
@@ -496,25 +599,73 @@ class FileRegenerationQueue implements RegenerationQueue {
         }
 
         if (claimedId == null || readyJob == null) {
-          await _saveIndexes(indexes);
           return null;
         }
 
+        state.currentEpoch++;
         final leaseUntil = time.add(lease);
-        final token = _queueNonce();
+        final token =
+            'epoch_${state.currentEpoch}_${readyJob.id}_${_queueNonce()}';
         final claimedJob = readyJob.copyWith(
           status: RegenerationJobStatus.processing,
           attempts: readyJob.attempts + 1,
           leaseUntil: leaseUntil,
           leaseToken: token,
+          fencingEpoch: state.currentEpoch,
           clearLease: false,
         );
 
         await _save(claimedJob);
-        indexes.pending.remove(claimedId);
-        indexes.processing[claimedId] = leaseUntil;
-        await _saveIndexes(indexes);
+        state.pending.remove(claimedId);
+        state.processing[claimedId] = leaseUntil;
+
+        await _appendJournal({
+          'seq': ++state.lastSeq,
+          'op': 'claim',
+          'id': claimedId,
+          'leaseUntil': leaseUntil.toIso8601String(),
+          'token': token,
+          'epoch': state.currentEpoch,
+        });
+
+        if (state.lastSeq % 1000 == 0) {
+          await _checkpointInternal();
+        }
+
         return claimedJob;
+      });
+
+  @override
+  Future<RegenerationJob> renewLease(
+    String id, {
+    required String leaseToken,
+    Duration extension = const Duration(minutes: 2),
+    DateTime? now,
+  }) =>
+      _locked(() async {
+        final job = await _read(id);
+        if (job.status != RegenerationJobStatus.processing) {
+          throw StateError('Only processing jobs can renew their lease.');
+        }
+        _checkLeaseToken(job, leaseToken);
+        final time = (now ?? DateTime.now()).toUtc();
+        final newLeaseUntil = time.add(extension);
+        final renewed = job.copyWith(
+          leaseUntil: newLeaseUntil,
+        );
+        await _save(renewed);
+
+        final state = await _syncState();
+        state.processing[id] = newLeaseUntil;
+        await _appendJournal({
+          'seq': ++state.lastSeq,
+          'op': 'renew',
+          'id': id,
+          'leaseUntil': newLeaseUntil.toIso8601String(),
+          'token': leaseToken,
+        });
+
+        return renewed;
       });
 
   @override
@@ -532,10 +683,17 @@ class FileRegenerationQueue implements RegenerationQueue {
         );
         await _save(completed);
 
-        final indexes = await _loadIndexes();
-        indexes.processing.remove(id);
-        indexes.pending.remove(id);
-        await _saveIndexes(indexes);
+        final state = await _syncState();
+        state.processing.remove(id);
+        state.pending.remove(id);
+
+        await _appendJournal({
+          'seq': ++state.lastSeq,
+          'op': 'complete',
+          'id': id,
+          'token': leaseToken,
+        });
+
         return completed;
       });
 
@@ -570,14 +728,24 @@ class FileRegenerationQueue implements RegenerationQueue {
         );
         await _save(updated);
 
-        final indexes = await _loadIndexes();
-        indexes.processing.remove(id);
+        final state = await _syncState();
+        state.processing.remove(id);
         if (!exhausted) {
-          indexes.pending.add(id);
+          state.pending.add(id);
         } else {
-          indexes.pending.remove(id);
+          state.pending.remove(id);
         }
-        await _saveIndexes(indexes);
+
+        await _appendJournal({
+          'seq': ++state.lastSeq,
+          'op': 'fail',
+          'id': id,
+          'token': leaseToken,
+          'status': updated.status.name,
+          'availableAt': updated.availableAt.toIso8601String(),
+          'errorCode': errorCode,
+        });
+
         return updated;
       });
 
@@ -590,9 +758,18 @@ class FileRegenerationQueue implements RegenerationQueue {
         final cancelled = job.copyWith(status: RegenerationJobStatus.cancelled);
         await _save(cancelled);
 
-        final indexes = await _loadIndexes();
-        indexes.pending.remove(id);
-        await _saveIndexes(indexes);
+        final state = await _syncState();
+        state.pending.remove(id);
+        final composite = '${job.siteId}|${job.tenantId}|${job.idempotencyKey}';
+        state.idempotency.remove(composite);
+
+        await _appendJournal({
+          'seq': ++state.lastSeq,
+          'op': 'cancel',
+          'id': id,
+          'composite': composite,
+        });
+
         return cancelled;
       });
 
@@ -609,8 +786,9 @@ class FileRegenerationQueue implements RegenerationQueue {
       _locked(() async {
         final now = DateTime.now().toUtc();
         final all = await _allJobs();
-        final indexes = await _loadIndexes();
+        final state = await _syncState();
         var deletedCount = 0;
+        final deletedIds = <String>[];
 
         for (final job in all) {
           if (job.status == RegenerationJobStatus.completed ||
@@ -618,17 +796,23 @@ class FileRegenerationQueue implements RegenerationQueue {
             if (now.difference(job.createdAt) > maxAge) {
               final file = _jobFile(job.id);
               if (await file.exists()) await file.delete();
-              indexes.idempotency.remove(
+              state.idempotency.remove(
                   '${job.siteId}|${job.tenantId}|${job.idempotencyKey}');
-              indexes.pending.remove(job.id);
-              indexes.processing.remove(job.id);
+              state.pending.remove(job.id);
+              state.processing.remove(job.id);
+              deletedIds.add(job.id);
               deletedCount++;
             }
           }
         }
 
         if (deletedCount > 0) {
-          await _saveIndexes(indexes);
+          await _appendJournal({
+            'seq': ++state.lastSeq,
+            'op': 'cleanup',
+            'deletedIds': deletedIds,
+          });
+          await _checkpointInternal();
         }
         return deletedCount;
       });
@@ -667,16 +851,311 @@ class FileRegenerationQueue implements RegenerationQueue {
         );
       });
 
-  /// Reconstructs corrupted or missing queue indexes from stored job records.
-  Future<void> rebuildIndexes() => _locked(_rebuildIndexesInternal);
+  /// Forces an atomic compaction checkpoint of the write-ahead journal to a snapshot.
+  @override
+  Future<void> checkpoint() => _locked(_checkpointInternal);
 
-  Future<void> _rebuildIndexesInternal() async {
+  Future<void> _checkpointInternal() async {
+    final state = await _syncState();
+    await _saveSnapshot(state);
+    if (await _journalFile.exists()) {
+      await _journalFile.writeAsString('', flush: true);
+    }
+    _journalOffset = 0;
+  }
+
+  /// Recovers persistent queue state by validating journal entries and reconciling stored jobs.
+  @override
+  Future<QueueRecoveryReport> recover() => _locked(() async {
+        var corruptedEntriesDiscarded = 0;
+        var recoveredJobs = 0;
+
+        // 1. Truncate incomplete journal line if present
+        if (await _journalFile.exists()) {
+          final bytes = await _journalFile.readAsBytes();
+          if (bytes.isNotEmpty && bytes.last != 10) {
+            final lastNewline = bytes.lastIndexOf(10);
+            if (lastNewline >= 0) {
+              await _journalFile.writeAsBytes(bytes.sublist(0, lastNewline + 1),
+                  flush: true);
+              corruptedEntriesDiscarded++;
+            } else {
+              await _journalFile.delete();
+              corruptedEntriesDiscarded++;
+            }
+          }
+        }
+
+        // 2. Reload state
+        _state = null;
+        final state = await _syncState();
+
+        // 3. Scan jobs directory for unindexed or uncommitted jobs
+        final diskJobs = await _allJobs();
+        for (final job in diskJobs) {
+          if (job.status == RegenerationJobStatus.queued) {
+            final composite =
+                '${job.siteId}|${job.tenantId}|${job.idempotencyKey}';
+            if (!state.idempotency.containsKey(composite) ||
+                !state.pending.contains(job.id)) {
+              state.idempotency[composite] = job.id;
+              state.pending.add(job.id);
+              recoveredJobs++;
+            }
+          } else if (job.status == RegenerationJobStatus.processing &&
+              job.leaseUntil != null) {
+            if (!state.processing.containsKey(job.id)) {
+              state.processing[job.id] = job.leaseUntil!;
+              recoveredJobs++;
+            }
+          }
+        }
+
+        await _checkpointInternal();
+
+        return QueueRecoveryReport(
+          journalEntriesReplayed: state.lastSeq,
+          recoveredJobs: recoveredJobs,
+          corruptedEntriesDiscarded: corruptedEntriesDiscarded,
+          rebuiltFromDisk: true,
+          activePendingCount: state.pending.length,
+          activeProcessingCount: state.processing.length,
+          idempotencyCount: state.idempotency.length,
+        );
+      });
+
+  /// Reconstructs corrupted or missing queue indexes from stored job records.
+  Future<void> rebuildIndexes() => _locked(() async {
+        final state = await _rebuildStateFromDisk();
+        _state = state;
+        await _checkpointInternal();
+      });
+
+  Future<_QueueState> _syncState() async {
+    await _indexesDir.create(recursive: true);
+    await _jobsDir.create(recursive: true);
+
+    if (_state == null) {
+      _QueueState state;
+      if (await _snapshotFile.exists()) {
+        try {
+          final decoded = jsonDecode(await _snapshotFile.readAsString()) as Map;
+          final idempotencyMap = (decoded['idempotency'] as Map? ?? {})
+              .map((k, v) => MapEntry(k as String, v as String));
+          final pendingSet =
+              Set<String>.from(decoded['pending'] as List? ?? []);
+          final processingMap = (decoded['processing'] as Map? ?? {}).map(
+              (k, v) => MapEntry(k as String, DateTime.parse(v as String)));
+          final epoch = (decoded['epoch'] as int?) ?? 0;
+          final lastSeq = (decoded['lastSeq'] as int?) ?? 0;
+          state = _QueueState(
+            idempotency: idempotencyMap,
+            pending: pendingSet,
+            processing: processingMap,
+            currentEpoch: epoch,
+            lastSeq: lastSeq,
+          );
+        } catch (_) {
+          state = await _rebuildStateFromDisk();
+        }
+      } else if (await _idempotencyFile.exists()) {
+        final legacyIndexes = await _loadLegacyIndexes();
+        state = _QueueState(
+          idempotency: legacyIndexes.idempotency,
+          pending: legacyIndexes.pending.toSet(),
+          processing: legacyIndexes.processing,
+        );
+        await _saveSnapshot(state);
+      } else {
+        state = await _rebuildStateFromDisk();
+      }
+
+      if (await _journalFile.exists()) {
+        await _replayJournal(state, seekOffset: 0);
+      }
+      _state = state;
+      _journalOffset =
+          await _journalFile.exists() ? await _journalFile.length() : 0;
+      return _state!;
+    }
+
+    if (await _journalFile.exists()) {
+      final currentLen = await _journalFile.length();
+      if (currentLen > _journalOffset) {
+        await _replayJournal(_state!, seekOffset: _journalOffset);
+        _journalOffset = currentLen;
+      } else if (currentLen < _journalOffset) {
+        _state = null;
+        return _syncState();
+      }
+    }
+    return _state!;
+  }
+
+  Future<int> _replayJournal(_QueueState state, {int seekOffset = 0}) async {
+    if (!await _journalFile.exists()) return 0;
+    final handle = await _journalFile.open(mode: FileMode.read);
+    var replayedCount = 0;
+    try {
+      if (seekOffset > 0) {
+        await handle.setPosition(seekOffset);
+      }
+      final fileLength = await handle.length();
+      final remainingBytes = fileLength - seekOffset;
+      if (remainingBytes <= 0) return 0;
+      final bytes = await handle.read(remainingBytes);
+      final text = utf8.decode(bytes, allowMalformed: true);
+      final lines = text.split('\n');
+      for (final line in lines) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty) continue;
+        try {
+          final entry = jsonDecode(trimmed) as Map;
+          final seq = entry['seq'] as int? ?? 0;
+          if (seq <= state.lastSeq && seekOffset == 0 && state.lastSeq > 0) {
+            continue;
+          }
+          final op = entry['op'] as String?;
+          switch (op) {
+            case 'enqueue':
+              final id = entry['id'] as String;
+              final composite = entry['composite'] as String;
+              state.idempotency[composite] = id;
+              state.pending.add(id);
+              state.lastSeq = seq;
+              replayedCount++;
+            case 'enqueue_batch':
+              final list = entry['jobs'] as List? ?? [];
+              for (final item in list) {
+                final map = item as Map;
+                state.idempotency[map['composite'] as String] =
+                    map['id'] as String;
+                state.pending.add(map['id'] as String);
+              }
+              state.lastSeq = seq;
+              replayedCount++;
+            case 'claim':
+              final id = entry['id'] as String;
+              final leaseUntil = DateTime.parse(entry['leaseUntil'] as String);
+              final epoch = entry['epoch'] as int? ?? 0;
+              state.pending.remove(id);
+              state.processing[id] = leaseUntil;
+              if (epoch > state.currentEpoch) {
+                state.currentEpoch = epoch;
+              }
+              state.lastSeq = seq;
+              replayedCount++;
+            case 'renew':
+              final id = entry['id'] as String;
+              final leaseUntil = DateTime.parse(entry['leaseUntil'] as String);
+              state.processing[id] = leaseUntil;
+              state.lastSeq = seq;
+              replayedCount++;
+            case 'complete':
+              final id = entry['id'] as String;
+              state.processing.remove(id);
+              state.pending.remove(id);
+              state.lastSeq = seq;
+              replayedCount++;
+            case 'fail':
+              final id = entry['id'] as String;
+              final status = entry['status'] as String?;
+              state.processing.remove(id);
+              if (status == 'queued') {
+                state.pending.add(id);
+              } else {
+                state.pending.remove(id);
+              }
+              state.lastSeq = seq;
+              replayedCount++;
+            case 'cancel':
+              final id = entry['id'] as String;
+              final composite = entry['composite'] as String?;
+              state.processing.remove(id);
+              state.pending.remove(id);
+              if (composite != null) state.idempotency.remove(composite);
+              state.lastSeq = seq;
+              replayedCount++;
+            case 'cleanup':
+              final ids =
+                  (entry['deletedIds'] as List? ?? []).cast<String>().toSet();
+              state.pending.removeAll(ids);
+              state.processing.removeWhere((k, _) => ids.contains(k));
+              state.idempotency.removeWhere((_, v) => ids.contains(v));
+              state.lastSeq = seq;
+              replayedCount++;
+          }
+        } catch (_) {
+          break;
+        }
+      }
+    } finally {
+      await handle.close();
+    }
+    return replayedCount;
+  }
+
+  Future<void> _appendJournal(Map<String, Object?> entry) async {
+    await directory.create(recursive: true);
+    final line = '${jsonEncode(entry)}\n';
+    final handle = await _journalFile.open(mode: FileMode.append);
+    try {
+      await handle.writeString(line);
+      await handle.flush();
+    } finally {
+      await handle.close();
+    }
+    _journalOffset = await _journalFile.length();
+  }
+
+  Future<void> _saveSnapshot(_QueueState state) async {
+    await _indexesDir.create(recursive: true);
+    final data = {
+      'seq': state.lastSeq,
+      'epoch': state.currentEpoch,
+      'idempotency': state.idempotency,
+      'pending': state.pending.toList(),
+      'processing': state.processing
+          .map((k, v) => MapEntry(k, v.toUtc().toIso8601String())),
+    };
+    final jsonStr = jsonEncode(data);
+    final temp = File('${_snapshotFile.path}.${_queueNonce()}.tmp');
+    try {
+      await temp.writeAsString(jsonStr, flush: true);
+      if (await _snapshotFile.exists()) {
+        try {
+          await _snapshotFile.delete();
+        } catch (_) {}
+      }
+      await temp.rename(_snapshotFile.path);
+    } finally {
+      if (await temp.exists()) {
+        try {
+          await temp.delete();
+        } catch (_) {}
+      }
+    }
+
+    // Mirror to legacy index files for compatibility
+    await _writeAtomicJson(_idempotencyFile, state.idempotency);
+    await _writeAtomicJson(_pendingFile, state.pending.toList());
+    await _writeAtomicJson(
+        _processingFile,
+        state.processing
+            .map((k, v) => MapEntry(k, v.toUtc().toIso8601String())));
+  }
+
+  Future<_QueueState> _rebuildStateFromDisk() async {
     final all = await _allJobs();
     final newIdempotency = <String, String>{};
-    final newPending = <String>[];
+    final newPending = <String>{};
     final newProcessing = <String, DateTime>{};
+    var maxEpoch = 0;
 
     for (final job in all) {
+      if (job.fencingEpoch != null && job.fencingEpoch! > maxEpoch) {
+        maxEpoch = job.fencingEpoch!;
+      }
       if (job.status != RegenerationJobStatus.cancelled) {
         newIdempotency['${job.siteId}|${job.tenantId}|${job.idempotencyKey}'] =
             job.id;
@@ -689,64 +1168,54 @@ class FileRegenerationQueue implements RegenerationQueue {
       }
     }
 
-    await _saveIndexes(_QueueIndexData(
+    return _QueueState(
       idempotency: newIdempotency,
       pending: newPending,
       processing: newProcessing,
-    ));
+      currentEpoch: maxEpoch,
+      lastSeq: 0,
+    );
   }
 
-  Future<_QueueIndexData> _loadIndexes() async {
+  Future<_QueueIndexData> _loadLegacyIndexes() async {
     await _indexesDir.create(recursive: true);
-    if (!await _idempotencyFile.exists()) {
-      await _rebuildIndexesInternal();
-    }
-    try {
-      final idempotencyMap = <String, String>{};
-      if (await _idempotencyFile.exists()) {
+    final idempotencyMap = <String, String>{};
+    if (await _idempotencyFile.exists()) {
+      try {
         final decoded =
             jsonDecode(await _idempotencyFile.readAsString()) as Map;
         for (final entry in decoded.entries) {
           idempotencyMap[entry.key as String] = entry.value as String;
         }
-      }
+      } catch (_) {}
+    }
 
-      final pendingList = <String>[];
-      if (await _pendingFile.exists()) {
+    final pendingList = <String>[];
+    if (await _pendingFile.exists()) {
+      try {
         final decoded = jsonDecode(await _pendingFile.readAsString()) as List;
         for (final item in decoded) {
           pendingList.add(item as String);
         }
-      }
+      } catch (_) {}
+    }
 
-      final processingMap = <String, DateTime>{};
-      if (await _processingFile.exists()) {
+    final processingMap = <String, DateTime>{};
+    if (await _processingFile.exists()) {
+      try {
         final decoded = jsonDecode(await _processingFile.readAsString()) as Map;
         for (final entry in decoded.entries) {
           processingMap[entry.key as String] =
               DateTime.parse(entry.value as String);
         }
-      }
-
-      return _QueueIndexData(
-        idempotency: idempotencyMap,
-        pending: pendingList,
-        processing: processingMap,
-      );
-    } catch (_) {
-      await _rebuildIndexesInternal();
-      return _loadIndexes();
+      } catch (_) {}
     }
-  }
 
-  Future<void> _saveIndexes(_QueueIndexData indexes) async {
-    await _indexesDir.create(recursive: true);
-    await _writeAtomicJson(_idempotencyFile, indexes.idempotency);
-    await _writeAtomicJson(_pendingFile, indexes.pending);
-    await _writeAtomicJson(
-        _processingFile,
-        indexes.processing
-            .map((k, v) => MapEntry(k, v.toUtc().toIso8601String())));
+    return _QueueIndexData(
+      idempotency: idempotencyMap,
+      pending: pendingList,
+      processing: processingMap,
+    );
   }
 
   Future<void> _writeAtomicJson(File file, Object value) async {
@@ -762,13 +1231,28 @@ class FileRegenerationQueue implements RegenerationQueue {
   Future<T> _locked<T>(Future<T> Function() action) async {
     await directory.create(recursive: true);
     final file = File('${directory.path}${Platform.pathSeparator}.queue.lock');
-    final handle = await file.open(mode: FileMode.append);
-    await handle.lock(FileLock.exclusive);
+    RandomAccessFile? handle;
+    for (var attempt = 0; attempt < 25; attempt++) {
+      try {
+        handle = await file.open(mode: FileMode.append);
+        await handle.lock(FileLock.blockingExclusive);
+        break;
+      } on PathAccessException {
+        await handle?.close();
+        handle = null;
+        if (attempt == 24) rethrow;
+        await Future.delayed(const Duration(milliseconds: 20));
+      }
+    }
     try {
       return await action();
     } finally {
-      await handle.unlock();
-      await handle.close();
+      if (handle != null) {
+        try {
+          await handle.unlock();
+        } catch (_) {}
+        await handle.close();
+      }
     }
   }
 
@@ -795,7 +1279,6 @@ class FileRegenerationQueue implements RegenerationQueue {
       }
     }
 
-    // Include any legacy jobs in the root directory
     if (await directory.exists()) {
       await for (final entity in directory.list(followLinks: false)) {
         if (entity is! File || !entity.path.endsWith('.job.json')) continue;
@@ -849,6 +1332,22 @@ class FileRegenerationQueue implements RegenerationQueue {
   }
 }
 
+class _QueueState {
+  _QueueState({
+    required this.idempotency,
+    required this.pending,
+    required this.processing,
+    this.currentEpoch = 0,
+    this.lastSeq = 0,
+  });
+
+  final Map<String, String> idempotency;
+  final Set<String> pending;
+  final Map<String, DateTime> processing;
+  int currentEpoch;
+  int lastSeq;
+}
+
 class _QueueIndexData {
   _QueueIndexData({
     required this.idempotency,
@@ -893,32 +1392,75 @@ class RegenerationWorker {
     required this.queue,
     required this.handle,
     this.errorCode = 'regeneration_failed',
-  });
+    this.heartbeatInterval,
+    this.leaseDuration = const Duration(minutes: 2),
+    DateTime Function()? clock,
+  }) : _clock = clock;
 
   final RegenerationQueue queue;
   final Future<void> Function(RegenerationJob job) handle;
   final String errorCode;
+  final Duration? heartbeatInterval;
+  final Duration leaseDuration;
+  final DateTime Function()? _clock;
 
   Future<RegenerationWorkerResult> processNext({DateTime? now}) async {
-    final job = await queue.claimNext(now: now);
+    final effectiveNow = now ?? _clock?.call();
+    final job = await queue.claimNext(now: effectiveNow, lease: leaseDuration);
     if (job == null) return RegenerationWorkerResult.idle;
     final token = job.leaseToken;
     if (token == null) return RegenerationWorkerResult.leaseLost;
+
+    Timer? heartbeatTimer;
+    var leaseLost = false;
+
+    final interval = heartbeatInterval ??
+        (leaseDuration > const Duration(seconds: 4)
+            ? Duration(milliseconds: leaseDuration.inMilliseconds ~/ 2)
+            : null);
+
+    if (interval != null) {
+      heartbeatTimer = Timer.periodic(interval, (_) async {
+        try {
+          await queue.renewLease(
+            job.id,
+            leaseToken: token,
+            extension: leaseDuration,
+            now: _clock?.call(),
+          );
+        } on Object {
+          leaseLost = true;
+          heartbeatTimer?.cancel();
+        }
+      });
+    }
+
     try {
       await handle(job);
+      if (leaseLost) {
+        return RegenerationWorkerResult.leaseLost;
+      }
       await queue.complete(job.id, leaseToken: token);
       return RegenerationWorkerResult.completed;
     } on Object {
+      if (leaseLost) {
+        return RegenerationWorkerResult.leaseLost;
+      }
       try {
-        final failed = await queue.fail(job.id,
-            leaseToken: token, errorCode: errorCode, now: now);
+        final failed = await queue.fail(
+          job.id,
+          leaseToken: token,
+          errorCode: errorCode,
+          now: _clock?.call() ?? now,
+        );
         return failed.status == RegenerationJobStatus.failed
             ? RegenerationWorkerResult.failed
             : RegenerationWorkerResult.retryScheduled;
       } on StateError {
-        // A later claim replaced this worker's token; it cannot publish status.
         return RegenerationWorkerResult.leaseLost;
       }
+    } finally {
+      heartbeatTimer?.cancel();
     }
   }
 }

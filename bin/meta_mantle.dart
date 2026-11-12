@@ -17,6 +17,7 @@ Future<void> main(List<String> arguments) async {
     ..addCommand('preview')
     ..addCommand('report')
     ..addCommand('regression')
+    ..addCommand('web')
     ..addFlag('help', abbr: 'h', negatable: false);
 
   parser.commands['build']!
@@ -76,6 +77,30 @@ Future<void> main(List<String> arguments) async {
         mandatory: true, help: 'Path to current crawl/audit JSON file.')
     ..addFlag('json',
         defaultsTo: false, help: 'Output regression report as JSON.');
+
+  final webParser = parser.commands['web']!
+    ..addCommand('analyze')
+    ..addCommand('build')
+    ..addCommand('report')
+    ..addFlag('help', abbr: 'h', negatable: false);
+
+  webParser.commands['analyze']!
+    ..addFlag('help', abbr: 'h', negatable: false)
+    ..addOption('project-dir', defaultsTo: '.')
+    ..addOption('build-dir', defaultsTo: 'build/web')
+    ..addFlag('json', defaultsTo: false);
+
+  webParser.commands['build']!
+    ..addFlag('help', abbr: 'h', negatable: false)
+    ..addOption('project-dir', defaultsTo: '.')
+    ..addFlag('wasm', defaultsTo: true)
+    ..addFlag('tree-shake-icons', defaultsTo: true);
+
+  webParser.commands['report']!
+    ..addFlag('help', abbr: 'h', negatable: false)
+    ..addOption('project-dir', defaultsTo: '.')
+    ..addOption('build-dir', defaultsTo: 'build/web')
+    ..addFlag('json', defaultsTo: false);
 
   try {
     final result = parser.parse(arguments);
@@ -172,63 +197,73 @@ Future<void> main(List<String> arguments) async {
       return;
     }
 
-    // 2. regression command
-    if (command.name == 'regression') {
-      final baselinePath = command['baseline'] as String;
-      final currentPath = command['current'] as String;
-      final asJson = command['json'] as bool;
+    // 3. web command
+    if (command.name == 'web') {
+      final sub = command.command;
+      if (sub == null || sub.name == 'analyze' || sub.name == 'report') {
+        final projectPath = sub?['project-dir'] as String? ?? '.';
+        final buildPath = sub?['build-dir'] as String? ?? 'build/web';
+        final asJson = sub?['json'] as bool? ?? false;
 
-      final baselineFile = File(baselinePath);
-      final currentFile = File(currentPath);
+        final accelerator = const FlutterWebAccelerator();
+        final report = await accelerator.analyze(
+          projectDir: Directory(projectPath),
+          webBuildDir: Directory(buildPath),
+        );
 
-      if (!await baselineFile.exists() || !await currentFile.exists()) {
-        stderr.writeln(
-            'Error: Either baseline ($baselinePath) or current ($currentPath) snapshot file does not exist.');
-        exitCode = 1;
+        if (asJson) {
+          stdout.writeln(
+              const JsonEncoder.withIndent('  ').convert(report.toMap()));
+        } else {
+          stdout.writeln(
+              '=== Flutter Web Acceleration & Optimization Report ===\n');
+          stdout.writeln(
+              'Project Type:      ${report.isFlutterProject ? "Flutter App" : "Standard Dart/Web"}');
+          stdout.writeln(
+              'Wasm Supported:    ${report.supportsWasm ? "Yes" : "No"}');
+          stdout.writeln(
+              'Modern Bootstrap:  ${report.usesModernBootstrap ? "Yes (flutter_bootstrap.js)" : "No (legacy flutter.js)"}');
+          stdout.writeln('Findings:          ${report.findings.length}\n');
+
+          for (final f in report.findings) {
+            stdout.writeln(
+                '[${f.severity.toUpperCase()}] [${f.category}] ${f.title}');
+            stdout.writeln('  ${f.description}');
+            if (f.suggestedFix != null) {
+              stdout.writeln('  Suggested Fix: ${f.suggestedFix}');
+            }
+            stdout.writeln('');
+          }
+
+          if (report.bundleMetrics.isNotEmpty) {
+            stdout.writeln('Bundle Metrics:');
+            report.bundleMetrics.forEach((k, v) {
+              final kb = (v / 1024).toStringAsFixed(1);
+              stdout.writeln('  $k: $kb KB');
+            });
+            stdout.writeln('');
+          }
+        }
         return;
       }
 
-      final baselineData =
-          json.decode(await baselineFile.readAsString()) as List;
-      final currentData = json.decode(await currentFile.readAsString()) as List;
-
-      final baselineSnapshots = {
-        for (final item in baselineData)
-          (item as Map<String, dynamic>)['url'] as String:
-              PageSeoSnapshot.fromJson(item),
-      };
-      final currentSnapshots = {
-        for (final item in currentData)
-          (item as Map<String, dynamic>)['url'] as String:
-              PageSeoSnapshot.fromJson(item),
-      };
-
-      const tester = SeoRegressionTester();
-      final findings = tester.compareSnapshots(
-        baseline: baselineSnapshots,
-        current: currentSnapshots,
-      );
-
-      if (asJson) {
-        stdout.writeln(const JsonEncoder.withIndent('  ')
-            .convert(findings.map((f) => f.toJson()).toList()));
-      } else {
-        stdout.writeln('=== MetaMantle SEO Regression Report ===\n');
-        if (findings.isNotEmpty) {
-          stderr.writeln(
-              'FAILED: ${findings.length} SEO regression(s) detected!\n');
-          for (final f in findings) {
-            stderr.writeln(
-                '  - [${f.severity}] ${f.url} (${f.field}): ${f.message}');
-          }
-        } else {
-          stdout.writeln(
-              'PASSED: Zero regressions detected across ${currentSnapshots.length} routes.');
-        }
+      if (sub.name == 'build') {
+        final wasm = sub['wasm'] as bool? ?? true;
+        final treeShake = sub['tree-shake-icons'] as bool? ?? true;
+        final accelerator = const FlutterWebAccelerator();
+        final cmd = accelerator.suggestOptimizedBuildCommand(
+          wasm: wasm,
+          stripUnusedFonts: treeShake,
+        );
+        stdout.writeln('=== Recommended Flutter Web Build Command ===\n');
+        stdout.writeln('  $cmd\n');
+        stdout.writeln(
+            'Recommended Deployment Response Headers (for Skwasm/Wasm):');
+        accelerator.getRecommendedServerHeaders().forEach((k, v) {
+          stdout.writeln('  $k: $v');
+        });
+        return;
       }
-
-      if (findings.any((f) => f.severity == 'CRITICAL')) exitCode = 1;
-      return;
     }
 
     // Config file resolution
@@ -496,6 +531,7 @@ Commands:
   preview      Preview raw crawler metadata for a given route.
   report       Generate structured SEO audit report.
   regression   Compare baseline vs current snapshots for SEO regressions.
+  web          Accelerate and analyze Flutter Web (Wasm readiness, bootstrap, bundles).
 
 ${parser.usage}
 """;
