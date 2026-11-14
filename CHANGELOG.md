@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 - 2026-11-14
+
+### Master Production Stabilization, Feature Completion & Framework Expansion
+- **Expanded CLI Toolchain (14 Command Groups):** Added complete command suites for `html` (`validate`, `inspect`), `routes` (`list`, `validate`, `generate`), and `cache` (`inspect`, `clear`). Upgraded `preview` to an embedded static Shelf HTTP server with SPA fallback and MIME resolution, and `report` to an on-disk HTML audit scanner.
+- **Image SEO & Core Web Vitals Subsystem:** Created `lib/src/seo/image_seo.dart` with `ImageSeoAnalyzer`, `ImageFinding`, `ImageSeoReport` (validating alt text coverage, explicit dimensions to prevent CLS, below-the-fold lazy loading, and modern WebP/AVIF formats), and Google Image XML sitemap generator (`generateImageSitemap`).
+- **Official GoRouter Observer (`MetaMantleGoRouterObserver`):** Created `lib/src/integrations/meta_mantle_go_router_observer.dart` synchronizing route navigation, URLs, and canonical tags, providing dynamic metadata callbacks and automatically signaling `MetaMantle.markReady()` on the first rendered frame.
+- **DOM Event Listener Lifecycle & Memory Leak Fix:** Added `Expando<Map<String, JSFunction>> _elementListeners` in `MantleDomRenderer` ensuring unmounted or updated nodes properly detach active JS event listeners without memory leakage or duplicate event firing.
+- **State Registry Disposal & Mount Safety:** Hardened `MantleStateRegistry.endBuildPass()` to compute unvisited component states and invoke `state.dispose()` on unmounted nodes. Added `if (!_mounted) return;` guard to `MantleState.setState()` for asynchronous safety.
+- **Security & Path Traversal Prevention:** Hardened `FlutterWebBuildEngine` and `StaticHeadBuilder` with strict path validation forbidding `..` and backslash directory traversal sequences.
+- **Technical Documentation Suite:** Created and updated `docs/QUICK_START.md`, `docs/CLI_REFERENCE.md`, `docs/FEATURE_STATUS.md`, `docs/RENDERING_ENGINES.md`, `docs/BUILD_MODES.md`, `docs/UNIVERSAL_COMPONENTS.md`, `docs/SERVER_SSR.md`, `docs/CACHING_AND_ISR.md`, `docs/ROUTER_INTEGRATIONS.md`, `docs/IMAGE_SEO.md`, `docs/CORE_WEB_VITALS.md`, `docs/CDN_INTEGRATIONS.md`, `docs/DEPLOYMENT.md`, and `docs/DEVELOPMENT_GUIDE.md`.
+
 ## 0.2.0 - 2026-11-12
 
 ### Breaking Changes & SDK Constraint Upgrades

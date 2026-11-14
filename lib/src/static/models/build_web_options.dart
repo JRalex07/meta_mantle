@@ -113,6 +113,8 @@ class FlutterWebBuildResult {
     this.metadataErrors = 0,
     this.unsupportedComponents = 0,
     this.missingRouteContent = 0,
+    this.assetErrors = 0,
+    this.htmlValidationErrors = 0,
   });
 
   final bool success;
@@ -130,6 +132,8 @@ class FlutterWebBuildResult {
   final int metadataErrors;
   final int unsupportedComponents;
   final int missingRouteContent;
+  final int assetErrors;
+  final int htmlValidationErrors;
 
   String toReportSummary() {
     final status = success ? 'SUCCESS' : 'FAILED';
@@ -141,13 +145,16 @@ class FlutterWebBuildResult {
     buffer.writeln('Dynamic routes:          $dynamicRoutes');
     buffer.writeln('Metadata errors:         $metadataErrors');
     buffer.writeln('Unsupported components:  $unsupportedComponents');
-    buffer.writeln('Missing route content:   $missingRouteContent\n');
+    buffer.writeln('Missing route content:   $missingRouteContent');
+    buffer.writeln('Asset errors:            $assetErrors');
+    buffer.writeln('HTML validation errors:  $htmlValidationErrors\n');
     buffer.write('Status: $status');
     return buffer.toString();
   }
 
   Map<String, Object?> toJson() {
     return {
+      'status': success ? 'success' : 'failed',
       'success': success,
       'mode': mode.name,
       'routesCount': routes.length,
@@ -162,9 +169,11 @@ class FlutterWebBuildResult {
       'routesRendered': routesRendered,
       'componentsSerialized': componentsSerialized,
       'dynamicRoutes': dynamicRoutes,
-      'metadataErrors': metadataErrors,
       'unsupportedComponents': unsupportedComponents,
+      'metadataErrors': metadataErrors,
       'missingRouteContent': missingRouteContent,
+      'assetErrors': assetErrors,
+      'htmlValidationErrors': htmlValidationErrors,
     };
   }
 }

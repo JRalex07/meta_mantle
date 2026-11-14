@@ -10,6 +10,7 @@ export 'src/builder/static_head_builder.dart';
 export 'src/builder/static_head_config.dart';
 export 'src/hybrid/hybrid_generation.dart';
 export 'src/seo/hreflang_validator.dart';
+export 'src/seo/image_seo.dart';
 export 'src/seo/sitemap_index.dart';
 export 'src/static/bootstrap/bootstrap_adapter.dart';
 export 'src/static/flutter_web_build_engine.dart';

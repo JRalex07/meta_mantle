@@ -1,10 +1,10 @@
 # Build and Verification Status
 
-This document reflects the verified status of the `meta_mantle` package (version `0.2.0`) as of 2026-11-14.
+This document reflects the verified status of the `meta_mantle` package (version `0.3.0`) as of 2026-11-14.
 
 ## Current audit re-verification
 
-On 2026-11-14, `flutter test` passed **293 tests** across 35 test suites (100% pass rate); root and example analysis passed with **0 issues**; formatting passed with **0 files changed** across 148 files; decoupled Flutter rendering from pure universal entrypoint via `meta_mantle_flutter.dart` allowing consumer route manifests (`StaticRouteManifest`) to execute cleanly in pure Dart VM environments without `dart:ui` errors; added `MantleBreadcrumb` component; integrated consumer route manifest execution into `FlutterWebBuildEngine` and CLI (`build-web`); verified real route-specific HTML generation for static and dynamic routes (`/`, `/about`, `/products`, `/faq`, `/products/:slug`); eliminated generic placeholder fallback; removed arbitrary snapshot timeout in client handshake; verified Flutter deep-link routing; JavaScript and WebAssembly builds passed in `example/`; package validation via `flutter pub publish --dry-run` succeeded.
+On 2026-11-14, `flutter test` passed **302 tests** across 38 test suites (100% pass rate); root and example analysis passed with **0 issues**; formatting passed with **0 files changed** across all 153 files; expanded CLI to 14 command groups (`html`, `routes`, `cache`, `preview` static Shelf server, `report` disk audit); added Image SEO subsystem (`ImageSeoAnalyzer`, alt/dimension/lazy auditing, Google Image XML sitemap); added `MetaMantleGoRouterObserver` with first-frame transition coordination; hardened memory management with listener cleanup tracking in `MantleDomRenderer` and state registry unmounted disposal; verified strict path traversal prevention; package validation via `dart pub publish --dry-run` succeeded.
 
 ## Verified Environment
 

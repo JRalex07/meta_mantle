@@ -36,19 +36,37 @@ class BootstrapAdapter {
   /// Generates the client startup coordination script for Mode C ([BuildMode.hybrid]).
   /// Coordinated snapshot removal occurs strictly when the application signals readiness
   /// via [window.__mantleClientReady] (or [MetaMantle.markReady()]), without arbitrary timeouts.
+  /// Also protects the static snapshot if an unhandled runtime error occurs before ready.
   String generateClientHandshakeScript() {
     return '''
 <script id="mantle-startup-bridge">
 (function() {
+  var isReady = false;
   window.__mantleClientReady = function() {
+    if (isReady) return;
+    isReady = true;
     var root = document.getElementById('mantle-prerender-root');
     if (root) {
+      root.setAttribute('aria-hidden', 'true');
       root.classList.add('mantle-fade-out');
+      // If focus is currently inside the prerender root, blur to avoid invisible focus trapping
+      if (document.activeElement && root.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
       setTimeout(function() {
-        if (root && root.parentNode) root.parentNode.removeChild(root);
+        if (root && root.parentNode) {
+          root.parentNode.removeChild(root);
+        }
       }, 250);
     }
   };
+
+  // Preserve useful static content if client runtime crashes before reporting ready
+  window.addEventListener('error', function(e) {
+    if (!isReady) {
+      console.warn('[MetaMantle] Client runtime error detected prior to readiness. Retaining static snapshot.', e.error || e.message);
+    }
+  });
 })();
 </script>
 ''';
@@ -62,6 +80,9 @@ class BootstrapAdapter {
     position: relative;
     z-index: 1;
     background-color: transparent;
+  }
+  #mantle-prerender-root[aria-hidden="true"] {
+    pointer-events: none;
   }
   .mantle-fade-out {
     opacity: 0;

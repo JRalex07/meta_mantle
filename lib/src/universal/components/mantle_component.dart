@@ -14,8 +14,18 @@ class MantleStateRegistry {
     _visitedKeysInCurrentPass.clear();
   }
 
-  /// Concludes a build pass.
+  /// Concludes a build pass and disposes any states not mounted/visited during this pass.
   void endBuildPass() {
+    final unvisited = _states.keys.toSet().difference(
+      _visitedKeysInCurrentPass,
+    );
+    for (final key in unvisited) {
+      final state = _states.remove(key);
+      if (state != null) {
+        state._mounted = false;
+        state.dispose();
+      }
+    }
     _visitedKeysInCurrentPass.clear();
   }
 
@@ -155,6 +165,7 @@ abstract class MantleState<T extends StatefulMantleComponent> {
   }
 
   void setState(void Function() fn) {
+    if (!_mounted) return;
     fn();
     _onStateChanged?.call();
   }

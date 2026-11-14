@@ -73,4 +73,17 @@ void runMantleApp(MantleApp app, {bool hydrate = true}) {
 
   // Initial render or hydration
   renderCurrentRoute(allowHydration: hydrate);
+
+  // Transition away static HTML pre-render snapshot once client DOM is mounted
+  final prerenderRoot = web.document.getElementById('mantle-prerender-root');
+  if (prerenderRoot != null) {
+    prerenderRoot.setAttribute('aria-hidden', 'true');
+    prerenderRoot.classList.add('mantle-fade-out');
+    web.window.setTimeout(
+      (() {
+        prerenderRoot.remove();
+      }).toJS,
+      250.toJS,
+    );
+  }
 }

@@ -7,6 +7,9 @@ import '../ir/mantle_events.dart';
 import '../ir/mantle_node.dart';
 import 'renderer_contract.dart';
 
+final Expando<Map<String, JSFunction>> _elementListeners =
+    Expando<Map<String, JSFunction>>();
+
 /// Browser DOM renderer that generates native HTML DOM elements from a [MantleNode] tree.
 /// Operates on the real browser DOM with zero Flutter CanvasKit/Skwasm overhead.
 class MantleDomRenderer implements MantleRenderer<web.Node> {
@@ -19,9 +22,33 @@ class MantleDomRenderer implements MantleRenderer<web.Node> {
 
   /// Mounts a [MantleNode] tree into the target DOM container element.
   void mount(MantleNode node, web.Element container) {
-    container.textContent = '';
+    unmount(container);
     final domNode = render(node);
     container.appendChild(domNode);
+  }
+
+  /// Unmounts the target DOM container, disposing all attached event listeners and clearing children.
+  void unmount(web.Element container) {
+    _cleanListenersRecursive(container);
+    container.textContent = '';
+  }
+
+  void _cleanListenersRecursive(web.Node node) {
+    if (node.isA<web.HTMLElement>()) {
+      final el = node as web.HTMLElement;
+      final listeners = _elementListeners[el];
+      if (listeners != null) {
+        for (final entry in listeners.entries) {
+          el.removeEventListener(entry.key, entry.value);
+        }
+        listeners.clear();
+      }
+    }
+    final children = node.childNodes;
+    for (var i = 0; i < children.length; i++) {
+      final child = children.item(i);
+      if (child != null) _cleanListenersRecursive(child);
+    }
   }
 
   /// Incrementally updates an existing DOM node using tree diffing without full re-creation.
@@ -37,6 +64,7 @@ class MantleDomRenderer implements MantleRenderer<web.Node> {
     if (patch is ReplaceNodePatch) {
       final parent = targetDom.parentNode;
       if (parent != null) {
+        _cleanListenersRecursive(targetDom);
         final newDom = render(patch.newNode);
         parent.replaceChild(newDom, targetDom);
       }
@@ -84,30 +112,49 @@ class MantleDomRenderer implements MantleRenderer<web.Node> {
         element.style.setProperty(style.key, style.value);
       }
 
-      // Update events
+      // Update events: remove removed listeners
+      final activeListeners = _elementListeners[element] ??=
+          <String, JSFunction>{};
+      for (final eventName in patch.eventsToRemove) {
+        final existingJsFn = activeListeners.remove(eventName);
+        if (existingJsFn != null) {
+          element.removeEventListener(eventName, existingJsFn);
+        }
+      }
+
+      // Update events: set or replace listeners
       for (final event in patch.eventsToSet.entries) {
         final eventName = event.key;
         final callback = event.value;
-        element.addEventListener(
-          eventName,
-          ((web.Event e) {
-            Object? value;
-            if (element.tagName.toLowerCase() == 'input') {
-              final input = element as web.HTMLInputElement;
-              value = input.type == 'checkbox' ? input.checked : input.value;
-            } else if (element.tagName.toLowerCase() == 'select') {
-              final select = element as web.HTMLSelectElement;
-              value = select.value;
-            }
-            callback(
-              MantleEvent(
-                type: eventName,
-                value: value,
-                targetId: element.id.isNotEmpty ? element.id : null,
-              ),
-            );
-          }).toJS,
-        );
+
+        final existingJsFn = activeListeners.remove(eventName);
+        if (existingJsFn != null) {
+          element.removeEventListener(eventName, existingJsFn);
+        }
+
+        final jsFn = ((web.Event e) {
+          Object? value;
+          if (element.tagName.toLowerCase() == 'input') {
+            final input = element as web.HTMLInputElement;
+            value = input.type == 'checkbox' ? input.checked : input.value;
+          } else if (element.tagName.toLowerCase() == 'select') {
+            final select = element as web.HTMLSelectElement;
+            value = select.value;
+          } else if (element.tagName.toLowerCase() == 'textarea') {
+            final textarea = element as web.HTMLTextAreaElement;
+            value = textarea.value;
+          }
+          callback(
+            MantleEvent(
+              type: eventName,
+              value: value,
+              targetId: element.id.isNotEmpty ? element.id : null,
+            ),
+          );
+        }).toJS;
+
+        activeListeners[eventName] = jsFn;
+        element.addEventListener(eventName, jsFn);
       }
 
       // Reconcile children
@@ -119,6 +166,7 @@ class MantleDomRenderer implements MantleRenderer<web.Node> {
           if (childPatch.index < element.childNodes.length) {
             final childToRemove = element.childNodes.item(childPatch.index);
             if (childToRemove != null) {
+              _cleanListenersRecursive(childToRemove);
               element.removeChild(childToRemove);
             }
           }
@@ -159,13 +207,14 @@ class _DomVisitor implements MantleNodeVisitor<web.Node> {
     }
 
     // Attach event listeners
-    for (final event in node.events.entries) {
-      final eventName = event.key;
-      final callback = event.value;
+    if (node.events.isNotEmpty) {
+      final activeListeners = _elementListeners[element] ??=
+          <String, JSFunction>{};
+      for (final event in node.events.entries) {
+        final eventName = event.key;
+        final callback = event.value;
 
-      element.addEventListener(
-        eventName,
-        ((web.Event e) {
+        final jsFn = ((web.Event e) {
           Object? value;
           if (element.tagName.toLowerCase() == 'input') {
             final input = element as web.HTMLInputElement;
@@ -173,6 +222,9 @@ class _DomVisitor implements MantleNodeVisitor<web.Node> {
           } else if (element.tagName.toLowerCase() == 'select') {
             final select = element as web.HTMLSelectElement;
             value = select.value;
+          } else if (element.tagName.toLowerCase() == 'textarea') {
+            final textarea = element as web.HTMLTextAreaElement;
+            value = textarea.value;
           }
           callback(
             MantleEvent(
@@ -181,8 +233,11 @@ class _DomVisitor implements MantleNodeVisitor<web.Node> {
               targetId: element.id.isNotEmpty ? element.id : null,
             ),
           );
-        }).toJS,
-      );
+        }).toJS;
+
+        activeListeners[eventName] = jsFn;
+        element.addEventListener(eventName, jsFn);
+      }
     }
 
     // Recursively append children
@@ -274,33 +329,35 @@ class MantleHydrator {
       if (node.events.isNotEmpty &&
           domElement.getAttribute('data-mantle-hydrated') != 'true') {
         domElement.setAttribute('data-mantle-hydrated', 'true');
+        final activeListeners = _elementListeners[domElement] ??=
+            <String, JSFunction>{};
         for (final event in node.events.entries) {
           final eventName = event.key;
           final callback = event.value;
 
-          domElement.addEventListener(
-            eventName,
-            ((web.Event e) {
-              Object? value;
-              if (domElement.tagName.toLowerCase() == 'input') {
-                final input = domElement as web.HTMLInputElement;
-                value = input.type == 'checkbox' ? input.checked : input.value;
-              } else if (domElement.tagName.toLowerCase() == 'select') {
-                final select = domElement as web.HTMLSelectElement;
-                value = select.value;
-              } else if (domElement.tagName.toLowerCase() == 'textarea') {
-                final textarea = domElement as web.HTMLTextAreaElement;
-                value = textarea.value;
-              }
-              callback(
-                MantleEvent(
-                  type: eventName,
-                  value: value,
-                  targetId: domElement.id.isNotEmpty ? domElement.id : null,
-                ),
-              );
-            }).toJS,
-          );
+          final jsFn = ((web.Event e) {
+            Object? value;
+            if (domElement.tagName.toLowerCase() == 'input') {
+              final input = domElement as web.HTMLInputElement;
+              value = input.type == 'checkbox' ? input.checked : input.value;
+            } else if (domElement.tagName.toLowerCase() == 'select') {
+              final select = domElement as web.HTMLSelectElement;
+              value = select.value;
+            } else if (domElement.tagName.toLowerCase() == 'textarea') {
+              final textarea = domElement as web.HTMLTextAreaElement;
+              value = textarea.value;
+            }
+            callback(
+              MantleEvent(
+                type: eventName,
+                value: value,
+                targetId: domElement.id.isNotEmpty ? domElement.id : null,
+              ),
+            );
+          }).toJS;
+
+          activeListeners[eventName] = jsFn;
+          domElement.addEventListener(eventName, jsFn);
         }
       }
 

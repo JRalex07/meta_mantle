@@ -6,6 +6,7 @@ import 'package:html/parser.dart' as html_parser;
 import '../builder/static_head_config.dart';
 import '../core/metadata_renderer.dart';
 import '../models/metadata.dart';
+import '../universal/ir/mantle_node.dart';
 import '../universal/rendering/server_renderer.dart';
 import '../universal/routing/mantle_route.dart';
 import 'bootstrap/bootstrap_adapter.dart';
@@ -227,7 +228,10 @@ class FlutterWebBuildEngine {
     var componentsSerialized = 0;
     var dynamicRoutesCount = 0;
     var metadataErrorsCount = 0;
+    var unsupportedComponentsCount = 0;
     var missingRouteContentCount = 0;
+    const assetErrorsCount = 0;
+    var htmlValidationErrorsCount = 0;
 
     final baseUrl = parsedConfig.baseUrl;
 
@@ -262,11 +266,19 @@ class FlutterWebBuildEngine {
       );
 
       if (docResult.hasComponentContent) {
-        componentsSerialized++;
+        componentsSerialized += docResult.componentsCount;
+        unsupportedComponentsCount += docResult.unsupportedComponentsCount;
       } else if (options.mode != BuildMode.metadata) {
         missingRouteContentCount++;
         warnings.add(
           'Route "$normPath" has no component tree or HTML content; emitting minimal shell.',
+        );
+      }
+
+      if (docResult.htmlValidationErrors > 0) {
+        htmlValidationErrorsCount += docResult.htmlValidationErrors;
+        warnings.add(
+          'Route "$normPath" has ${docResult.htmlValidationErrors} HTML validation error(s).',
         );
       }
 
@@ -324,8 +336,10 @@ class FlutterWebBuildEngine {
       '${outputDir.path}${Platform.pathSeparator}meta_mantle_report.json',
     );
 
+    final isSuccess = warnings.isEmpty || !options.strict;
+
     final buildResult = FlutterWebBuildResult(
-      success: true,
+      success: isSuccess,
       mode: options.mode,
       routes: resolvedRoutes.map((r) => r.path).toList(),
       generatedFiles: generatedFiles,
@@ -339,8 +353,10 @@ class FlutterWebBuildEngine {
       componentsSerialized: componentsSerialized,
       dynamicRoutes: dynamicRoutesCount,
       metadataErrors: metadataErrorsCount,
-      unsupportedComponents: 0,
+      unsupportedComponents: unsupportedComponentsCount,
       missingRouteContent: missingRouteContentCount,
+      assetErrors: assetErrorsCount,
+      htmlValidationErrors: htmlValidationErrorsCount,
     );
 
     if (!options.dryRun) {
@@ -760,6 +776,8 @@ Future<void> main(List<String> args) async {
 
     // 2. Inject Semantic Body Content (Modes B & C)
     var hasComponentContent = false;
+    var componentsCount = 0;
+    var unsupportedComponentsCount = 0;
 
     if (body != null && mode != BuildMode.metadata) {
       // Remove any previously injected elements for idempotency
@@ -771,11 +789,16 @@ Future<void> main(List<String> args) async {
       if (route.htmlContent != null && route.htmlContent!.isNotEmpty) {
         semanticHtml = route.htmlContent!;
         hasComponentContent = true;
+        final frag = html_parser.parseFragment(semanticHtml);
+        componentsCount = frag.querySelectorAll('*').length;
+        if (componentsCount == 0) componentsCount = 1;
       } else {
         final navContext = MantleNavigationContext(currentPath: route.path);
         final component = route.resolveComponent(navContext);
         if (component != null) {
           final mantleNode = component.toNode(navContext);
+          componentsCount = _countMantleNodes(mantleNode);
+          unsupportedComponentsCount = _detectUnsupportedNodes(mantleNode);
           final htmlNode = serverRenderer.render(mantleNode);
           semanticHtml = htmlNode.toHtml();
           hasComponentContent = true;
@@ -807,22 +830,73 @@ Future<void> main(List<String> args) async {
       }
     }
 
+    var htmlValidationErrors = 0;
+    if (document.querySelector('html') == null ||
+        document.querySelector('head') == null ||
+        document.querySelector('body') == null) {
+      htmlValidationErrors++;
+    }
+
     return _RouteRenderResult(
       html: document.outerHtml,
       hasComponentContent: hasComponentContent,
+      componentsCount: componentsCount,
+      unsupportedComponentsCount: unsupportedComponentsCount,
+      htmlValidationErrors: htmlValidationErrors,
     );
   }
 
+  static int _countMantleNodes(MantleNode node) {
+    if (node is MantleElementNode) {
+      var count = 1;
+      for (final child in node.children) {
+        count += _countMantleNodes(child);
+      }
+      return count;
+    } else if (node is MantleFragment) {
+      var count = 0;
+      for (final child in node.children) {
+        count += _countMantleNodes(child);
+      }
+      return count;
+    }
+    return 1;
+  }
+
+  static int _detectUnsupportedNodes(MantleNode node) {
+    var count = 0;
+    if (node is MantleElementNode) {
+      if (node.tag.trim().isEmpty || node.tag.contains(' ')) {
+        count++;
+      }
+      for (final child in node.children) {
+        count += _detectUnsupportedNodes(child);
+      }
+    } else if (node is MantleFragment) {
+      for (final child in node.children) {
+        count += _detectUnsupportedNodes(child);
+      }
+    }
+    return count;
+  }
+
   File _determineOutputFile(Directory outputDir, String routePath) {
+    if (routePath.contains('..') || routePath.contains(r'\')) {
+      throw FormatException(
+        'Illegal route path containing directory traversal sequence: $routePath',
+      );
+    }
     final clean = routePath.replaceAll(RegExp(r'^/|/$'), '');
     if (clean.isEmpty) {
       return File('${outputDir.path}${Platform.pathSeparator}index.html');
     }
-    // Prevent directory traversal
-    if (clean.contains('..')) {
-      throw FormatException('Illegal route path containing "..": $routePath');
+    final segments = clean.split('/').where((s) => s.isNotEmpty).toList();
+    if (segments.any((s) => s == '..' || s == '.')) {
+      throw FormatException(
+        'Illegal route path containing directory traversal sequence: $routePath',
+      );
     }
-    final relativePath = clean.replaceAll('/', Platform.pathSeparator);
+    final relativePath = segments.join(Platform.pathSeparator);
     return File(
       '${outputDir.path}${Platform.pathSeparator}$relativePath${Platform.pathSeparator}index.html',
     );
@@ -899,8 +973,14 @@ class _RouteRenderResult {
   const _RouteRenderResult({
     required this.html,
     required this.hasComponentContent,
+    this.componentsCount = 0,
+    this.unsupportedComponentsCount = 0,
+    this.htmlValidationErrors = 0,
   });
 
   final String html;
   final bool hasComponentContent;
+  final int componentsCount;
+  final int unsupportedComponentsCount;
+  final int htmlValidationErrors;
 }

@@ -640,8 +640,19 @@ class StaticHeadBuilder {
     if (route == '/') {
       return File('${output.path}${Platform.pathSeparator}index.html');
     }
+    if (route.contains('..') || route.contains('\\')) {
+      throw FormatException(
+        'Illegal route path containing directory traversal sequence: $route',
+      );
+    }
     final segments = Uri.parse(route).pathSegments
-        .where((part) => part.isNotEmpty);
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (segments.any((s) => s == '..' || s == '.')) {
+      throw FormatException(
+        'Illegal route path containing directory traversal sequence: $route',
+      );
+    }
     return File(
       '${output.path}${Platform.pathSeparator}${segments.join(Platform.pathSeparator)}${Platform.pathSeparator}index.html',
     );

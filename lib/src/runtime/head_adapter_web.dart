@@ -1,3 +1,5 @@
+import 'dart:js_interop';
+
 import 'package:web/web.dart' as web;
 
 import '../core/head_tag.dart';
@@ -251,12 +253,23 @@ class _WebHeadAdapter implements HeadAdapter {
     _originalElements.clear();
   }
 
+  bool _markedReady = false;
+
   @override
   void markReady() {
+    if (_markedReady) return;
+    _markedReady = true;
+
     final prerenderRoot = web.document.getElementById('mantle-prerender-root');
     if (prerenderRoot != null) {
+      prerenderRoot.setAttribute('aria-hidden', 'true');
       prerenderRoot.classList.add('mantle-fade-out');
-      prerenderRoot.remove();
+      web.window.setTimeout(
+        (() {
+          prerenderRoot.remove();
+        }).toJS,
+        250.toJS,
+      );
     }
   }
 }
