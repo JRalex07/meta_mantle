@@ -1,4 +1,4 @@
-// @ts-check
+// @ts-nocheck
 const { test, expect } = require('@playwright/test');
 
 const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:8080';
@@ -150,8 +150,7 @@ test.describe('Client Runtime Startup & Handoff (With JavaScript)', () => {
     // 2. Wait for deterministic readiness signal
     await page.waitForFunction(() => {
       return (
-        // @ts-ignore
-        window.__mantleRuntimeReady === true ||
+        Boolean(window['__mantleRuntimeReady']) ||
         document.documentElement.getAttribute('data-mantle-runtime') === 'ready' ||
         document.querySelector('flt-glass-pane') !== null
       );
@@ -187,8 +186,7 @@ test.describe('Client Runtime Startup & Handoff (With JavaScript)', () => {
     // Wait for runtime ready signal after reload
     await page.waitForFunction(() => {
       return (
-        // @ts-ignore
-        window.__mantleRuntimeReady === true ||
+        Boolean(window['__mantleRuntimeReady']) ||
         document.documentElement.getAttribute('data-mantle-runtime') === 'ready' ||
         document.querySelector('flt-glass-pane') !== null
       );
