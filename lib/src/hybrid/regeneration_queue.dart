@@ -1287,6 +1287,11 @@ class FileRegenerationQueue implements RegenerationQueue {
         }
       }
     }
+    result.sort((a, b) {
+      final cmp = a.createdAt.compareTo(b.createdAt);
+      if (cmp != 0) return cmp;
+      return a.id.compareTo(b.id);
+    });
     return result;
   }
 
