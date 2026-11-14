@@ -9,6 +9,9 @@ class MantleImage extends StatelessMantleComponent {
     this.width,
     this.height,
     this.fit = 'cover',
+    this.loading = 'lazy',
+    this.decoding = 'async',
+    this.responsive = true,
     super.key,
   });
 
@@ -16,17 +19,66 @@ class MantleImage extends StatelessMantleComponent {
   final String alt;
   final double? width;
   final double? height;
-  final String fit; // cover, contain, fill
+  final String fit; // cover, contain, fill, none, scale-down
+  final String loading; // lazy, eager
+  final String decoding; // async, auto, sync
+  final bool responsive;
 
   @override
   MantleNode build(MantleContext context) {
     final styles = <String, String>{'object-fit': fit, 'display': 'block'};
-    if (width != null) styles['width'] = '${width}px';
-    if (height != null) styles['height'] = '${height}px';
+
+    final attributes = <String, String>{
+      'src': src,
+      'alt': alt,
+      'loading': loading,
+      'decoding': decoding,
+    };
+
+    if (responsive) {
+      styles['max-width'] = '100%';
+      styles['height'] = 'auto';
+
+      if (width != null) {
+        styles['width'] = '${width}px';
+        final w = width!.toInt() == width
+            ? width!.toInt().toString()
+            : width.toString();
+        attributes['width'] = w;
+      }
+      if (height != null) {
+        final h = height!.toInt() == height
+            ? height!.toInt().toString()
+            : height.toString();
+        attributes['height'] = h;
+      }
+      if (width != null && height != null && height! > 0) {
+        final w = width!.toInt() == width
+            ? width!.toInt().toString()
+            : width.toString();
+        final h = height!.toInt() == height
+            ? height!.toInt().toString()
+            : height.toString();
+        styles['aspect-ratio'] = '$w / $h';
+      }
+    } else {
+      if (width != null) {
+        styles['width'] = '${width}px';
+        attributes['width'] = width!.toInt() == width
+            ? width!.toInt().toString()
+            : width.toString();
+      }
+      if (height != null) {
+        styles['height'] = '${height}px';
+        attributes['height'] = height!.toInt() == height
+            ? height!.toInt().toString()
+            : height.toString();
+      }
+    }
 
     return MantleElementNode(
       tag: 'img',
-      attributes: {'src': src, 'alt': alt},
+      attributes: attributes,
       styles: styles,
       key: key,
     );

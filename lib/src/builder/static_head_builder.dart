@@ -722,6 +722,14 @@ class StaticHeadBuilder {
       if (tag.tagName == 'title' || tag.tagName == 'script') {
         element.text = tag.textContent ?? '';
       }
+      if (tag.tagName == 'html') {
+        final lang = tag.attributes['lang'];
+        if (lang != null && lang.isNotEmpty) {
+          document.documentElement?.attributes['lang'] = lang;
+          document.querySelector('html')?.attributes['lang'] = lang;
+        }
+        continue;
+      }
       if (element.parent == null) head.append(element);
     }
   }

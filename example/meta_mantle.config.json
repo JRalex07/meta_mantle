@@ -31,6 +31,7 @@
         "jsonLd": [
           {
             "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
             "name": "MetaMantle",
             "operatingSystem": "Web",
             "applicationCategory": "DeveloperApplication",

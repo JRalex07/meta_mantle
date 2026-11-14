@@ -500,8 +500,9 @@ void main() {
 
         File('${htmlDir.path}/valid.html').writeAsStringSync('''
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Valid</title>
   <meta name="description" content="Valid desc">
   <link rel="canonical" href="https://example.com/valid">

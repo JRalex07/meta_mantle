@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:html/parser.dart' as html_parser;
 
 import '../builder/static_head_config.dart';
+import '../core/head_injector.dart';
 import '../core/metadata_renderer.dart';
+import '../html/html_validator.dart';
 import '../models/metadata.dart';
 import '../universal/ir/mantle_node.dart';
 import '../universal/rendering/server_renderer.dart';
@@ -81,11 +83,15 @@ class FlutterWebBuildEngine {
     }
 
     // 2. Resolve configuration & routes
-    final configFile = File(
-      options.configPath.startsWith('/') || options.configPath.contains(':')
-          ? options.configPath
-          : '${projectDir.path}${Platform.pathSeparator}${options.configPath}',
-    );
+    final File configFile;
+    if (File(options.configPath).isAbsolute ||
+        await File(options.configPath).exists()) {
+      configFile = File(options.configPath);
+    } else {
+      configFile = File(
+        '${projectDir.path}${Platform.pathSeparator}${options.configPath}',
+      );
+    }
 
     StaticHeadConfig? parsedConfig;
     if (await configFile.exists()) {
@@ -416,12 +422,13 @@ class FlutterWebBuildEngine {
     StaticHeadConfig config,
   ) async {
     if (options.manifestPath != null) {
-      final customManifest = File(
-        options.manifestPath!.startsWith('/') ||
-                options.manifestPath!.contains(':')
-            ? options.manifestPath!
-            : '${projectDir.path}${Platform.pathSeparator}${options.manifestPath}',
-      );
+      final customManifest =
+          File(options.manifestPath!).isAbsolute ||
+              await File(options.manifestPath!).exists()
+          ? File(options.manifestPath!)
+          : File(
+              '${projectDir.path}${Platform.pathSeparator}${options.manifestPath}',
+            );
       if (await customManifest.exists()) {
         return customManifest;
       }
@@ -432,11 +439,13 @@ class FlutterWebBuildEngine {
     }
 
     if (config.manifest != null) {
-      final configManifest = File(
-        config.manifest!.startsWith('/') || config.manifest!.contains(':')
-            ? config.manifest!
-            : '${projectDir.path}${Platform.pathSeparator}${config.manifest}',
-      );
+      final configManifest =
+          File(config.manifest!).isAbsolute ||
+              await File(config.manifest!).exists()
+          ? File(config.manifest!)
+          : File(
+              '${projectDir.path}${Platform.pathSeparator}${config.manifest}',
+            );
       if (await configManifest.exists()) {
         return configManifest;
       }
@@ -475,7 +484,7 @@ class FlutterWebBuildEngine {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final tempOutputFile = File(
       '${mantleDir.path}${Platform.pathSeparator}manifest_out_$timestamp.json',
-    );
+    ).absolute;
 
     final content = await manifestFile.readAsString();
     final hasMain =
@@ -763,43 +772,22 @@ Future<void> main(List<String> args) async {
     );
 
     final document = html_parser.parse(templateHtml);
-    final head = document.querySelector('head');
     final body = document.querySelector('body');
 
-    // 1. Inject Head Tags
-    if (head != null) {
+    // 1. Inject Head Tags with strict deduplication and HTML5 conformance
+    HeadInjector.injectTags(document: document, tags: tags);
+
+    final resolvedHead = document.querySelector('head');
+    if (resolvedHead != null) {
       // Remove any previously injected prerender styles for idempotency
-      head.querySelector('#mantle-prerender-style')?.remove();
-
-      for (final tag in tags) {
-        if (tag.tagName == 'title') {
-          final existing = head.querySelector('title');
-          if (existing != null) {
-            existing.text = tag.textContent ?? '';
-          } else {
-            final t = document.createElement('title')
-              ..text = tag.textContent ?? '';
-            head.append(t);
-          }
-          continue;
-        }
-
-        final el = document.createElement(tag.tagName);
-        for (final attr in tag.attributes.entries) {
-          el.attributes[attr.key] = attr.value;
-        }
-        if (tag.textContent != null) {
-          el.text = tag.textContent!;
-        }
-        head.append(el);
-      }
+      resolvedHead.querySelector('#mantle-prerender-style')?.remove();
 
       // In Mode B & C, inject prerender CSS styles
       if (mode != BuildMode.metadata) {
         final styleEl = html_parser.parseFragment(
           bootstrapAdapter.generatePrerenderStyles(),
         );
-        head.append(styleEl);
+        resolvedHead.append(styleEl);
       }
     }
 
@@ -859,12 +847,11 @@ Future<void> main(List<String> args) async {
       }
     }
 
-    var htmlValidationErrors = 0;
-    if (document.querySelector('html') == null ||
-        document.querySelector('head') == null ||
-        document.querySelector('body') == null) {
-      htmlValidationErrors++;
-    }
+    final validationReport = const HtmlValidator().validateHtml(
+      document.outerHtml,
+      filePath: route.path,
+    );
+    final htmlValidationErrors = validationReport.errors.length;
 
     return _RouteRenderResult(
       html: document.outerHtml,

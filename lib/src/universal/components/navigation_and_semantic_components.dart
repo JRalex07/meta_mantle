@@ -280,16 +280,21 @@ class MantleNavigation extends StatelessMantleComponent {
         ),
       );
 
+      final isLink = item.route != null && item.route!.isNotEmpty;
+
       itemNodes.add(
         MantleElementNode(
-          tag: 'button',
+          tag: isLink ? 'a' : 'button',
           classes: [
             'mantle-nav-item',
             if (isSelected) 'mantle-nav-item-selected',
           ],
           attributes: {
-            'role': 'tab',
+            if (isLink) 'href': item.route!,
+            if (isSelected) 'aria-current': 'page',
             'aria-selected': isSelected ? 'true' : 'false',
+            if (!isLink) 'type': 'button',
+            'aria-label': item.label,
           },
           styles: {
             'display': 'flex',
@@ -301,6 +306,7 @@ class MantleNavigation extends StatelessMantleComponent {
             'cursor': 'pointer',
             'padding': '8px 16px',
             'color': color.toCssRgba(),
+            'text-decoration': 'none',
           },
           events: {
             'click': (_) {
@@ -319,7 +325,7 @@ class MantleNavigation extends StatelessMantleComponent {
     return MantleElementNode(
       tag: 'nav',
       classes: const ['mantle-navigation'],
-      attributes: const {'role': 'navigation'},
+      attributes: const {'role': 'navigation', 'aria-label': 'Main Navigation'},
       styles: {
         'display': 'flex',
         'justify-content': 'space-around',
@@ -453,13 +459,20 @@ class MantleTabs extends StatelessMantleComponent {
       }
       tabChildren.add(MantleTextNode(tab.title));
 
+      final tabId = 'mantle-tab-$i';
+      final panelId = 'mantle-tabpanel-$i';
+
       headerButtons.add(
         MantleElementNode(
           tag: 'button',
           classes: ['mantle-tab', if (isActive) 'mantle-tab-active'],
           attributes: {
+            'type': 'button',
             'role': 'tab',
+            'id': tabId,
+            'aria-controls': panelId,
             'aria-selected': isActive ? 'true' : 'false',
+            'tabindex': isActive ? '0' : '-1',
           },
           styles: {
             'padding': '10px 18px',
@@ -497,10 +510,18 @@ class MantleTabs extends StatelessMantleComponent {
         ? tabs[currentIndex].content.toNode(context)
         : MantleTextNode('');
 
+    final activeTabId = 'mantle-tab-$currentIndex';
+    final activePanelId = 'mantle-tabpanel-$currentIndex';
+
     final panel = MantleElementNode(
       tag: 'div',
       classes: const ['mantle-tab-panel'],
-      attributes: const {'role': 'tabpanel'},
+      attributes: {
+        'role': 'tabpanel',
+        'id': activePanelId,
+        'aria-labelledby': activeTabId,
+        'tabindex': '0',
+      },
       styles: const {'padding': '16px 0'},
       children: [activeContent],
     );

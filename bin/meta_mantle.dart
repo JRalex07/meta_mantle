@@ -501,58 +501,13 @@ Future<void> main(List<String> arguments) async {
           return;
         }
 
-        final files = dir
-            .listSync(recursive: true)
-            .whereType<File>()
-            .where((f) => f.path.endsWith('.html'))
-            .toList();
+        const validator = HtmlValidator();
+        final report = await validator.validateDirectory(dir, strict: strict);
+        stdout.writeln(report.toTerminalSummary());
 
-        stdout.writeln('Validating HTML documents in ${dir.path} ...\n');
-        var issuesCount = 0;
-
-        for (final file in files) {
-          final content = await file.readAsString();
-          final doc = html_parser.parse(content);
-          final relPath = file.path.startsWith(dir.path)
-              ? file.path.substring(dir.path.length + 1)
-              : file.path;
-
-          final title = doc.querySelector('title')?.text.trim();
-          final desc = doc
-              .querySelector('meta[name="description"]')
-              ?.attributes['content']
-              ?.trim();
-          final canonical = doc
-              .querySelector('link[rel="canonical"]')
-              ?.attributes['href']
-              ?.trim();
-
-          final issues = <String>[];
-          if (title == null || title.isEmpty) {
-            issues.add('Missing <title> tag');
-          }
-          if (desc == null || desc.isEmpty) {
-            issues.add('Missing <meta name="description">');
-          }
-          if (canonical == null || canonical.isEmpty) {
-            issues.add('Missing <link rel="canonical">');
-          }
-
-          if (issues.isNotEmpty) {
-            issuesCount += issues.length;
-            stdout.writeln('  FAIL: $relPath');
-            for (final issue in issues) {
-              stdout.writeln('    - $issue');
-            }
-          } else {
-            stdout.writeln('  PASS: $relPath');
-          }
+        if (!report.isSuccessful) {
+          exitCode = 1;
         }
-
-        stdout.writeln(
-          '\nValidation complete: ${files.length} file(s) checked, $issuesCount issue(s) detected.',
-        );
-        if (strict && issuesCount > 0) exitCode = 1;
         return;
       }
 
@@ -777,11 +732,18 @@ void main(List<String> args) => runStaticManifest(metaMantleRoutes, args);
       configPath = command.command!['config'] as String;
     }
     var configFile = File(configPath);
-    if (!await configFile.exists() &&
-        configPath == 'meta_mantle.config.json' &&
-        await File('web_head.config.json').exists()) {
-      configPath = 'web_head.config.json';
-      configFile = File(configPath);
+    if (!await configFile.exists() && configPath == 'meta_mantle.config.json') {
+      final projectDir = command.options.contains('project-dir')
+          ? (command['project-dir'] as String? ?? '.')
+          : '.';
+      final inProject = File('$projectDir/meta_mantle.config.json');
+      if (projectDir != '.' && await inProject.exists()) {
+        configPath = inProject.path;
+        configFile = inProject;
+      } else if (await File('web_head.config.json').exists()) {
+        configPath = 'web_head.config.json';
+        configFile = File(configPath);
+      }
     }
 
     // 7. doctor command
@@ -824,14 +786,22 @@ void main(List<String> args) => runStaticManifest(metaMantleRoutes, args);
       return;
     }
 
-    if (!await configFile.exists()) {
+    var effectiveConfigFile = configFile;
+    if (!await effectiveConfigFile.exists()) {
+      final exampleConfig = File('example/${effectiveConfigFile.path}');
+      if (await exampleConfig.exists()) {
+        effectiveConfigFile = exampleConfig;
+      }
+    }
+
+    if (!await effectiveConfigFile.exists()) {
       throw FileSystemException(
         'Configuration file not found. Create a meta_mantle.config.json file.',
         configFile.path,
       );
     }
 
-    final parsedConfig = await StaticHeadConfig.load(configFile);
+    final parsedConfig = await StaticHeadConfig.load(effectiveConfigFile);
 
     // 8. validate command
     if (command.name == 'validate') {
