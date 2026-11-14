@@ -48,14 +48,20 @@ jobs:
 
       - name: Run all tests
         run: |
-          set -o pipefail
-          flutter test --reporter=expanded 2>&1 | tee test_results.log || {
-            echo "### ❌ Test Failure Summary" >> $GITHUB_STEP_SUMMARY
-            echo '```text' >> $GITHUB_STEP_SUMMARY
-            grep -E -C 3 '(FAIL|Error:|Expected:|Actual:)' test_results.log | tail -n 100 >> $GITHUB_STEP_SUMMARY || tail -n 60 test_results.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+          flutter test --reporter=expanded > test_results.log 2>&1 || {
+            grep -E -C 3 '(FAIL|Error:|Expected:|Actual:|Exception)' test_results.log | head -n 40 | while IFS= read -r line; do
+              echo "::error title=TestFailure::$line"
+            done
+            tail -n 80 test_results.log
             exit 1
           }
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-log
+          path: test_results.log
 
       - name: Build example Flutter Web JavaScript release
         working-directory: example
