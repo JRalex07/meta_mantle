@@ -64,7 +64,10 @@ class MantleArticle extends StatelessMantleComponent {
     return MantleElementNode(
       tag: 'article',
       classes: const ['mantle-article'],
-      attributes: const {'itemprop': 'articleBody'},
+      attributes: const {
+        'itemscope': '',
+        'itemtype': 'https://schema.org/Article',
+      },
       styles: styles,
       children: articleChildren,
       key: key,
@@ -293,12 +296,21 @@ class MantleProduct extends StatelessMantleComponent {
 
     children.add(
       MantleElementNode(
-        tag: 'h2',
+        tag: 'h1',
         attributes: const {'itemprop': 'name'},
-        styles: const {'margin': '0 0 8px 0', 'font-size': '20px'},
+        styles: const {'margin': '0 0 8px 0', 'font-size': '24px'},
         children: [MantleTextNode(name)],
       ),
     );
+
+    if (sku != null) {
+      children.add(
+        MantleElementNode(
+          tag: 'meta',
+          attributes: {'itemprop': 'sku', 'content': sku!},
+        ),
+      );
+    }
 
     if (description != null) {
       children.add(
@@ -362,7 +374,6 @@ class MantleProduct extends StatelessMantleComponent {
       'itemscope': '',
       'itemtype': 'https://schema.org/Product',
     };
-    if (sku != null) attrs['itemprop'] = 'sku';
 
     return MantleElementNode(
       tag: 'div',

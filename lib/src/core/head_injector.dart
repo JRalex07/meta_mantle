@@ -226,7 +226,7 @@ class HeadInjector {
         }
       }
 
-      // Rule G: JSON-LD Structured Data (Entity-aware deduplication)
+      // Rule G: JSON-LD Structured Data (Entity-level merging & deduplication)
       if (tag.tagName == 'script' &&
           tag.attributes['type']?.toLowerCase() == 'application/ld+json') {
         dynamic newDecoded;
@@ -235,28 +235,111 @@ class HeadInjector {
         } catch (_) {}
 
         if (newDecoded != null) {
-          final newKeys = computeJsonLdEntityKeys(newDecoded);
+          final newEntities = _extractEntities(newDecoded);
 
-          if (newKeys.isNotEmpty) {
-            // Check if an existing script tag in <head> represents the EXACT SAME entity
-            dom.Element? matchedScript;
-            for (final existingScript in headElement.querySelectorAll(
-              'script[type="application/ld+json"]',
-            )) {
-              try {
-                final existingDecoded = json.decode(existingScript.text.trim());
-                final existingKeys = computeJsonLdEntityKeys(existingDecoded);
-                if (existingKeys.intersection(newKeys).isNotEmpty) {
-                  matchedScript = existingScript;
-                  break;
+          if (newEntities.isNotEmpty) {
+            final existingScriptElements = headElement
+                .querySelectorAll('script[type="application/ld+json"]')
+                .toList();
+
+            final unmergedEntities = <Map<String, dynamic>>[];
+
+            for (final newEntity in newEntities) {
+              var merged = false;
+
+              for (final existingScript in existingScriptElements) {
+                dynamic existingDecoded;
+                try {
+                  existingDecoded = json.decode(existingScript.text.trim());
+                } catch (_) {
+                  continue;
                 }
-              } catch (_) {}
+
+                if (existingDecoded is Map) {
+                  final existingMap = Map<String, dynamic>.from(
+                    existingDecoded,
+                  );
+                  if (existingMap.containsKey('@graph') &&
+                      existingMap['@graph'] is List) {
+                    final graph = (existingMap['@graph'] as List)
+                        .whereType<Map>()
+                        .map((m) => Map<String, dynamic>.from(m))
+                        .toList();
+
+                    final matchIdx = graph.indexWhere(
+                      (e) => isSameJsonLdEntity(e, newEntity),
+                    );
+
+                    if (matchIdx != -1) {
+                      final updated = Map<String, dynamic>.from(newEntity);
+                      if (existingMap.containsKey('@context')) {
+                        updated.remove('@context');
+                      }
+                      graph[matchIdx] = updated;
+                      existingMap['@graph'] = graph;
+                      existingScript.text = json.encode(existingMap);
+                      merged = true;
+                      break;
+                    }
+                  } else {
+                    if (isSameJsonLdEntity(existingMap, newEntity)) {
+                      final context =
+                          existingMap['@context'] ??
+                          newEntity['@context'] ??
+                          'https://schema.org';
+                      final updated = Map<String, dynamic>.from(newEntity);
+                      updated['@context'] = context;
+                      existingScript.text = json.encode(updated);
+                      merged = true;
+                      break;
+                    }
+                  }
+                } else if (existingDecoded is List) {
+                  final list = existingDecoded
+                      .whereType<Map>()
+                      .map((m) => Map<String, dynamic>.from(m))
+                      .toList();
+
+                  final matchIdx = list.indexWhere(
+                    (e) => isSameJsonLdEntity(e, newEntity),
+                  );
+
+                  if (matchIdx != -1) {
+                    list[matchIdx] = Map<String, dynamic>.from(newEntity);
+                    existingScript.text = json.encode(list);
+                    merged = true;
+                    break;
+                  }
+                }
+              }
+
+              if (!merged) {
+                unmergedEntities.add(newEntity);
+              }
             }
 
-            if (matchedScript != null) {
-              matchedScript.text = tag.textContent ?? '';
-              continue;
+            if (unmergedEntities.isNotEmpty) {
+              final el = document.createElement('script');
+              el.attributes['type'] = 'application/ld+json';
+              if (unmergedEntities.length == 1 &&
+                  (newDecoded is Map && !newDecoded.containsKey('@graph'))) {
+                final single = Map<String, dynamic>.from(
+                  unmergedEntities.first,
+                );
+                if (!single.containsKey('@context')) {
+                  single['@context'] = 'https://schema.org';
+                }
+                el.text = json.encode(single);
+              } else {
+                el.text = json.encode({
+                  '@context': 'https://schema.org',
+                  '@graph': unmergedEntities,
+                });
+              }
+              headElement.append(el);
             }
+
+            continue;
           }
         }
       }
@@ -276,6 +359,110 @@ class HeadInjector {
     for (final stray in headElement.querySelectorAll('html, body')) {
       stray.remove();
     }
+  }
+
+  /// Extracts a flat list of individual entity maps from a JSON-LD structure (Map, @graph, or List).
+  static List<Map<String, dynamic>> _extractEntities(dynamic data) {
+    final list = <Map<String, dynamic>>[];
+    if (data is Map) {
+      if (data.containsKey('@graph') && data['@graph'] is List) {
+        for (final item in data['@graph'] as List) {
+          if (item is Map) {
+            list.add(Map<String, dynamic>.from(item));
+          }
+        }
+      } else {
+        list.add(Map<String, dynamic>.from(data));
+      }
+    } else if (data is List) {
+      for (final item in data) {
+        if (item is Map) {
+          list.add(Map<String, dynamic>.from(item));
+        }
+      }
+    }
+    return list;
+  }
+
+  /// Determines if two JSON-LD entity maps represent the exact same entity.
+  /// Handles matching on @id, stable domain identifiers (SKU, identifier, GTIN, ISBN, MPN),
+  /// canonical URLs, or entity names, while accommodating changing prices, descriptions, and URLs.
+  static bool isSameJsonLdEntity(
+    Map<String, dynamic> a,
+    Map<String, dynamic> b,
+  ) {
+    // 1. If both declare explicit @id, match if equal
+    final idA = a['@id']?.toString().trim();
+    final idB = b['@id']?.toString().trim();
+    if (idA != null && idA.isNotEmpty && idB != null && idB.isNotEmpty) {
+      return idA == idB;
+    }
+
+    // 2. Type compatibility: disjoint types cannot represent the same entity
+    final typeA = a['@type'];
+    final typeB = b['@type'];
+    if (typeA != null && typeB != null) {
+      Set<String> typesOf(dynamic t) {
+        if (t is List) {
+          return t
+              .map((e) => e.toString().trim())
+              .where((s) => s.isNotEmpty)
+              .toSet();
+        }
+        final s = t.toString().trim();
+        return s.isNotEmpty ? {s} : <String>{};
+      }
+
+      final setA = typesOf(typeA);
+      final setB = typesOf(typeB);
+      if (setA.isNotEmpty &&
+          setB.isNotEmpty &&
+          setA.intersection(setB).isEmpty) {
+        return false;
+      }
+    }
+
+    // 3. Stable domain identifiers (e.g. SKU, GTIN, MPN, ISBN, identifier)
+    const idKeys = [
+      'sku',
+      'identifier',
+      'gtin13',
+      'gtin',
+      'gtin8',
+      'gtin12',
+      'gtin14',
+      'mpn',
+      'isbn',
+    ];
+    for (final key in idKeys) {
+      final valA = a[key]?.toString().trim();
+      final valB = b[key]?.toString().trim();
+      if (valA != null && valA.isNotEmpty && valB != null && valB.isNotEmpty) {
+        return valA == valB;
+      }
+    }
+
+    // 4. Canonical / item URL
+    final urlA = a['url']?.toString().trim();
+    final urlB = b['url']?.toString().trim();
+    if (urlA != null && urlA.isNotEmpty && urlB != null && urlB.isNotEmpty) {
+      if (urlA == urlB) return true;
+    }
+
+    // 5. Stable human-readable identity (name, headline, title)
+    for (final nameKey in ['name', 'headline', 'title']) {
+      final nameA = a[nameKey]?.toString().trim();
+      final nameB = b[nameKey]?.toString().trim();
+      if (nameA != null &&
+          nameA.isNotEmpty &&
+          nameB != null &&
+          nameB.isNotEmpty) {
+        return nameA == nameB;
+      }
+    }
+
+    // 6. Anonymous entities fallback
+    return json.encode(a) == json.encode(b);
   }
 
   /// Computes a set of entity identity keys for a JSON-LD payload.

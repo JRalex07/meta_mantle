@@ -264,7 +264,7 @@ void main() {
       );
       final navNode = nav.build(context) as MantleElementNode;
       expect(navNode.tag, equals('nav'));
-      expect(navNode.attributes['role'], equals('navigation'));
+      expect(navNode.attributes['aria-label'], equals('Main Navigation'));
       expect(navNode.children.length, equals(2));
       final activeItem = navNode.children[1] as MantleElementNode;
       expect(activeItem.attributes['aria-current'], equals('page'));

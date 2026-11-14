@@ -307,9 +307,10 @@ class MantleNavigation extends StatelessMantleComponent {
             'background': 'none',
             'border': 'none',
             'cursor': 'pointer',
-            'padding': '8px 16px',
+            'padding': '8px 8px',
             'color': color.toCssRgba(),
             'text-decoration': 'none',
+            'box-sizing': 'border-box',
           },
           events: {
             'click': (_) {
@@ -328,11 +329,14 @@ class MantleNavigation extends StatelessMantleComponent {
     return MantleElementNode(
       tag: 'nav',
       classes: const ['mantle-navigation'],
-      attributes: const {'role': 'navigation', 'aria-label': 'Main Navigation'},
+      attributes: const {'aria-label': 'Main Navigation'},
       styles: {
         'display': 'flex',
         'justify-content': 'space-around',
         'align-items': 'center',
+        'flex-wrap': 'wrap',
+        'max-width': '100%',
+        'box-sizing': 'border-box',
         'background-color': backgroundColor.toCssRgba(),
         'border-top': '1px solid #e0e0e0',
         'padding': '6px 0',

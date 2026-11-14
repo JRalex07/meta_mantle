@@ -12,8 +12,8 @@ const ROUTES = [
   { path: '/products/whole-milk/', title: 'Whole Milk', heading: 'Whole Milk' },
 ];
 
-test.describe('Initial Server-Generated Content (Before Client JS Hydration)', () => {
-  // Disable JavaScript so we inspect pure server-rendered HTML before any client hydration occurs
+test.describe('Initial Server-Generated Content (Before Client Runtime Handoff)', () => {
+  // Disable JavaScript so we inspect pure server-rendered HTML before any client handoff occurs
   test.use({ javaScriptEnabled: false });
 
   for (const route of ROUTES) {
@@ -122,10 +122,56 @@ test.describe('Initial Server-Generated Content (Before Client JS Hydration)', (
   });
 });
 
-test.describe('Client Runtime Hydration and Coordination (With JS)', () => {
+test.describe('Client Runtime Startup & Handoff (With JavaScript)', () => {
   test.use({ javaScriptEnabled: true });
 
-  test('Flutter bootstrap initialization script is present and valid', async ({ page }) => {
+  test('Flutter runtime initialization completes and reports ready signal', async ({ page }) => {
+    const consoleErrors = [];
+    const failedRequests = [];
+
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+
+    page.on('response', (res) => {
+      if (res.status() >= 400 && !res.url().includes('favicon.ico')) {
+        failedRequests.push(`${res.status()} ${res.url()}`);
+      }
+    });
+
+    await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
+
+    // 1. Verify bootstrap script exists
+    const bootstrapScript = page.locator('script[src*="flutter_bootstrap.js"]');
+    await expect(bootstrapScript).toHaveCount(1);
+
+    // 2. Wait for deterministic readiness signal
+    await page.waitForFunction(() => {
+      return (
+        // @ts-ignore
+        window.__mantleRuntimeReady === true ||
+        document.documentElement.getAttribute('data-mantle-runtime') === 'ready' ||
+        document.querySelector('flt-glass-pane') !== null
+      );
+    }, null, { timeout: 30000 });
+
+    // 3. Expected application surface becomes available
+    const glassPane = page.locator('flt-glass-pane');
+    await expect(glassPane).toBeAttached();
+
+    // 4. Verify no fatal console errors
+    const fatalErrors = consoleErrors.filter(
+      (e) => !e.includes('favicon.ico') && !e.includes('Refused to get unsafe header')
+    );
+    expect(fatalErrors).toEqual([]);
+
+    // 5. Verify no critical asset load failures
+    expect(failedRequests).toEqual([]);
+  });
+
+  test('Browser refresh under live runtime re-initializes cleanly without errors', async ({ page }) => {
     const consoleErrors = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') {
@@ -133,16 +179,24 @@ test.describe('Client Runtime Hydration and Coordination (With JS)', () => {
       }
     });
 
-    await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${BASE_URL}/products/basmati-rice/`, { waitUntil: 'domcontentloaded' });
 
-    // Script flutter_bootstrap.js is present in DOM
-    const bootstrapScript = page.locator('script[src*="flutter_bootstrap.js"]');
-    await expect(bootstrapScript).toHaveCount(1);
+    // Reload browser
+    await page.reload({ waitUntil: 'domcontentloaded' });
 
-    // No unhandled critical console errors during startup
-    const criticalErrors = consoleErrors.filter(
+    // Wait for runtime ready signal after reload
+    await page.waitForFunction(() => {
+      return (
+        // @ts-ignore
+        window.__mantleRuntimeReady === true ||
+        document.documentElement.getAttribute('data-mantle-runtime') === 'ready' ||
+        document.querySelector('flt-glass-pane') !== null
+      );
+    }, null, { timeout: 30000 });
+
+    const fatalErrors = consoleErrors.filter(
       (e) => !e.includes('favicon.ico') && !e.includes('Refused to get unsafe header')
     );
-    expect(criticalErrors).toEqual([]);
+    expect(fatalErrors).toEqual([]);
   });
 });

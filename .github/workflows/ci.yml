@@ -90,6 +90,10 @@ jobs:
         working-directory: example
         run: dart run meta_mantle:meta_mantle html validate --dir build/web --strict
 
+      - name: Validate HTML5 external standards via Nu HTML Checker
+        working-directory: example
+        run: dart run meta_mantle:meta_mantle html validate --dir build/web --nu-validate
+
       - name: Audit generated SEO and metadata report
         working-directory: example
         run: dart run meta_mantle:meta_mantle report --dir build/web
@@ -110,7 +114,7 @@ jobs:
           sleep 5
 
       - name: Run Playwright E2E real browser tests
-        run: npx --prefix e2e playwright test
+        run: npx --prefix e2e playwright test --config=e2e/playwright.config.js
 
       - name: Upload Playwright test report on failure
         if: failure()

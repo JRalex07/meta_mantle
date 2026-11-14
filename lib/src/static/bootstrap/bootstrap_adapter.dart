@@ -45,6 +45,8 @@ class BootstrapAdapter {
   window.__mantleClientReady = function() {
     if (isReady) return;
     isReady = true;
+    document.documentElement.setAttribute('data-mantle-runtime', 'ready');
+    window.__mantleRuntimeReady = true;
     var root = document.getElementById('mantle-prerender-root');
     if (root) {
       root.setAttribute('aria-hidden', 'true');
@@ -76,6 +78,10 @@ class BootstrapAdapter {
   String generatePrerenderStyles() {
     return '''
 <style id="mantle-prerender-style">
+  body {
+    margin: 0;
+    padding: 0;
+  }
   #mantle-prerender-root {
     position: relative;
     z-index: 1;

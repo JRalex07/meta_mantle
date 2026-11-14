@@ -857,6 +857,7 @@ class HtmlValidator {
 
   /// Sends [htmlContent] to an external Nu HTML Checker instance (W3C v.Nu) for standards validation.
   /// Handles validator availability and network timeouts honestly without falsely reporting passed.
+  /// Guarantees that the underlying [HttpClient] is closed cleanly.
   static Future<ExternalStandardsValidationResult> queryNuHtmlChecker(
     String htmlContent, {
     String? endpointUrl,
@@ -866,8 +867,8 @@ class HtmlValidator {
         endpointUrl ??
         Platform.environment['VNU_URL'] ??
         'https://validator.w3.org/nu/?out=json';
+    final client = HttpClient()..connectionTimeout = timeout;
     try {
-      final client = HttpClient()..connectionTimeout = timeout;
       final uri = Uri.parse(url);
       final request = await client.postUrl(uri);
       request.headers.set('Content-Type', 'text/html; charset=utf-8');
@@ -884,7 +885,17 @@ class HtmlValidator {
       }
 
       final responseBody = await response.transform(utf8.decoder).join();
-      final decoded = json.decode(responseBody);
+      dynamic decoded;
+      try {
+        decoded = json.decode(responseBody);
+      } catch (e) {
+        return ExternalStandardsValidationResult(
+          status: ExternalStandardsValidationStatus.unavailable,
+          validatorName: 'Nu HTML Checker ($url)',
+          reason: 'Validator returned invalid non-JSON response: $e',
+        );
+      }
+
       final messages = <String>[];
       var hasErrors = false;
 
@@ -915,6 +926,8 @@ class HtmlValidator {
         validatorName: 'Nu HTML Checker ($url)',
         reason: 'Connection to validator failed or timed out: $e',
       );
+    } finally {
+      client.close(force: true);
     }
   }
 
@@ -1000,11 +1013,24 @@ class DirectoryValidationReport {
     if (!directoryExists) return false;
     if (totalErrors > 0) return false;
     if (strict && totalWarnings > 0) return false;
-    if (reports.any(
-      (r) =>
-          r.standardsResult?.status == ExternalStandardsValidationStatus.failed,
-    )) {
-      return false;
+    if (enableNuChecker) {
+      // If external validator reported errors, always fail
+      if (reports.any(
+        (r) =>
+            r.standardsResult?.status ==
+            ExternalStandardsValidationStatus.failed,
+      )) {
+        return false;
+      }
+      // If strict mode is enabled, also fail if external validator was unavailable or skipped
+      if (strict &&
+          reports.any(
+            (r) =>
+                r.standardsResult?.status !=
+                ExternalStandardsValidationStatus.passed,
+          )) {
+        return false;
+      }
     }
     return true;
   }
@@ -1067,6 +1093,11 @@ class DirectoryValidationReport {
       buf.writeln(
         'External Standards (Nu HTML Checker): $passedCount passed, $failedCount failed, $unavailCount unavailable.',
       );
+      if (strict && unavailCount > 0) {
+        buf.writeln(
+          '  [STRICT ENFORCEMENT] External standards validation failed because validator service was unavailable.',
+        );
+      }
     } else {
       buf.writeln(
         'External Standards (Nu HTML Checker): SKIPPED (use --nu-validate to enable)',

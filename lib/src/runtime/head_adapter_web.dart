@@ -260,6 +260,8 @@ class _WebHeadAdapter implements HeadAdapter {
     if (_markedReady) return;
     _markedReady = true;
 
+    web.document.documentElement?.setAttribute('data-mantle-runtime', 'ready');
+
     final prerenderRoot = web.document.getElementById('mantle-prerender-root');
     if (prerenderRoot != null) {
       prerenderRoot.setAttribute('aria-hidden', 'true');

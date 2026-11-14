@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -374,6 +375,149 @@ void main() {
       expect(scriptsAfterUpdate.any((s) => s.text.contains('OIL-99')), isTrue);
     });
 
+    test('HeadInjector preserves independent entities inside @graph when updating a single entity', () {
+      const templateHtml = '''
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "name": "MetaMantle Store Inc.",
+        "url": "https://example.com"
+      },
+      {
+        "@type": "Product",
+        "name": "Basmati Rice",
+        "sku": "RICE-001",
+        "price": 24.99
+      },
+      {
+        "@type": "Product",
+        "name": "Whole Milk",
+        "sku": "DAIRY-004",
+        "price": 4.49
+      }
+    ]
+  }
+  </script>
+</head>
+<body></body>
+</html>
+''';
+      final doc = html_parser.parse(templateHtml);
+
+      // Incoming updated product: Basmati Rice (price changed to 27.99, description added)
+      const incomingTag = HeadTag(
+        key: 'product_rice_update',
+        tagName: 'script',
+        attributes: {'type': 'application/ld+json'},
+        textContent: '''
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "Basmati Rice (Aged Himalayan)",
+          "sku": "RICE-001",
+          "price": 27.99,
+          "description": "Aged for 2 years"
+        }
+        ''',
+      );
+
+      HeadInjector.injectTags(document: doc, tags: [incomingTag]);
+
+      final scripts = doc.head!.querySelectorAll(
+        'script[type="application/ld+json"]',
+      );
+      expect(
+        scripts.length,
+        equals(1),
+        reason: 'Must update in place rather than creating duplicate script',
+      );
+
+      final decoded = json.decode(scripts.first.text) as Map<String, dynamic>;
+      expect(decoded.containsKey('@graph'), isTrue);
+      final graph = (decoded['@graph'] as List).cast<Map<String, dynamic>>();
+
+      // 1. All 3 entities must still be present
+      expect(graph.length, equals(3));
+
+      // 2. Organization must be preserved
+      final org = graph.firstWhere((e) => e['@type'] == 'Organization');
+      expect(org['name'], equals('MetaMantle Store Inc.'));
+
+      // 3. Whole Milk must be preserved
+      final milk = graph.firstWhere((e) => e['sku'] == 'DAIRY-004');
+      expect(milk['name'], equals('Whole Milk'));
+      expect(milk['price'], equals(4.49));
+
+      // 4. Basmati Rice must be updated
+      final rice = graph.firstWhere((e) => e['sku'] == 'RICE-001');
+      expect(rice['name'], equals('Basmati Rice (Aged Himalayan)'));
+      expect(rice['price'], equals(27.99));
+      expect(rice['description'], equals('Aged for 2 years'));
+    });
+
+    test('HeadInjector handles products with changing descriptions and prices, and changing URLs', () {
+      const templateHtml = '''
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "sku": "RICE-001",
+    "name": "Basmati Rice",
+    "price": 24.99,
+    "url": "https://example.com/p/1"
+  }
+  </script>
+</head>
+<body></body>
+</html>
+''';
+      final doc = html_parser.parse(templateHtml);
+
+      // Incoming product has stable SKU "RICE-001", but updated price, description, and canonical URL
+      const updatedRiceTag = HeadTag(
+        key: 'product_rice_update',
+        tagName: 'script',
+        attributes: {'type': 'application/ld+json'},
+        textContent: '''
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "sku": "RICE-001",
+          "name": "Premium Basmati Rice",
+          "price": 29.99,
+          "description": "Newly harvested aged grain",
+          "url": "https://example.com/products/basmati-rice"
+        }
+        ''',
+      );
+
+      HeadInjector.injectTags(document: doc, tags: [updatedRiceTag]);
+
+      final scripts = doc.head!.querySelectorAll(
+        'script[type="application/ld+json"]',
+      );
+      expect(scripts.length, equals(1));
+
+      final decoded = json.decode(scripts.first.text) as Map<String, dynamic>;
+      expect(decoded['sku'], equals('RICE-001'));
+      expect(decoded['name'], equals('Premium Basmati Rice'));
+      expect(decoded['price'], equals(29.99));
+      expect(decoded['description'], equals('Newly harvested aged grain'));
+      expect(
+        decoded['url'],
+        equals('https://example.com/products/basmati-rice'),
+      );
+    });
+
     test('pre-parse structural checks detect duplicate root, head, and body tags in raw source', () {
       const htmlWithTwoHeads = '''
 <!DOCTYPE html>
@@ -518,6 +662,183 @@ void main() {
       expect(
         unavailReport.standardsResult?.reason,
         contains('Connection to validator failed'),
+      );
+    });
+
+    test(
+      'Nu HTML Checker mocked server returns passed for valid HTML',
+      () async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        server.listen((HttpRequest req) {
+          req.response
+            ..statusCode = HttpStatus.ok
+            ..headers.contentType = ContentType.json
+            ..write(json.encode({'messages': []}));
+          req.response.close();
+        });
+
+        try {
+          final result = await HtmlValidator.queryNuHtmlChecker(
+            '<!DOCTYPE html><html><head><title>T</title></head><body></body></html>',
+            endpointUrl: 'http://${server.address.host}:${server.port}',
+          );
+          expect(
+            result.status,
+            equals(ExternalStandardsValidationStatus.passed),
+          );
+          expect(result.messages, isEmpty);
+        } finally {
+          await server.close(force: true);
+        }
+      },
+    );
+
+    test('Nu HTML Checker mocked server returns failed with messages for invalid HTML', () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((HttpRequest req) {
+        req.response
+          ..statusCode = HttpStatus.ok
+          ..headers.contentType = ContentType.json
+          ..write(
+            json.encode({
+              'messages': [
+                {
+                  'type': 'error',
+                  'message': 'Element head is missing a required instance of child element title.',
+                  'lastLine': 1,
+                },
+              ],
+            }),
+          );
+        req.response.close();
+      });
+
+      try {
+        final result = await HtmlValidator.queryNuHtmlChecker(
+          '<!DOCTYPE html><html><head></head><body></body></html>',
+          endpointUrl: 'http://${server.address.host}:${server.port}',
+        );
+        expect(result.status, equals(ExternalStandardsValidationStatus.failed));
+        expect(result.messages.length, equals(1));
+        expect(
+          result.messages.first,
+          contains('missing a required instance of child element title'),
+        );
+      } finally {
+        await server.close(force: true);
+      }
+    });
+
+    test('Nu HTML Checker mocked server returns unavailable on HTTP error status (500, 503)', () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((HttpRequest req) {
+        req.response
+          ..statusCode = HttpStatus.serviceUnavailable
+          ..write('Service Unavailable');
+        req.response.close();
+      });
+
+      try {
+        final result = await HtmlValidator.queryNuHtmlChecker(
+          '<!DOCTYPE html><html><head><title>T</title></head><body></body></html>',
+          endpointUrl: 'http://${server.address.host}:${server.port}',
+        );
+        expect(
+          result.status,
+          equals(ExternalStandardsValidationStatus.unavailable),
+        );
+        expect(result.reason, contains('HTTP status 503'));
+      } finally {
+        await server.close(force: true);
+      }
+    });
+
+    test('Nu HTML Checker mocked server returns unavailable on connection failures', () async {
+      final result = await HtmlValidator.queryNuHtmlChecker(
+        '<!DOCTYPE html><html><head><title>T</title></head><body></body></html>',
+        endpointUrl: 'http://127.0.0.1:59999/nu',
+      );
+      expect(
+        result.status,
+        equals(ExternalStandardsValidationStatus.unavailable),
+      );
+      expect(result.reason, contains('Connection to validator failed'));
+    });
+
+    test(
+      'Nu HTML Checker mocked server returns unavailable on timeouts',
+      () async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        server.listen((HttpRequest req) {
+          // Intentionally do not close or respond
+        });
+
+        try {
+          final result = await HtmlValidator.queryNuHtmlChecker(
+            '<!DOCTYPE html><html><head><title>T</title></head><body></body></html>',
+            endpointUrl: 'http://${server.address.host}:${server.port}',
+            timeout: const Duration(milliseconds: 100),
+          );
+          expect(
+            result.status,
+            equals(ExternalStandardsValidationStatus.unavailable),
+          );
+        } finally {
+          await server.close(force: true);
+        }
+      },
+    );
+
+    test('Nu HTML Checker mocked server returns unavailable on invalid JSON response', () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((HttpRequest req) {
+        req.response
+          ..statusCode = HttpStatus.ok
+          ..headers.contentType = ContentType.html
+          ..write('<html><body>502 Bad Gateway from Proxy</body></html>');
+        req.response.close();
+      });
+
+      try {
+        final result = await HtmlValidator.queryNuHtmlChecker(
+          '<!DOCTYPE html><html><head><title>T</title></head><body></body></html>',
+          endpointUrl: 'http://${server.address.host}:${server.port}',
+        );
+        expect(
+          result.status,
+          equals(ExternalStandardsValidationStatus.unavailable),
+        );
+        expect(result.reason, contains('invalid non-JSON response'));
+      } finally {
+        await server.close(force: true);
+      }
+    });
+
+    test('DirectoryValidationReport fails in strict mode when Nu validator reports unavailable', () {
+      final report = DirectoryValidationReport(
+        dirPath: 'test_dir',
+        directoryExists: true,
+        strict: true,
+        enableNuChecker: true,
+        reports: const [
+          HtmlDocumentValidationReport(
+            filePath: 'index.html',
+            issues: [],
+            checkedRulesCount: 10,
+            standardsResult: ExternalStandardsValidationResult(
+              status: ExternalStandardsValidationStatus.unavailable,
+              validatorName: 'Nu HTML Checker',
+              reason: 'Connection failed',
+            ),
+          ),
+        ],
+      );
+
+      expect(report.isSuccessful, isFalse);
+      expect(report.toTerminalSummary(), contains('STRICT ENFORCEMENT'));
+      expect(
+        report.toTerminalSummary(),
+        contains('STATUS: VALIDATION FAILED (strict: true)'),
       );
     });
   });
