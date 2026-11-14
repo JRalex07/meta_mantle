@@ -466,7 +466,7 @@ class StaticHeadBuilder {
         slug,
       );
       final resolvedMetadataJson = _interpolateTemplate(
-        pattern.metadataTemplate,
+        pattern.metadataTemplate ?? const {},
         row,
       );
       routes.add(

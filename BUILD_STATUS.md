@@ -1,10 +1,10 @@
 # Build and Verification Status
 
-This document reflects the verified status of the `meta_mantle` package (version `0.2.0`) as of 2026-11-12.
+This document reflects the verified status of the `meta_mantle` package (version `0.2.0`) as of 2026-11-14.
 
 ## Current audit re-verification
 
-On 2026-11-12, `flutter test` passed **289 tests** across 35 test suites (100% pass rate); root and example analysis passed with **0 issues**; formatting passed with **0 files changed** across 146 files; migrated all Material UI imports to the standalone `package:material_ui/material_ui.dart` (`^1.11.0`) decoupled architecture with minimum SDK constraints bumped to Dart `>=3.13.0` and Flutter `>=3.47.0`; universal component IR, server HTML rendering, Flutter Widget rendering, routing engine, reactive state with `MantleStateRegistry`, DOM diffing reconciler with `MantleHydrator`, web accelerator benchmarks, and Flutter Web Static Build Engine (`build-web`) passed; JavaScript and WebAssembly example builds passed; CLI `doctor`, strict `build`, `build-web`, and `web` command group passed. Package validation via `flutter pub publish --dry-run` succeeded.
+On 2026-11-14, `flutter test` passed **293 tests** across 35 test suites (100% pass rate); root and example analysis passed with **0 issues**; formatting passed with **0 files changed** across 148 files; decoupled Flutter rendering from pure universal entrypoint via `meta_mantle_flutter.dart` allowing consumer route manifests (`StaticRouteManifest`) to execute cleanly in pure Dart VM environments without `dart:ui` errors; added `MantleBreadcrumb` component; integrated consumer route manifest execution into `FlutterWebBuildEngine` and CLI (`build-web`); verified real route-specific HTML generation for static and dynamic routes (`/`, `/about`, `/products`, `/faq`, `/products/:slug`); eliminated generic placeholder fallback; removed arbitrary snapshot timeout in client handshake; verified Flutter deep-link routing; JavaScript and WebAssembly builds passed in `example/`; package validation via `flutter pub publish --dry-run` succeeded.
 
 ## Verified Environment
 
@@ -23,10 +23,10 @@ On 2026-11-12, `flutter test` passed **289 tests** across 35 test suites (100% p
 
 | Command / Check | Working Directory | Result | Notes |
 | :--- | :--- | :--- | :--- |
-| `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 146 files |
+| `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 148 files |
 | `flutter pub get` | `.` (Root) | **PASS** | Dependencies resolved with standalone `material_ui: ^1.11.0` |
 | `flutter analyze` | `.` (Root) | **PASS** (0 issues) | Strict analysis enabled with 0 warnings/errors/infos |
-| `flutter test` | `.` (Root) | **PASS** (289 passing) | 35 test suites: Universal IR, Flutter renderer, Server HTML renderer, Universal routing, DOM diffing reconciler, reactive state, Web accelerator, Flutter Web Build Engine (`build-web`), Content & Commerce components, WAL crash recovery, sharded route store, lease renewal & heartbeat, fencing epochs, DNS rebinding, redirect SSRF, 10,000 job benchmark |
+| `flutter test` | `.` (Root) | **PASS** (293 passing) | 35 test suites: Universal IR, Flutter renderer, Server HTML renderer, Universal routing, DOM diffing reconciler, reactive state, Web accelerator, Flutter Web Build Engine (`build-web`), Content & Commerce components, Breadcrumb, Strict Mode, Manifest execution, WAL crash recovery, sharded route store, lease renewal & heartbeat, fencing epochs, DNS rebinding, redirect SSRF, 10,000 job benchmark |
 | `flutter pub get` | `example/` | **PASS** | Dependencies resolved with `material_ui: ^1.11.0` |
 | `flutter analyze` | `example/` | **PASS** (0 issues) | Clean analysis in example package |
 | `dart run example/bin/universal_store_example.dart` | `.` (Root) | **PASS** | End-to-end multi-target rendering demo (SSR, Widgets, SSG) |
@@ -35,17 +35,18 @@ On 2026-11-12, `flutter test` passed **289 tests** across 35 test suites (100% p
 | `dart run example/bin/jaspr_flutter_embed_example.dart` | `.` (Root) | **PASS** | Hybrid HTML shell + Flutter bootstrap embedding |
 | `dart run example/bin/saas_multitenant_example.dart` | `.` (Root) | **PASS** | Host injection protection, tenant cache partitioner |
 | `dart run example/bin/static_marketing_example.dart` | `.` (Root) | **PASS** | Static head builder generating HTML, sitemap, robots |
+| `dart run example/lib/meta_mantle_routes.dart` | `.` (Root) | **PASS** | Pure Dart execution of consumer manifest returning complete JSON bundle with rendered semantic HTML |
 | `flutter build web --release` | `example/` | **PASS** | JavaScript bundle built in `build/web` |
-| `flutter build web --release --wasm` | `example/` | **PASS** | Native WebAssembly compiled (`main.dart.wasm`) |
+| `flutter build web --release --wasm` | `example/` | **PASS** | Native WebAssembly compiled (`main.dart.wasm`) in 46.0s |
 | `dart run meta_mantle build-web --help` | `.` (Root) | **PASS** | Subcommand usage and build options displayed |
-| `dart run meta_mantle build-web --mode prerender --release` | `example/` | **PASS** | End-to-end static generation of 6 routes (8 files, sitemap, robots, report) |
+| `dart run meta_mantle build-web --mode prerender --strict --release --verbose` | `example/` | **PASS** | End-to-end static generation of 6 routes (8 files, sitemap, robots, report, zero fallback content) |
 | `dart run meta_mantle doctor` | `example/` | **PASS** | Preflight checks passed |
 | `dart run meta_mantle inspect` | `example/` | **PASS** | 4 static routes resolved |
 | `dart run meta_mantle build` | `example/` | **PASS** | Generated static files for routes |
 | `dart run meta_mantle web analyze` | `.` (Root) | **PASS** | Flutter Web acceleration audit & Wasm readiness |
 | `dart run meta_mantle web build` | `.` (Root) | **PASS** | Wasm & COOP/COEP header recommendations |
 | `dart run meta_mantle regression --help` | `.` (Root) | **PASS** | SEO snapshot regression tester |
-| `dart pub publish --dry-run` | `.` (Root) | **WARN** (1 warning) | Package validation completed; warned that checked-in files are modified, so release should use a clean checkout |
+| `flutter pub publish --dry-run` | `.` (Root) | **PASS** | Package validation completed successfully with zero errors |
 
 ---
 

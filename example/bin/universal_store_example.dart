@@ -1,6 +1,6 @@
 // ignore_for_file: avoid_print
+import 'package:meta_mantle/meta_mantle_flutter.dart';
 import 'package:meta_mantle/meta_mantle_server.dart';
-import 'package:meta_mantle/meta_mantle_universal.dart';
 
 /// Product entity used across shared data, SSR, and client state.
 class Product {

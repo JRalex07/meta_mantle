@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart' as material;
-import 'package:meta_mantle/meta_mantle_universal.dart';
+import 'package:meta_mantle/meta_mantle_flutter.dart';
 
 void main() {
   group('Content & Commerce Universal Components Tests', () {

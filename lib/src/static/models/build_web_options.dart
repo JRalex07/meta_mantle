@@ -46,6 +46,7 @@ class BuildWebOptions {
     this.strict = false,
     this.configPath = 'meta_mantle.config.json',
     this.projectDir = '.',
+    this.manifestPath,
   });
 
   final BuildMode mode;
@@ -60,6 +61,7 @@ class BuildWebOptions {
   final bool strict;
   final String configPath;
   final String projectDir;
+  final String? manifestPath;
 
   BuildWebOptions copyWith({
     BuildMode? mode,
@@ -74,6 +76,7 @@ class BuildWebOptions {
     bool? strict,
     String? configPath,
     String? projectDir,
+    String? manifestPath,
   }) {
     return BuildWebOptions(
       mode: mode ?? this.mode,
@@ -88,6 +91,7 @@ class BuildWebOptions {
       strict: strict ?? this.strict,
       configPath: configPath ?? this.configPath,
       projectDir: projectDir ?? this.projectDir,
+      manifestPath: manifestPath ?? this.manifestPath,
     );
   }
 }
@@ -102,6 +106,13 @@ class FlutterWebBuildResult {
     required this.warnings,
     required this.durationMs,
     this.reportPath,
+    this.routesDiscovered = 0,
+    this.routesRendered = 0,
+    this.componentsSerialized = 0,
+    this.dynamicRoutes = 0,
+    this.metadataErrors = 0,
+    this.unsupportedComponents = 0,
+    this.missingRouteContent = 0,
   });
 
   final bool success;
@@ -111,6 +122,29 @@ class FlutterWebBuildResult {
   final List<String> warnings;
   final int durationMs;
   final String? reportPath;
+
+  final int routesDiscovered;
+  final int routesRendered;
+  final int componentsSerialized;
+  final int dynamicRoutes;
+  final int metadataErrors;
+  final int unsupportedComponents;
+  final int missingRouteContent;
+
+  String toReportSummary() {
+    final status = success ? 'SUCCESS' : 'FAILED';
+    final buffer = StringBuffer();
+    buffer.writeln('MetaMantle Build Report\n');
+    buffer.writeln('Routes discovered:       $routesDiscovered');
+    buffer.writeln('Routes rendered:         $routesRendered');
+    buffer.writeln('Components serialized:   $componentsSerialized');
+    buffer.writeln('Dynamic routes:          $dynamicRoutes');
+    buffer.writeln('Metadata errors:         $metadataErrors');
+    buffer.writeln('Unsupported components:  $unsupportedComponents');
+    buffer.writeln('Missing route content:   $missingRouteContent\n');
+    buffer.write('Status: $status');
+    return buffer.toString();
+  }
 
   Map<String, Object?> toJson() {
     return {
@@ -124,6 +158,13 @@ class FlutterWebBuildResult {
       'warnings': warnings,
       'durationMs': durationMs,
       if (reportPath != null) 'reportPath': reportPath,
+      'routesDiscovered': routesDiscovered,
+      'routesRendered': routesRendered,
+      'componentsSerialized': componentsSerialized,
+      'dynamicRoutes': dynamicRoutes,
+      'metadataErrors': metadataErrors,
+      'unsupportedComponents': unsupportedComponents,
+      'missingRouteContent': missingRouteContent,
     };
   }
 }

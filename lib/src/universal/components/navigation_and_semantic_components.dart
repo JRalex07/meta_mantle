@@ -513,3 +513,102 @@ class MantleTabs extends StatelessMantleComponent {
     );
   }
 }
+
+/// Represents an item in a [MantleBreadcrumb] navigation trail.
+class MantleBreadcrumbItem {
+  const MantleBreadcrumbItem({
+    required this.label,
+    this.href,
+    this.isCurrent = false,
+  });
+
+  final String label;
+  final String? href;
+  final bool isCurrent;
+}
+
+/// Universal breadcrumb trail component producing semantic `<nav aria-label="Breadcrumb">` and `<ol>` markup.
+class MantleBreadcrumb extends StatelessMantleComponent {
+  const MantleBreadcrumb({
+    required this.items,
+    this.separator = '/',
+    super.key,
+  });
+
+  final List<MantleBreadcrumbItem> items;
+  final String separator;
+
+  @override
+  MantleNode build(MantleContext context) {
+    final listItems = <MantleNode>[];
+
+    for (var i = 0; i < items.length; i++) {
+      final item = items[i];
+      final isLast = i == items.length - 1 || item.isCurrent;
+
+      final crumbChildren = <MantleNode>[];
+      if (!isLast && item.href != null) {
+        crumbChildren.add(
+          MantleElementNode(
+            tag: 'a',
+            attributes: {'href': item.href!},
+            styles: const {'color': '#0066cc', 'text-decoration': 'none'},
+            children: [MantleTextNode(item.label)],
+          ),
+        );
+      } else {
+        crumbChildren.add(
+          MantleElementNode(
+            tag: 'span',
+            attributes: isLast ? const {'aria-current': 'page'} : const {},
+            styles: const {'color': '#444444', 'font-weight': '600'},
+            children: [MantleTextNode(item.label)],
+          ),
+        );
+      }
+
+      if (i < items.length - 1) {
+        crumbChildren.add(
+          MantleElementNode(
+            tag: 'span',
+            classes: const ['mantle-breadcrumb-separator'],
+            attributes: const {'aria-hidden': 'true'},
+            styles: const {'margin': '0 8px', 'color': '#888888'},
+            children: [MantleTextNode(separator)],
+          ),
+        );
+      }
+
+      listItems.add(
+        MantleElementNode(
+          tag: 'li',
+          classes: const ['mantle-breadcrumb-item'],
+          styles: const {'display': 'inline-flex', 'align-items': 'center'},
+          children: crumbChildren,
+        ),
+      );
+    }
+
+    final ol = MantleElementNode(
+      tag: 'ol',
+      classes: const ['mantle-breadcrumb-list'],
+      styles: const {
+        'list-style': 'none',
+        'margin': '0',
+        'padding': '0',
+        'display': 'flex',
+        'align-items': 'center',
+        'flex-wrap': 'wrap',
+      },
+      children: listItems,
+    );
+
+    return MantleElementNode(
+      tag: 'nav',
+      classes: const ['mantle-breadcrumb'],
+      attributes: const {'aria-label': 'Breadcrumb'},
+      children: [ol],
+      key: key,
+    );
+  }
+}

@@ -343,5 +343,153 @@ dependencies:
         expect(File('$outputDir/index.html').existsSync(), isFalse);
       },
     );
+
+    test(
+      'strict mode throws FormatException when route has no component content',
+      () async {
+        final manifest = StaticRouteManifest(
+          initialRoutes: const [
+            StaticPageRoute(
+              path: '/empty-route',
+              metadata: WebMetadata(title: 'Empty Route'),
+            ),
+          ],
+        );
+
+        final engine = FlutterWebBuildEngine(
+          processRunner:
+              (executable, arguments, {environment, workingDirectory}) async {
+                return ProcessResult(101, 0, '', '');
+              },
+        );
+
+        expect(
+          () => engine.build(
+            BuildWebOptions(
+              projectDir: tempProject.path,
+              output: '${tempProject.path}/build/web_strict',
+              mode: BuildMode.prerender,
+              strict: true,
+              dryRun: true,
+            ),
+            routeManifest: manifest,
+          ),
+          throwsA(isA<FormatException>()),
+        );
+      },
+    );
+
+    test(
+      'runStaticManifest resolves routes and writes semantic HTML JSON bundle',
+      () async {
+        final manifest = StaticRouteManifest(
+          routes: [
+            const StaticRoute(
+              path: '/',
+              metadata: WebMetadata(title: 'Bundle Home'),
+              component: MantlePage(
+                children: [
+                  MantleHeading('Bundle Home Title', level: 1),
+                  MantleText('Bundle content body'),
+                ],
+              ),
+            ),
+            const StaticRoute(
+              path: '/about',
+              metadata: WebMetadata(title: 'Bundle About'),
+              component: MantleArticle(
+                title: 'About Us',
+                children: [MantleText('About bundle text')],
+              ),
+            ),
+          ],
+        );
+
+        final tempBundleFile = File('${tempProject.path}/resolved_bundle.json');
+        await runStaticManifest(manifest, [tempBundleFile.path]);
+
+        expect(tempBundleFile.existsSync(), isTrue);
+        final decoded = jsonDecode(
+          tempBundleFile.readAsStringSync(),
+        ) as Map<String, dynamic>;
+        expect(decoded['version'], equals('0.2.0'));
+        expect(decoded['routesCount'], equals(2));
+
+        final routes = decoded['routes'] as List<dynamic>;
+        expect(routes[0]['path'], equals('/'));
+        expect(routes[0]['htmlContent'], contains('Bundle Home Title'));
+        expect(routes[0]['htmlContent'], contains('Bundle content body'));
+
+        expect(routes[1]['path'], equals('/about'));
+        expect(routes[1]['htmlContent'], contains('<article'));
+        expect(routes[1]['htmlContent'], contains('About bundle text'));
+      },
+    );
+
+    test('MantleBreadcrumb builds accessible HTML markup', () {
+      const breadcrumb = MantleBreadcrumb(
+        items: [
+          MantleBreadcrumbItem(label: 'Home', href: '/'),
+          MantleBreadcrumbItem(label: 'Catalog', href: '/products'),
+          MantleBreadcrumbItem(label: 'Rice', isCurrent: true),
+        ],
+      );
+
+      final navContext = MantleNavigationContext(currentPath: '/products/rice');
+      final node = breadcrumb.toNode(navContext);
+      const renderer = MantleServerRenderer(emitHydrationMarkers: false);
+      final html = renderer.render(node).toHtml();
+
+      expect(
+        html,
+        contains('<nav aria-label="Breadcrumb" class="mantle-breadcrumb">'),
+      );
+      expect(html, contains('<ol class="mantle-breadcrumb-list"'));
+      expect(html, contains('<li class="mantle-breadcrumb-item"'));
+      expect(html, contains('href="/"'));
+      expect(html, contains('href="/products"'));
+      expect(html, contains('aria-current="page"'));
+      expect(html, contains('Rice'));
+    });
+
+    test('build result generates accurate report summary metrics', () async {
+      final manifest = StaticRouteManifest(
+        routes: [
+          const StaticRoute(
+            path: '/',
+            metadata: WebMetadata(title: 'Metrics Home'),
+            component: MantleText('Home text'),
+          ),
+          const StaticRoute(
+            path: '/faq',
+            metadata: WebMetadata(title: 'FAQ'),
+            component: MantleText('FAQ text'),
+          ),
+        ],
+      );
+
+      final engine = FlutterWebBuildEngine(
+        processRunner:
+            (executable, arguments, {environment, workingDirectory}) async {
+              return ProcessResult(101, 0, '', '');
+            },
+      );
+
+      final result = await engine.build(
+        BuildWebOptions(
+          projectDir: tempProject.path,
+          output: '${tempProject.path}/build/web_metrics',
+          mode: BuildMode.prerender,
+          dryRun: false,
+        ),
+        routeManifest: manifest,
+      );
+
+      final summary = result.toReportSummary();
+      expect(summary, contains('Routes discovered:       2'));
+      expect(summary, contains('Routes rendered:         2'));
+      expect(summary, contains('Components serialized:   2'));
+      expect(summary, contains('Status: SUCCESS'));
+    });
   });
 }

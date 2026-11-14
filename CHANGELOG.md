@@ -8,6 +8,10 @@
 - **Clean API Compatibility:** Audited all usages of `MaterialApp`, `ThemeData`, `ColorScheme`, `TextTheme`, widgets, and test runners, ensuring clean interoperability with Flutter core widgets and runtime services.
 
 ### Universal Component System & Static Build Engine
+- **Consumer Manifest Discovery & Resolution:** Integrated `StaticRouteManifest` into `FlutterWebBuildEngine` and `bin/meta_mantle.dart` (`build-web --manifest`). Discovers consumer route declarations in pure Dart via `lib/meta_mantle_routes.dart` or custom manifests, eliminating generic fallback placeholders.
+- **Decoupled Flutter Entrypoint:** Created `package:meta_mantle/meta_mantle_flutter.dart` exporting `MantleFlutterRenderer` and Flutter runtimes, cleanly isolating `dart:ui` and `package:material_ui` from `meta_mantle_universal.dart`. Pure Dart CLI runners, builders, and route manifests can now evaluate universal components in standalone Dart VMs without `dart:ui` runtime errors.
+- **Semantic Breadcrumb Component:** Added `MantleBreadcrumb` and `MantleBreadcrumbItem` (`<nav aria-label="Breadcrumb">`, `<ol>`, `<li>`, `aria-current="page"`) with full HTML and Flutter widget rendering.
+- **Handshake Synchronization:** Hardened client bootstrap handshake script by removing arbitrary fallback timeouts; prerendered snapshots now cleanly fade out only upon receipt of `MetaMantle.markReady()` from the consumer app's first frame.
 - **Content & Commerce Components:** Added `MantleTable`, `MantleTableRow`, `MantleTableCell` with caption, borders, and column/row spans, plus `MantleCustomElement` for arbitrary semantic custom web components.
 - **Universal State Management:** Introduced `MantleStateRegistry` with instance tracking and stable cross-pass state retention via positional keys and Expando references.
 - **DOM Hydration & Reconciliation:** Enhanced `MantleHydrator` with tag mismatch recovery, key identity verification, attribute/style differential patching, text reconciliation, and single-registration event listener protection.

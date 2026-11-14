@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../models/metadata.dart';
+import '../static/routes/static_page_route.dart';
+
+export '../static/routes/static_page_route.dart'
+    show StaticRoute, StaticPageRoute, StaticRoutePattern;
 
 /// Configuration for the static route HTML generator.
 class StaticHeadConfig {
@@ -19,6 +23,7 @@ class StaticHeadConfig {
     this.patterns = const [],
     this.sitemap = true,
     this.robotsTxt = true,
+    this.manifest,
   });
 
   final String baseUrl;
@@ -34,6 +39,7 @@ class StaticHeadConfig {
   final List<StaticRoutePattern> patterns;
   final bool sitemap;
   final bool robotsTxt;
+  final String? manifest;
 
   StaticHeadConfig copyWith({
     String? baseUrl,
@@ -49,6 +55,7 @@ class StaticHeadConfig {
     List<StaticRoutePattern>? patterns,
     bool? sitemap,
     bool? robotsTxt,
+    String? manifest,
   }) {
     return StaticHeadConfig(
       baseUrl: baseUrl ?? this.baseUrl,
@@ -64,6 +71,7 @@ class StaticHeadConfig {
       patterns: patterns ?? this.patterns,
       sitemap: sitemap ?? this.sitemap,
       robotsTxt: robotsTxt ?? this.robotsTxt,
+      manifest: manifest ?? this.manifest,
     );
   }
 
@@ -125,6 +133,7 @@ class StaticHeadConfig {
       patterns: List.unmodifiable(patterns),
       sitemap: json['sitemap'] as bool? ?? true,
       robotsTxt: json['robotsTxt'] as bool? ?? true,
+      manifest: json['manifest'] as String?,
     );
   }
 
@@ -134,55 +143,5 @@ class StaticHeadConfig {
       throw const FormatException('Config root must be a JSON object.');
     }
     return StaticHeadConfig.fromJson(Map<String, Object?>.from(decoded));
-  }
-}
-
-/// Static route path and its associated metadata.
-class StaticRoute {
-  const StaticRoute({required this.path, required this.metadata});
-  final String path;
-  final WebMetadata metadata;
-
-  factory StaticRoute.fromJson(Map<String, Object?> json) {
-    final metadata = json['metadata'];
-    if (metadata is! Map) {
-      throw FormatException('Route ${json['path']} is missing metadata.');
-    }
-    return StaticRoute(
-      path: json['path'] as String,
-      metadata: WebMetadata.fromJson(Map<String, Object?>.from(metadata)),
-    );
-  }
-}
-
-/// Expands one JSON data file into multiple route metadata records.
-///
-/// String values in [metadataTemplate] may contain `{{fieldName}}` tokens.
-class StaticRoutePattern {
-  const StaticRoutePattern({
-    required this.pathPattern,
-    required this.dataFile,
-    required this.metadataTemplate,
-    this.slugField = 'slug',
-  });
-
-  final String pathPattern;
-  final String dataFile;
-  final String slugField;
-  final Map<String, Object?> metadataTemplate;
-
-  factory StaticRoutePattern.fromJson(Map<String, Object?> json) {
-    final template = json['metadataTemplate'];
-    if (template is! Map) {
-      throw FormatException(
-        'Pattern ${json['pathPattern']} needs metadataTemplate.',
-      );
-    }
-    return StaticRoutePattern(
-      pathPattern: json['pathPattern'] as String,
-      dataFile: json['dataFile'] as String,
-      slugField: json['slugField'] as String? ?? 'slug',
-      metadataTemplate: Map<String, Object?>.from(template),
-    );
   }
 }

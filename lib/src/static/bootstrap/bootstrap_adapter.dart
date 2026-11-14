@@ -34,6 +34,8 @@ class BootstrapAdapter {
   }
 
   /// Generates the client startup coordination script for Mode C ([BuildMode.hybrid]).
+  /// Coordinated snapshot removal occurs strictly when the application signals readiness
+  /// via [window.__mantleClientReady] (or [MetaMantle.markReady()]), without arbitrary timeouts.
   String generateClientHandshakeScript() {
     return '''
 <script id="mantle-startup-bridge">
@@ -47,10 +49,6 @@ class BootstrapAdapter {
       }, 250);
     }
   };
-  // Fallback safety timeout: remove snapshot after 8 seconds if client app stalls
-  setTimeout(function() {
-    if (window.__mantleClientReady) window.__mantleClientReady();
-  }, 8000);
 })();
 </script>
 ''';

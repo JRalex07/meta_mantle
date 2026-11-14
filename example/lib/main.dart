@@ -31,6 +31,10 @@ class ExampleApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      MetaMantle.markReady();
+    });
+
     return MaterialApp(
       title: 'MetaMantle Store',
       theme: ThemeData(
@@ -38,7 +42,31 @@ class ExampleApp extends StatelessWidget {
         useMaterial3: true,
       ),
       navigatorObservers: [MetaMantleNavigatorObserver()],
-      home: const HomePage(),
+      onGenerateRoute: (settings) {
+        final uri = Uri.parse(settings.name ?? '/');
+        final path = uri.path;
+
+        if (path == '/about' || path == '/about/') {
+          return MaterialPageRoute(builder: (_) => const AboutPage());
+        }
+        if (path == '/products' || path == '/products/') {
+          return MaterialPageRoute(builder: (_) => const ProductsCatalogPage());
+        }
+        if (path == '/faq' || path == '/faq/') {
+          return MaterialPageRoute(builder: (_) => const FaqPage());
+        }
+        if (path.startsWith('/products/')) {
+          final slug = path.substring('/products/'.length).replaceAll('/', '');
+          return MaterialPageRoute(
+            builder: (_) =>
+                ProductPage(slug: slug.isNotEmpty ? slug : 'basmati-rice'),
+          );
+        }
+        if (path == '/blog' || path == '/blog/') {
+          return MaterialPageRoute(builder: (_) => const BlogPage());
+        }
+        return MaterialPageRoute(builder: (_) => const HomePage());
+      },
     );
   }
 }
@@ -110,11 +138,18 @@ class HomePage extends StatelessWidget {
                 ),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.shopping_bag_outlined),
-                  label: const Text('Product (Basmati Rice)'),
+                  label: const Text('Catalog'),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => const ProductPage(),
+                      builder: (_) => const ProductsCatalogPage(),
                     ),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.help_outline),
+                  label: const Text('FAQ'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const FaqPage()),
                   ),
                 ),
                 ElevatedButton.icon(
@@ -186,39 +221,166 @@ class AboutPage extends StatelessWidget {
   }
 }
 
-class ProductPage extends StatelessWidget {
-  const ProductPage({super.key});
+class ProductsCatalogPage extends StatelessWidget {
+  const ProductsCatalogPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return WebHead(
+      metadata: const WebMetadata(
+        title: 'Product Catalog',
+        description: 'Browse our full catalog of organic grains, whole milk, and pantry staples.',
+        canonical: 'https://metamantle.alex.runs-on.dev/products',
+      ),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Product Catalog')),
+        body: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            const Text(
+              'Featured Grocery Catalog',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.grain),
+                title: const Text('Premium Basmati Rice'),
+                subtitle: const Text('Pantry • \$24.99'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ProductPage(slug: 'basmati-rice'),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.local_drink),
+                title: const Text('Whole Milk'),
+                subtitle: const Text('Dairy • \$4.49'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ProductPage(slug: 'whole-milk'),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+            const MetadataInspector(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class FaqPage extends StatelessWidget {
+  const FaqPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return WebHead(
+      metadata: const WebMetadata(
+        title: 'Frequently Asked Questions',
+        description: 'Answers to common questions regarding delivery, organic standards, and static rendering.',
+        canonical: 'https://metamantle.alex.runs-on.dev/faq',
+      ),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('FAQ')),
+        body: ListView(
+          padding: const EdgeInsets.all(24),
+          children: const [
+            Text(
+              'Frequently Asked Questions',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 16),
+            ExpansionTile(
+              title: Text('How does MetaMantle static rendering work?'),
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'MetaMantle compiles your universal component tree into semantic HTML at build time, ensuring search engines index your exact content.',
+                  ),
+                ),
+              ],
+            ),
+            ExpansionTile(
+              title: Text(
+                'Does the user experience flash-of-unstyled-content (FOUC)?',
+              ),
+              children: [
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'No. MetaMantle injects CSS and coordinates with Flutter bootstrap so the static snapshot smoothly fades out only after Flutter renders its first frame.',
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 24),
+            MetadataInspector(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ProductPage extends StatelessWidget {
+  const ProductPage({this.slug = 'basmati-rice', super.key});
+
+  final String slug;
+
+  @override
+  Widget build(BuildContext context) {
+    final isMilk = slug == 'whole-milk';
+    final title = isMilk
+        ? 'Organic Whole Milk (1 Gallon)'
+        : 'Premium Basmati Rice (5kg)';
+    final desc = isMilk
+        ? 'Fresh organic whole milk from pasture-raised cows.'
+        : 'Aged long-grain aromatic basmati rice for gourmet dining.';
+    final sku = isMilk ? 'DAIRY-004' : 'RICE-001';
+    final price = isMilk ? '4.49' : '24.99';
+    final image = isMilk
+        ? 'https://metamantle.alex.runs-on.dev/assets/whole-milk.png'
+        : 'https://metamantle.alex.runs-on.dev/assets/basmati-rice.png';
+
+    return WebHead(
       metadata: WebMetadata(
-        title: 'Premium Basmati Rice (5kg)',
-        description:
-            'Aged long-grain aromatic basmati rice for gourmet dining.',
-        canonical: 'https://metamantle.alex.runs-on.dev/products/basmati-rice/',
-        openGraph: const OpenGraph(
+        title: title,
+        description: desc,
+        canonical: 'https://metamantle.alex.runs-on.dev/products/$slug/',
+        openGraph: OpenGraph(
           type: OpenGraphType.product,
-          image: 'https://metamantle.alex.runs-on.dev/assets/basmati-rice.png',
-          imageAlt: '5kg pack of aged basmati rice',
+          image: image,
+          imageAlt: title,
           imageWidth: 800,
           imageHeight: 800,
         ),
-        twitter: const TwitterCard(
+        twitter: TwitterCard(
           card: TwitterCardType.summaryLargeImage,
-          image: 'https://metamantle.alex.runs-on.dev/assets/basmati-rice.png',
+          image: image,
         ),
         jsonLd: [
           JsonLd.product(
-            name: 'Premium Basmati Rice',
-            image:
-                'https://metamantle.alex.runs-on.dev/assets/basmati-rice.png',
-            description: 'Long-grain premium basmati rice.',
-            sku: 'RICE-001',
-            brand: 'Himalayan Harvest',
+            name: title,
+            image: image,
+            description: desc,
+            sku: sku,
+            brand: isMilk ? 'Meadow Gold' : 'Himalayan Harvest',
             offers: {
               '@type': 'Offer',
-              'price': '24.99',
+              'price': price,
               'priceCurrency': 'USD',
               'availability': 'https://schema.org/InStock',
             },
@@ -230,16 +392,14 @@ class ProductPage extends StatelessWidget {
         body: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            const Text(
-              'Premium Basmati Rice (5kg)',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text('\$24.99 — In Stock'),
+            Text('\$$price — In Stock'),
             const SizedBox(height: 16),
-            const Text(
-              'Aged for two years to yield fragrant, slender, non-sticky grains. Perfect for biryani and pilaf.',
-            ),
+            Text(desc),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               icon: const Icon(Icons.reviews_outlined),

@@ -71,6 +71,10 @@ Future<void> main(List<String> arguments) async {
       'config',
       defaultsTo: 'meta_mantle.config.json',
       help: 'Path to MetaMantle JSON configuration file.',
+    )
+    ..addOption(
+      'manifest',
+      help: 'Path to Dart route manifest file (e.g. lib/meta_mantle_routes.dart).',
     );
 
   parser.commands['build']!
@@ -421,12 +425,14 @@ Future<void> main(List<String> arguments) async {
     // 4. inspect command
     if (command.name == 'inspect') {
       for (final pattern in parsedConfig.patterns) {
-        final dataFile = File(pattern.dataFile);
-        if (await dataFile.exists()) {
-          final decoded = json.decode(await dataFile.readAsString()) as List;
-          stdout.writeln(
-            'Expanded dynamic pattern: ${pattern.pathPattern} (${decoded.length} items)',
-          );
+        if (pattern.dataFile != null) {
+          final dataFile = File(pattern.dataFile!);
+          if (await dataFile.exists()) {
+            final decoded = json.decode(await dataFile.readAsString()) as List;
+            stdout.writeln(
+              'Expanded dynamic pattern: ${pattern.pathPattern} (${decoded.length} items)',
+            );
+          }
         }
       }
       stdout.writeln('\n=== MetaMantle Route Inspector ===');
@@ -561,6 +567,8 @@ Future<void> main(List<String> arguments) async {
       final isClean = command['clean'] as bool;
       final isStrict = command['strict'] as bool;
 
+      final manifestPath = command['manifest'] as String?;
+
       final options = BuildWebOptions(
         mode: mode,
         release: isRelease && !isDebug,
@@ -573,6 +581,7 @@ Future<void> main(List<String> arguments) async {
         clean: isClean,
         strict: isStrict,
         configPath: configPath,
+        manifestPath: manifestPath,
       );
 
       final engine = const FlutterWebBuildEngine();
@@ -581,6 +590,7 @@ Future<void> main(List<String> arguments) async {
         onProgress: (msg) => stdout.writeln('  $msg'),
       );
 
+      stdout.writeln('\n${result.toReportSummary()}');
       stdout.writeln('\n=== MetaMantle Flutter Web Build Complete ===');
       stdout.writeln('Mode:            ${result.mode.name.toUpperCase()}');
       stdout.writeln('Routes:          ${result.routes.length}');
