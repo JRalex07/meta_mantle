@@ -24,6 +24,11 @@ jobs:
         with:
           channel: stable
 
+      - name: Verify Flutter and Dart versions
+        run: |
+          flutter --version
+          dart --version
+
       - name: Get root dependencies
         run: flutter pub get
 
@@ -41,17 +46,36 @@ jobs:
         working-directory: example
         run: flutter analyze
 
-      - name: Run tests
+      - name: Run all tests
         run: flutter test
 
-      - name: Build and verify browser example
+      - name: Build example Flutter Web JavaScript release
         working-directory: example
-        run: |
-          flutter build web --release
-          flutter build web --release --wasm
-          dart run meta_mantle:meta_mantle doctor --config meta_mantle.config.json
-          dart run meta_mantle:meta_mantle build --config meta_mantle.config.json --input build/web --output build/web --strict
+        run: flutter build web --release
+
+      - name: Build example Flutter Web WebAssembly release
+        working-directory: example
+        run: flutter build web --release --wasm
+
+      - name: Run MetaMantle doctor
+        working-directory: example
+        run: dart run meta_mantle:meta_mantle doctor --config meta_mantle.config.json
+
+      - name: Validate example configuration
+        working-directory: example
+        run: dart run meta_mantle:meta_mantle validate --config meta_mantle.config.json
+
+      - name: Execute MetaMantle build-web command
+        working-directory: example
+        run: dart run meta_mantle:meta_mantle build-web --mode prerender --strict --release
+
+      - name: Validate generated route-specific HTML
+        working-directory: example
+        run: dart run meta_mantle:meta_mantle html validate --dir build/web --strict
+
+      - name: Audit generated SEO and metadata report
+        working-directory: example
+        run: dart run meta_mantle:meta_mantle report --dir build/web
 
       - name: Verify package publish dry-run
         run: dart pub publish --dry-run
-

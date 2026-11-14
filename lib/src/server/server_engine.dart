@@ -276,7 +276,7 @@ class MetaMantleServerEngine {
           );
         }
       }
-      return ServerResponse.serverError(message: 'SSR Rendering failed: $e');
+      return ServerResponse.serverError();
     }
   }
 

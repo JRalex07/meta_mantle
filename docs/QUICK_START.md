@@ -43,7 +43,7 @@ Run `flutter pub get` to fetch dependencies.
 In your `lib/main.dart`, initialize your app using `MetaMantleApp` and attach the `MetaMantleGoRouterObserver` (or navigator observer) so route updates seamlessly synchronize with browser `<head>` tags:
 
 ```dart
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:meta_mantle/meta_mantle.dart';
 
 void main() {

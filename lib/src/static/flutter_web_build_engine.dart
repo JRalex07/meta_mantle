@@ -171,6 +171,11 @@ class FlutterWebBuildEngine {
 
       onProgress?.call('Compiling Flutter Web production build...');
       final buildArgs = <String>['build', 'web'];
+      if (options.output.isNotEmpty &&
+          options.output != 'build/web' &&
+          options.output != '${projectDir.path}/build/web') {
+        buildArgs.add('--output=${outputDir.path}');
+      }
       if (options.release && !options.debug) {
         buildArgs.add('--release');
       } else if (options.debug) {
@@ -204,9 +209,25 @@ class FlutterWebBuildEngine {
     }
 
     // 5. Locate output template index.html
-    final templateIndexFile = File(
+    var templateIndexFile = File(
       '${outputDir.path}${Platform.pathSeparator}index.html',
     );
+
+    // If custom outputDir was requested and templateIndexFile is not there yet,
+    // sync compiled web assets from default build/web if it exists.
+    if (!await templateIndexFile.exists()) {
+      final defaultBuildWeb = Directory(
+        '${projectDir.path}${Platform.pathSeparator}build${Platform.pathSeparator}web',
+      );
+      if (await defaultBuildWeb.exists() &&
+          defaultBuildWeb.path != outputDir.path) {
+        onProgress?.call('Syncing compiled web assets to ${outputDir.path}...');
+        await _copyDirectory(defaultBuildWeb, outputDir);
+        templateIndexFile = File(
+          '${outputDir.path}${Platform.pathSeparator}index.html',
+        );
+      }
+    }
 
     String baseTemplateHtml;
     if (await templateIndexFile.exists()) {
@@ -230,7 +251,7 @@ class FlutterWebBuildEngine {
     var metadataErrorsCount = 0;
     var unsupportedComponentsCount = 0;
     var missingRouteContentCount = 0;
-    const assetErrorsCount = 0;
+    var assetErrorsCount = 0;
     var htmlValidationErrorsCount = 0;
 
     final baseUrl = parsedConfig.baseUrl;
@@ -281,6 +302,14 @@ class FlutterWebBuildEngine {
           'Route "$normPath" has ${docResult.htmlValidationErrors} HTML validation error(s).',
         );
       }
+
+      assetErrorsCount += _validateAssets(
+        html: docResult.html,
+        outputDir: outputDir,
+        projectDir: projectDir,
+        normPath: normPath,
+        warnings: warnings,
+      );
 
       final docHtml = docResult.html;
       final outputFile = _determineOutputFile(outputDir, normPath);
@@ -957,6 +986,68 @@ Future<void> main(List<String> args) async {
   bool _isNoindex(String? robots) {
     if (robots == null) return false;
     return robots.toLowerCase().contains('noindex');
+  }
+
+  static int _validateAssets({
+    required String html,
+    required Directory outputDir,
+    required Directory projectDir,
+    required String normPath,
+    required List<String> warnings,
+  }) {
+    var errors = 0;
+    final doc = html_parser.parse(html);
+
+    for (final img in doc.querySelectorAll('img')) {
+      final src = img.attributes['src']?.trim();
+      if (src != null &&
+          src.isNotEmpty &&
+          !_isRemoteUrl(src) &&
+          !src.startsWith('data:')) {
+        final cleanSrc = src.startsWith('/') ? src.substring(1) : src;
+        final assetFile = File(
+          '${outputDir.path}${Platform.pathSeparator}$cleanSrc',
+        );
+        final webFile = File(
+          '${projectDir.path}${Platform.pathSeparator}web${Platform.pathSeparator}$cleanSrc',
+        );
+        if (!assetFile.existsSync() && !webFile.existsSync()) {
+          errors++;
+          warnings.add(
+            'Route "$normPath" references missing image asset: "$src"',
+          );
+        }
+      }
+    }
+
+    return errors;
+  }
+
+  static bool _isRemoteUrl(String url) =>
+      url.startsWith('http://') ||
+      url.startsWith('https://') ||
+      url.startsWith('//');
+
+  static Future<void> _copyDirectory(
+    Directory source,
+    Directory destination,
+  ) async {
+    await destination.create(recursive: true);
+    await for (final entity in source.list(recursive: false)) {
+      if (entity is Directory) {
+        final dirName = entity.uri.pathSegments.where((s) => s.isNotEmpty).last;
+        final newDest = Directory(
+          '${destination.path}${Platform.pathSeparator}$dirName',
+        );
+        await _copyDirectory(entity, newDest);
+      } else if (entity is File) {
+        final fileName = entity.uri.pathSegments.last;
+        final newFile = File(
+          '${destination.path}${Platform.pathSeparator}$fileName',
+        );
+        await entity.copy(newFile.path);
+      }
+    }
   }
 
   String _escape(String text) {

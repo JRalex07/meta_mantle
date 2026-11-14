@@ -491,5 +491,63 @@ dependencies:
       expect(summary, contains('Components serialized:   2'));
       expect(summary, contains('Status: SUCCESS'));
     });
+
+    test('forwards custom output directory to flutter build web and validates missing assets', () async {
+      final manifest = StaticRouteManifest(
+        routes: [
+          const StaticRoute(
+            path: '/',
+            metadata: WebMetadata(title: 'Asset Test'),
+            component: MantleColumn(
+              children: [
+                MantleText('Asset Page'),
+                MantleCustomElement(
+                  tag: 'img',
+                  attributes: {'src': '/missing_banner.png', 'alt': 'Missing'},
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+
+      final executedCommands = <String>[];
+      final engine = FlutterWebBuildEngine(
+        processRunner:
+            (executable, arguments, {environment, workingDirectory}) async {
+              executedCommands.add('$executable ${arguments.join(' ')}');
+              return ProcessResult(102, 0, '', '');
+            },
+      );
+
+      final customOut = '${tempProject.path}/custom_dist';
+
+      final result = await engine.build(
+        BuildWebOptions(
+          projectDir: tempProject.path,
+          output: customOut,
+          mode: BuildMode.prerender,
+          strict: false,
+        ),
+        routeManifest: manifest,
+      );
+
+      // Verify custom output directory was forwarded to flutter build web
+      expect(
+        executedCommands.any((cmd) => cmd.contains('--output=$customOut')),
+        isTrue,
+      );
+
+      // Verify missing asset was detected and calculated
+      expect(result.assetErrors, equals(1));
+      expect(result.warnings, anyElement(contains('missing_banner.png')));
+
+      // Verify report file was written with asset errors count
+      final reportFile = File(result.reportPath!);
+      expect(reportFile.existsSync(), isTrue);
+      final reportJson =
+          jsonDecode(reportFile.readAsStringSync()) as Map<String, dynamic>;
+      expect(reportJson['assetErrors'], equals(1));
+    });
   });
 }

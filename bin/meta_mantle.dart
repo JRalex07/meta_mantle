@@ -96,7 +96,12 @@ ArgParser buildMetaMantleCliParser() {
 
   parser.commands['validate']!
     ..addFlag('help', abbr: 'h', negatable: false)
-    ..addOption('config', defaultsTo: 'meta_mantle.config.json');
+    ..addOption('config', defaultsTo: 'meta_mantle.config.json')
+    ..addFlag(
+      'json',
+      defaultsTo: false,
+      help: 'Output validation result as JSON.',
+    );
 
   parser.commands['inspect']!
     ..addFlag('help', abbr: 'h', negatable: false)
@@ -105,7 +110,12 @@ ArgParser buildMetaMantleCliParser() {
   parser.commands['doctor']!
     ..addFlag('help', abbr: 'h', negatable: false)
     ..addOption('config', defaultsTo: 'meta_mantle.config.json')
-    ..addOption('input', defaultsTo: 'build/web');
+    ..addOption('input', defaultsTo: 'build/web')
+    ..addFlag(
+      'json',
+      defaultsTo: false,
+      help: 'Output doctor diagnostics as JSON.',
+    );
 
   parser.commands['inspect-url']!
     ..addFlag('help', abbr: 'h', negatable: false)
@@ -762,27 +772,40 @@ void main(List<String> args) => runStaticManifest(metaMantleRoutes, args);
     // 7. doctor command
     if (command.name == 'doctor') {
       final input = Directory(command['input'] as String);
-      stdout.writeln('Running MetaMantle Doctor...\n');
+      final asJson = command['json'] as bool;
       final reports = await const StaticHeadBuilder().doctor(
         configFile: configFile,
         inputDirectory: input,
       );
-      var hasFailures = false;
-      for (final report in reports) {
-        if (report.startsWith('FAIL')) {
-          hasFailures = true;
-          stderr.writeln('  $report');
+      final hasFailures = reports.any((r) => r.startsWith('FAIL'));
+
+      if (asJson) {
+        final jsonOutput = {
+          'status': hasFailures ? 'fail' : 'pass',
+          'checks': reports.map((r) {
+            final isFail = r.startsWith('FAIL');
+            return {'status': isFail ? 'FAIL' : 'PASS', 'message': r};
+          }).toList(),
+        };
+        stdout.writeln(const JsonEncoder.withIndent('  ').convert(jsonOutput));
+      } else {
+        stdout.writeln('Running MetaMantle Doctor...\n');
+        for (final report in reports) {
+          if (report.startsWith('FAIL')) {
+            stderr.writeln('  $report');
+          } else {
+            stdout.writeln('  $report');
+          }
+        }
+        stdout.writeln('');
+        if (hasFailures) {
+          stderr.writeln('Doctor found setup issues.');
         } else {
-          stdout.writeln('  $report');
+          stdout.writeln('Doctor checks passed successfully.');
         }
       }
-      stdout.writeln('');
-      if (hasFailures) {
-        stderr.writeln('Doctor found setup issues.');
-        exitCode = 1;
-      } else {
-        stdout.writeln('Doctor checks passed successfully.');
-      }
+
+      if (hasFailures) exitCode = 1;
       return;
     }
 
@@ -797,17 +820,29 @@ void main(List<String> args) => runStaticManifest(metaMantleRoutes, args);
 
     // 8. validate command
     if (command.name == 'validate') {
+      final asJson = command['json'] as bool;
       final warnings = await const StaticHeadBuilder().validateConfiguration(
         config: parsedConfig,
         configFile: configFile,
       );
-      stdout.writeln('Configuration is structurally valid.');
-      stdout.writeln('Explicit routes: ${parsedConfig.routes.length}');
-      stdout.writeln('Dynamic patterns: ${parsedConfig.patterns.length}');
-      if (warnings.isNotEmpty) {
-        stdout.writeln('\nWarnings:');
-        for (final w in warnings) {
-          stdout.writeln('  - $w');
+
+      if (asJson) {
+        final jsonOutput = {
+          'valid': warnings.isEmpty,
+          'routesCount': parsedConfig.routes.length,
+          'patternsCount': parsedConfig.patterns.length,
+          'warnings': warnings,
+        };
+        stdout.writeln(const JsonEncoder.withIndent('  ').convert(jsonOutput));
+      } else {
+        stdout.writeln('Configuration is structurally valid.');
+        stdout.writeln('Explicit routes: ${parsedConfig.routes.length}');
+        stdout.writeln('Dynamic patterns: ${parsedConfig.patterns.length}');
+        if (warnings.isNotEmpty) {
+          stdout.writeln('\nWarnings:');
+          for (final w in warnings) {
+            stdout.writeln('  - $w');
+          }
         }
       }
       return;

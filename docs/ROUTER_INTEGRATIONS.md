@@ -9,8 +9,8 @@ Synchronizing browser `<head>` metadata, Open Graph preview tags, and the static
 MetaMantle provides an out-of-the-box `NavigatorObserver` designed for `go_router`:
 
 ```dart
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:meta_mantle/meta_mantle.dart';
 
 final router = GoRouter(

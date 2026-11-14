@@ -4,7 +4,7 @@ This document reflects the verified status of the `meta_mantle` package (version
 
 ## Current audit re-verification
 
-On 2026-11-14, `flutter test` passed **302 tests** across 38 test suites (100% pass rate); root and example analysis passed with **0 issues**; formatting passed with **0 files changed** across all 153 files; expanded CLI to 14 command groups (`html`, `routes`, `cache`, `preview` static Shelf server, `report` disk audit); added Image SEO subsystem (`ImageSeoAnalyzer`, alt/dimension/lazy auditing, Google Image XML sitemap); added `MetaMantleGoRouterObserver` with first-frame transition coordination; hardened memory management with listener cleanup tracking in `MantleDomRenderer` and state registry unmounted disposal; verified strict path traversal prevention; package validation via `dart pub publish --dry-run` succeeded.
+On 2026-11-14, `flutter test` passed **314 tests** across 39 test suites (100% pass rate); root and example analysis passed with **0 issues**; formatting passed with **0 files changed** across all 155 files; fixed deprecated Material imports in `go_router_observer_test.dart`; verified `--output` forwarding and asset error calculation in `FlutterWebBuildEngine`; verified real Shelf HTTP Server-Side Rendering (SSR) integration tests (`GET /`, `GET /about`, `GET /products/example`, `GET /products/nonexistent`, `GET /unknown-route`, secure 500 error sanitization, and `HEAD /`); verified `--json` machine-readable output across `doctor`, `validate`, and `report`; expanded CLI to 14 command groups (`html`, `routes`, `cache`, `preview` static Shelf server, `report` disk audit); added Image SEO subsystem (`ImageSeoAnalyzer`, alt/dimension/lazy auditing, Google Image XML sitemap); added `MetaMantleGoRouterObserver` with first-frame transition coordination; hardened memory management with listener cleanup tracking in `MantleDomRenderer` and state registry unmounted disposal; verified strict path traversal prevention; JavaScript and WebAssembly builds passed in `example/`; package validation via `dart pub publish --dry-run` succeeded with 0 warnings.
 
 ## Verified Environment
 
@@ -23,10 +23,10 @@ On 2026-11-14, `flutter test` passed **302 tests** across 38 test suites (100% p
 
 | Command / Check | Working Directory | Result | Notes |
 | :--- | :--- | :--- | :--- |
-| `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 148 files |
+| `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 155 files |
 | `flutter pub get` | `.` (Root) | **PASS** | Dependencies resolved with standalone `material_ui: ^1.11.0` |
 | `flutter analyze` | `.` (Root) | **PASS** (0 issues) | Strict analysis enabled with 0 warnings/errors/infos |
-| `flutter test` | `.` (Root) | **PASS** (293 passing) | 35 test suites: Universal IR, Flutter renderer, Server HTML renderer, Universal routing, DOM diffing reconciler, reactive state, Web accelerator, Flutter Web Build Engine (`build-web`), Content & Commerce components, Breadcrumb, Strict Mode, Manifest execution, WAL crash recovery, sharded route store, lease renewal & heartbeat, fencing epochs, DNS rebinding, redirect SSRF, 10,000 job benchmark |
+| `flutter test` | `.` (Root) | **PASS** (314 passing) | 39 test suites: Universal IR, Flutter renderer, Server HTML renderer, Universal routing, DOM diffing reconciler, reactive state, Web accelerator, Flutter Web Build Engine (`build-web`), Content & Commerce components, Breadcrumb, Strict Mode, Manifest execution, WAL crash recovery, sharded route store, lease renewal & heartbeat, fencing epochs, DNS rebinding, redirect SSRF, 10,000 job benchmark, Real Shelf HTTP SSR tests, Image SEO & sitemap, GoRouter observer, CLI commands |
 | `flutter pub get` | `example/` | **PASS** | Dependencies resolved with `material_ui: ^1.11.0` |
 | `flutter analyze` | `example/` | **PASS** (0 issues) | Clean analysis in example package |
 | `dart run example/bin/universal_store_example.dart` | `.` (Root) | **PASS** | End-to-end multi-target rendering demo (SSR, Widgets, SSG) |
