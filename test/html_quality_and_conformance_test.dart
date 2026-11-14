@@ -680,7 +680,7 @@ void main() {
         try {
           final result = await HtmlValidator.queryNuHtmlChecker(
             '<!DOCTYPE html><html><head><title>T</title></head><body></body></html>',
-            endpointUrl: 'http://${server.address.host}:${server.port}',
+            endpointUrl: 'http://${server.address.address}:${server.port}',
           );
           expect(
             result.status,
@@ -716,7 +716,7 @@ void main() {
       try {
         final result = await HtmlValidator.queryNuHtmlChecker(
           '<!DOCTYPE html><html><head></head><body></body></html>',
-          endpointUrl: 'http://${server.address.host}:${server.port}',
+          endpointUrl: 'http://${server.address.address}:${server.port}',
         );
         expect(result.status, equals(ExternalStandardsValidationStatus.failed));
         expect(result.messages.length, equals(1));
@@ -741,7 +741,7 @@ void main() {
       try {
         final result = await HtmlValidator.queryNuHtmlChecker(
           '<!DOCTYPE html><html><head><title>T</title></head><body></body></html>',
-          endpointUrl: 'http://${server.address.host}:${server.port}',
+          endpointUrl: 'http://${server.address.address}:${server.port}',
         );
         expect(
           result.status,
@@ -776,8 +776,8 @@ void main() {
         try {
           final result = await HtmlValidator.queryNuHtmlChecker(
             '<!DOCTYPE html><html><head><title>T</title></head><body></body></html>',
-            endpointUrl: 'http://${server.address.host}:${server.port}',
-            timeout: const Duration(milliseconds: 100),
+            endpointUrl: 'http://${server.address.address}:${server.port}',
+            timeout: const Duration(milliseconds: 500),
           );
           expect(
             result.status,
@@ -802,7 +802,7 @@ void main() {
       try {
         final result = await HtmlValidator.queryNuHtmlChecker(
           '<!DOCTYPE html><html><head><title>T</title></head><body></body></html>',
-          endpointUrl: 'http://${server.address.host}:${server.port}',
+          endpointUrl: 'http://${server.address.address}:${server.port}',
         );
         expect(
           result.status,

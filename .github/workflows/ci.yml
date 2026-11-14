@@ -52,8 +52,10 @@ jobs:
             echo "::error title=Test Failure::Flutter test suite failed. Inspect the step summary and uploaded test-results-log artifact for details."
             echo "### ❌ Flutter Test Failures" >> $GITHUB_STEP_SUMMARY
             echo '```text' >> $GITHUB_STEP_SUMMARY
+            grep -B 3 -A 25 "\[E\]" test_results.log >> $GITHUB_STEP_SUMMARY || true
             tail -n 120 test_results.log >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -B 3 -A 25 "\[E\]" test_results.log || true
             tail -n 80 test_results.log
             exit 1
           }
