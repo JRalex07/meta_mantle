@@ -78,8 +78,8 @@ void main() {
       );
 
       final uri = Uri.parse('http://malicious-rebind.com/api');
-      expect(
-        () => guard.validateUri(uri),
+      await expectLater(
+        guard.validateUri(uri),
         throwsA(
           isA<SecurityException>().having(
             (e) => e.message,
@@ -98,8 +98,8 @@ void main() {
         );
 
         final uri = Uri.parse('http://cloud-rebind.com/latest/meta-data');
-        expect(
-          () => guard.validateUri(uri),
+        await expectLater(
+          guard.validateUri(uri),
           throwsA(
             isA<SecurityException>().having(
               (e) => e.message,
@@ -150,21 +150,20 @@ void main() {
       () async {
         const guard = SsrfGuard();
 
-        expect(
-          () => guard.validateUri(Uri.parse('ftp://example.com/file')),
+        await expectLater(
+          guard.validateUri(Uri.parse('ftp://example.com/file')),
           throwsA(isA<SecurityException>()),
         );
-        expect(
-          () => guard.validateUri(Uri.parse('gopher://example.com/')),
+        await expectLater(
+          guard.validateUri(Uri.parse('gopher://example.com/')),
           throwsA(isA<SecurityException>()),
         );
-        expect(
-          () =>
-              guard.validateUri(Uri.parse('http://admin:secret@example.com/')),
+        await expectLater(
+          guard.validateUri(Uri.parse('http://admin:secret@example.com/')),
           throwsA(isA<SecurityException>()),
         );
-        expect(
-          () => guard.validateUri(Uri.parse('http://example.com/#fragment')),
+        await expectLater(
+          guard.validateUri(Uri.parse('http://example.com/#fragment')),
           throwsA(isA<SecurityException>()),
         );
       },

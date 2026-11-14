@@ -363,8 +363,8 @@ dependencies:
               },
         );
 
-        expect(
-          () => engine.build(
+        await expectLater(
+          engine.build(
             BuildWebOptions(
               projectDir: tempProject.path,
               output: '${tempProject.path}/build/web_strict',
