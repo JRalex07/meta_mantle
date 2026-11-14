@@ -10,7 +10,7 @@
 
 - **Official Repository:** [https://github.com/JRalex07/meta_mantle](https://github.com/JRalex07/meta_mantle)
 - **Official Documentation Portal:** [https://metamantle.alex.runs-on.dev](https://metamantle.alex.runs-on.dev)
-- **Package Version:** `0.1.0` (Development baseline)
+- **Package Version:** `0.3.0`
 
 ---
 
@@ -244,7 +244,49 @@ All contributors must adhere to our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## 11. Security
 
-For details on our security guarantees, vulnerability reporting, and responsible disclosure process, see [SECURITY.md](SECURITY.md).
+MetaMantle treats security and data protection as core engineering requirements across client-side Flutter Web browsers, static build pipelines, and production server environments (SSR).
+
+### Core Built-In Defenses & Guarantees
+
+1. **In-Line SSRF Protection (`SsrfGuard`):**
+   - Blocks outbound requests to loopback (`127.0.0.1`, `::1`), link-local, unspecified, multicast, and private RFC 1918 subnets (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`).
+   - Blocks cloud instance metadata endpoints (`169.254.169.254`, AWS/GCP/Azure metadata services).
+   - Validates all DNS answers before establishing socket connections to neutralize DNS rebinding attacks.
+   - Pinned-address default crawler transport with strictly bounded response body streaming (2 MiB default cap) and per-hop/total operation timeouts.
+
+2. **Host Header Injection & Multi-Tenant Defense (`TenantHostValidator`):**
+   - Validates incoming HTTP `Host` headers against explicit tenant registries and domain allowlists.
+   - Rejects missing or unauthorized `Host` headers immediately with `400 Bad Request`.
+   - Strict tenant-isolated cache partitioning prevents cross-tenant cache poisoning.
+
+3. **Context-Aware HTML & JSON-LD Escaping:**
+   - Attribute and text values undergo HTML entity encoding (`&`, `<`, `>`, `"`, `'`) to block attribute breakout attacks (`" onmouseover="...`).
+   - JSON-LD structured data in `<script type="application/ld+json">` is serialized with Unicode character escaping (`\u003c`, `\u003e`, `\u0026`) to neutralize script tag breakout attacks (`</script><script>...`).
+
+4. **Strict HTML Sanitization (`HtmlSanitizer`):**
+   - Enforces an allowlist filter on dynamic content, dropping executable tags (`<script>`, `<iframe>`, `<object>`, `<embed>`, `<form>`, `<link>`, `<style>`).
+   - Strips all `on*` inline event handlers and removes CSS style expressions.
+   - Rejects dangerous URL schemes (`javascript:`, `vbscript:`, `data:`).
+
+5. **Error Sanitization & Information Disclosure Prevention:**
+   - Server-side 500 error responses (`ServerResponse.serverError()`) emit sanitized, generic error pages.
+   - Raw exception details, stack traces, and internal server paths are never leaked to external clients.
+
+6. **Path Traversal & Open Redirect Defense:**
+   - Static builders validate all target output paths and referenced data files to reject directory traversal attempts (`..`).
+   - Redirect managers enforce internal path validation starting with `/` while rejecting backslashes (`\`) and double slashes (`//`).
+
+7. **Automated Secret Scanning & Continuous Verification:**
+   - Automated Gitleaks secret scanning runs in CI across git history and repository files.
+   - All tests run against mock providers or explicit dummy tokens.
+
+### Vulnerability Reporting & Disclosure
+
+If you discover a security vulnerability, please report it privately via GitHub Security Advisories rather than opening a public issue:
+
+- **Private Advisory:** Navigate to [Security Advisories](https://github.com/JRalex07/meta_mantle/security/advisories/new)
+- **Security Policy:** Full policy and SLAs are documented in [SECURITY.md](SECURITY.md)
+- **Security Architecture:** Detailed architectural specifications are in [docs/SECURITY.md](docs/SECURITY.md)
 
 ---
 

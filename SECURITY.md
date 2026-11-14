@@ -10,8 +10,8 @@ Security updates are provided for the following versions:
 
 | Version | Supported | Notes |
 | :--- | :--- | :--- |
-| `0.1.x` | :white_check_mark: | Current active release branch (`main`) |
-| `< 0.1.0` | :x: | Unsupported pre-release tags |
+| `0.3.x` | :white_check_mark: | Current active release branch (`main`) |
+| `< 0.3.0` | :x: | Unsupported pre-release tags |
 
 ---
 
