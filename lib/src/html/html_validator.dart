@@ -3,8 +3,35 @@ import 'dart:io';
 
 import 'package:html/parser.dart' as html_parser;
 
+import '../core/head_injector.dart';
+
 /// Severity of an HTML validation issue.
 enum HtmlValidationSeverity { error, warning }
+
+/// Status of optional external HTML5 standards conformance validation (e.g. Nu HTML Checker / W3C v.Nu).
+enum ExternalStandardsValidationStatus { passed, failed, skipped, unavailable }
+
+/// Result of an external HTML5 standards conformance audit.
+class ExternalStandardsValidationResult {
+  const ExternalStandardsValidationResult({
+    required this.status,
+    required this.validatorName,
+    this.messages = const [],
+    this.reason,
+  });
+
+  final ExternalStandardsValidationStatus status;
+  final String validatorName;
+  final List<String> messages;
+  final String? reason;
+
+  Map<String, Object?> toJson() => {
+    'status': status.name,
+    'validatorName': validatorName,
+    'messages': messages,
+    if (reason != null) 'reason': reason,
+  };
+}
 
 /// A specific issue found during HTML validation.
 class HtmlValidationIssue {
@@ -31,14 +58,18 @@ class HtmlDocumentValidationReport {
     required this.filePath,
     required this.issues,
     required this.checkedRulesCount,
+    this.standardsResult,
   });
 
   final String filePath;
   final List<HtmlValidationIssue> issues;
   final int checkedRulesCount;
+  final ExternalStandardsValidationResult? standardsResult;
 
   bool get isValid =>
-      issues.every((i) => i.severity != HtmlValidationSeverity.error);
+      issues.every((i) => i.severity != HtmlValidationSeverity.error) &&
+      (standardsResult?.status != ExternalStandardsValidationStatus.failed);
+
   bool get hasWarnings =>
       issues.any((i) => i.severity == HtmlValidationSeverity.warning);
   List<HtmlValidationIssue> get errors =>
@@ -46,6 +77,17 @@ class HtmlDocumentValidationReport {
   List<HtmlValidationIssue> get warnings => issues
       .where((i) => i.severity == HtmlValidationSeverity.warning)
       .toList();
+
+  HtmlDocumentValidationReport copyWith({
+    List<HtmlValidationIssue>? issues,
+    int? checkedRulesCount,
+    ExternalStandardsValidationResult? standardsResult,
+  }) => HtmlDocumentValidationReport(
+    filePath: filePath,
+    issues: issues ?? this.issues,
+    checkedRulesCount: checkedRulesCount ?? this.checkedRulesCount,
+    standardsResult: standardsResult ?? this.standardsResult,
+  );
 
   Map<String, Object?> toJson() => {
     'filePath': filePath,
@@ -58,10 +100,11 @@ class HtmlDocumentValidationReport {
             'severity': i.severity.name,
             'message': i.message,
             'rule': i.rule,
-            'line': i.line,
+            if (i.line != null) 'line': i.line,
           },
         )
         .toList(),
+    if (standardsResult != null) 'standardsResult': standardsResult!.toJson(),
   };
 }
 
@@ -113,6 +156,68 @@ class HtmlValidator {
         );
         break;
       }
+    }
+
+    // 2. Pre-parse source-level structural checks (to catch errors normalized away by DOM parser)
+    rulesCount += 4;
+    final doctypeMatches = RegExp(
+      r'<!DOCTYPE\b',
+      caseSensitive: false,
+    ).allMatches(htmlContent);
+    if (doctypeMatches.length > 1) {
+      issues.add(
+        HtmlValidationIssue(
+          message:
+              'Malformed document: found ${doctypeMatches.length} <!DOCTYPE> declarations in source.',
+          severity: HtmlValidationSeverity.error,
+          rule: 'structure-doctype-duplicate',
+        ),
+      );
+    }
+
+    final rawHtmlTags = RegExp(
+      r'<html\b',
+      caseSensitive: false,
+    ).allMatches(htmlContent);
+    if (rawHtmlTags.length > 1) {
+      issues.add(
+        HtmlValidationIssue(
+          message:
+              'Malformed document: found ${rawHtmlTags.length} <html> opening tags in source (multiple root elements).',
+          severity: HtmlValidationSeverity.error,
+          rule: 'structure-html-duplicate',
+        ),
+      );
+    }
+
+    final rawHeadTags = RegExp(
+      r'<head\b',
+      caseSensitive: false,
+    ).allMatches(htmlContent);
+    if (rawHeadTags.length > 1) {
+      issues.add(
+        HtmlValidationIssue(
+          message:
+              'Malformed document: found ${rawHeadTags.length} <head> opening tags in source (duplicate <head> structure).',
+          severity: HtmlValidationSeverity.error,
+          rule: 'structure-head-duplicate',
+        ),
+      );
+    }
+
+    final rawBodyTags = RegExp(
+      r'<body\b',
+      caseSensitive: false,
+    ).allMatches(htmlContent);
+    if (rawBodyTags.length > 1) {
+      issues.add(
+        HtmlValidationIssue(
+          message:
+              'Malformed document: found ${rawBodyTags.length} <body> opening tags in source (duplicate <body> structure).',
+          severity: HtmlValidationSeverity.error,
+          rule: 'structure-body-duplicate',
+        ),
+      );
     }
 
     final doc = html_parser.parse(htmlContent);
@@ -451,19 +556,36 @@ class HtmlValidator {
               ),
             );
           }
-          final sig =
-              '${decoded["@type"]}_${decoded["name"] ?? decoded["url"]}';
-          if (!seenJsonLdSignatures.add(sig)) {
-            issues.add(
-              HtmlValidationIssue(
-                message:
-                    'Duplicate JSON-LD structured data block for @type: "${decoded["@type"]}".',
-                severity: HtmlValidationSeverity.warning,
-                rule: 'jsonld-duplicate',
-              ),
-            );
+          final keys = HeadInjector.computeJsonLdEntityKeys(decoded);
+          for (final key in keys) {
+            if (!seenJsonLdSignatures.add(key)) {
+              issues.add(
+                HtmlValidationIssue(
+                  message:
+                      'Duplicate JSON-LD structured data block for entity "$key".',
+                  severity: HtmlValidationSeverity.warning,
+                  rule: 'jsonld-duplicate',
+                ),
+              );
+              break;
+            }
           }
-        } else if (decoded is! List) {
+        } else if (decoded is List) {
+          final keys = HeadInjector.computeJsonLdEntityKeys(decoded);
+          for (final key in keys) {
+            if (!seenJsonLdSignatures.add(key)) {
+              issues.add(
+                HtmlValidationIssue(
+                  message:
+                      'Duplicate JSON-LD structured data block for entity "$key".',
+                  severity: HtmlValidationSeverity.warning,
+                  rule: 'jsonld-duplicate',
+                ),
+              );
+              break;
+            }
+          }
+        } else {
           issues.add(
             const HtmlValidationIssue(
               message: 'JSON-LD root must be a JSON object or array.',
@@ -545,10 +667,36 @@ class HtmlValidator {
       }
     }
 
+    // Check ordinary buttons for invalid selection attributes
+    final allButtons = doc.querySelectorAll('button');
+    for (final btn in allButtons) {
+      if (btn.attributes.containsKey('aria-selected') &&
+          btn.attributes['role'] != 'tab') {
+        issues.add(
+          const HtmlValidationIssue(
+            message: 'Invalid ARIA attribute: <button> must not have "aria-selected" unless role="tab". For toggle buttons, use "aria-pressed".',
+            severity: HtmlValidationSeverity.error,
+            rule: 'button-aria-selected',
+          ),
+        );
+      }
+    }
+
     // Anchor links validation
     final anchors = doc.querySelectorAll('a');
     for (final a in anchors) {
       final href = a.attributes['href']?.trim();
+      if (a.attributes.containsKey('aria-selected') &&
+          a.attributes['role'] != 'tab') {
+        issues.add(
+          HtmlValidationIssue(
+            message:
+                'Invalid navigation ARIA: anchor <a> with href "${href ?? ''}" must not use "aria-selected" (use "aria-current=\\"page\\"" for active page links).',
+            severity: HtmlValidationSeverity.error,
+            rule: 'nav-aria-selected',
+          ),
+        );
+      }
       if (href == null || href.isEmpty) {
         issues.add(
           const HtmlValidationIssue(
@@ -675,10 +823,107 @@ class HtmlValidator {
     );
   }
 
+  /// Asynchronously validates [htmlContent] against both MetaMantle internal quality rules
+  /// and an optional external HTML5 standards conformance validator (e.g. Nu HTML Checker / W3C v.Nu).
+  Future<HtmlDocumentValidationReport> validateHtmlWithStandards(
+    String htmlContent, {
+    String filePath = 'index.html',
+    Directory? baseDir,
+    bool enableNuChecker = false,
+    String? nuCheckerUrl,
+  }) async {
+    final report = validateHtml(
+      htmlContent,
+      filePath: filePath,
+      baseDir: baseDir,
+    );
+    if (!enableNuChecker) {
+      return report.copyWith(
+        standardsResult: const ExternalStandardsValidationResult(
+          status: ExternalStandardsValidationStatus.skipped,
+          validatorName: 'Nu HTML Checker (W3C v.Nu)',
+          reason: 'External standards validation skipped (not requested).',
+        ),
+      );
+    }
+
+    final standardsResult = await queryNuHtmlChecker(
+      htmlContent,
+      endpointUrl: nuCheckerUrl,
+    );
+
+    return report.copyWith(standardsResult: standardsResult);
+  }
+
+  /// Sends [htmlContent] to an external Nu HTML Checker instance (W3C v.Nu) for standards validation.
+  /// Handles validator availability and network timeouts honestly without falsely reporting passed.
+  static Future<ExternalStandardsValidationResult> queryNuHtmlChecker(
+    String htmlContent, {
+    String? endpointUrl,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    final url =
+        endpointUrl ??
+        Platform.environment['VNU_URL'] ??
+        'https://validator.w3.org/nu/?out=json';
+    try {
+      final client = HttpClient()..connectionTimeout = timeout;
+      final uri = Uri.parse(url);
+      final request = await client.postUrl(uri);
+      request.headers.set('Content-Type', 'text/html; charset=utf-8');
+      request.headers.set('User-Agent', 'MetaMantle-HtmlValidator/0.2.0');
+      request.write(htmlContent);
+      final response = await request.close().timeout(timeout);
+
+      if (response.statusCode != 200) {
+        return ExternalStandardsValidationResult(
+          status: ExternalStandardsValidationStatus.unavailable,
+          validatorName: 'Nu HTML Checker ($url)',
+          reason: 'Validator returned HTTP status ${response.statusCode}',
+        );
+      }
+
+      final responseBody = await response.transform(utf8.decoder).join();
+      final decoded = json.decode(responseBody);
+      final messages = <String>[];
+      var hasErrors = false;
+
+      if (decoded is Map && decoded['messages'] is List) {
+        for (final msg in decoded['messages'] as List) {
+          if (msg is Map) {
+            final type = msg['type']?.toString() ?? 'info';
+            final text = msg['message']?.toString() ?? '';
+            final line = msg['lastLine']?.toString() ?? '?';
+            messages.add('[$type line $line] $text');
+            if (type == 'error') {
+              hasErrors = true;
+            }
+          }
+        }
+      }
+
+      return ExternalStandardsValidationResult(
+        status: hasErrors
+            ? ExternalStandardsValidationStatus.failed
+            : ExternalStandardsValidationStatus.passed,
+        validatorName: 'Nu HTML Checker ($url)',
+        messages: messages,
+      );
+    } catch (e) {
+      return ExternalStandardsValidationResult(
+        status: ExternalStandardsValidationStatus.unavailable,
+        validatorName: 'Nu HTML Checker ($url)',
+        reason: 'Connection to validator failed or timed out: $e',
+      );
+    }
+  }
+
   /// Validates all `.html` files in [dir].
   Future<DirectoryValidationReport> validateDirectory(
     Directory dir, {
     bool strict = false,
+    bool enableNuChecker = false,
+    String? nuCheckerUrl,
   }) async {
     final reports = <HtmlDocumentValidationReport>[];
     if (!await dir.exists()) {
@@ -702,8 +947,20 @@ class HtmlValidator {
       final relPath = file.path.startsWith(dir.path)
           ? file.path.substring(dir.path.length + 1)
           : file.path;
-      final report = validateHtml(html, filePath: relPath, baseDir: dir);
-      reports.add(report);
+
+      if (enableNuChecker) {
+        final report = await validateHtmlWithStandards(
+          html,
+          filePath: relPath,
+          baseDir: dir,
+          enableNuChecker: true,
+          nuCheckerUrl: nuCheckerUrl,
+        );
+        reports.add(report);
+      } else {
+        final report = validateHtml(html, filePath: relPath, baseDir: dir);
+        reports.add(report);
+      }
     }
 
     return DirectoryValidationReport(
@@ -711,6 +968,8 @@ class HtmlValidator {
       reports: reports,
       directoryExists: true,
       strict: strict,
+      enableNuChecker: enableNuChecker,
+      nuCheckerUrl: nuCheckerUrl,
     );
   }
 }
@@ -722,12 +981,16 @@ class DirectoryValidationReport {
     required this.reports,
     required this.directoryExists,
     this.strict = false,
+    this.enableNuChecker = false,
+    this.nuCheckerUrl,
   });
 
   final String dirPath;
   final List<HtmlDocumentValidationReport> reports;
   final bool directoryExists;
   final bool strict;
+  final bool enableNuChecker;
+  final String? nuCheckerUrl;
 
   int get totalFiles => reports.length;
   int get totalErrors => reports.fold(0, (sum, r) => sum + r.errors.length);
@@ -737,6 +1000,12 @@ class DirectoryValidationReport {
     if (!directoryExists) return false;
     if (totalErrors > 0) return false;
     if (strict && totalWarnings > 0) return false;
+    if (reports.any(
+      (r) =>
+          r.standardsResult?.status == ExternalStandardsValidationStatus.failed,
+    )) {
+      return false;
+    }
     return true;
   }
 
@@ -757,12 +1026,53 @@ class DirectoryValidationReport {
         for (final issue in report.issues) {
           buf.writeln('    - ${issue.toString()}');
         }
+        if (report.standardsResult != null) {
+          final s = report.standardsResult!;
+          buf.writeln(
+            '    - [STANDARDS: ${s.status.name.toUpperCase()}] ${s.validatorName}${s.reason != null ? ' (${s.reason})' : ''}',
+          );
+          for (final msg in s.messages) {
+            buf.writeln('        * $msg');
+          }
+        }
       }
     }
 
     buf.writeln(
       '\nSummary: $totalFiles file(s) checked, $totalErrors error(s), $totalWarnings warning(s).',
     );
+
+    if (enableNuChecker) {
+      final passedCount = reports
+          .where(
+            (r) =>
+                r.standardsResult?.status ==
+                ExternalStandardsValidationStatus.passed,
+          )
+          .length;
+      final failedCount = reports
+          .where(
+            (r) =>
+                r.standardsResult?.status ==
+                ExternalStandardsValidationStatus.failed,
+          )
+          .length;
+      final unavailCount = reports
+          .where(
+            (r) =>
+                r.standardsResult?.status ==
+                ExternalStandardsValidationStatus.unavailable,
+          )
+          .length;
+      buf.writeln(
+        'External Standards (Nu HTML Checker): $passedCount passed, $failedCount failed, $unavailCount unavailable.',
+      );
+    } else {
+      buf.writeln(
+        'External Standards (Nu HTML Checker): SKIPPED (use --nu-validate to enable)',
+      );
+    }
+
     if (!isSuccessful) {
       buf.writeln('STATUS: VALIDATION FAILED (strict: $strict)');
     } else {

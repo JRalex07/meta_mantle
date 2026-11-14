@@ -58,3 +58,22 @@ When `includeFlutterBootstrap` is set to `true`:
 3. The Flutter web bootstrap script (`flutter_bootstrap.js` or `flutter.js`) is injected at the bottom of `<body>`.
 4. The page appears instantly to human users and crawlers alike. Once Flutter's canvas or WebAssembly engine boots, Flutter mounts its view.
 
+---
+
+## 5. HTML Validation: Internal Quality vs External Standards Conformance
+
+MetaMantle decouples its validation architecture into two complementary tiers:
+
+### Tier 1: Custom MetaMantle HTML Quality Validation
+- An offline, zero-dependency auditor built directly into the CLI (`meta_mantle html validate`).
+- Checks strict single-hierarchy structure (single `<html>`, single `<head>`, single `<body>`).
+- Employs source-level pre-parse regex tokenization to intercept errors (duplicate `<head>` or `<body>`) that DOM parser normalization would silently mask.
+- Enforces single `<title>`, single `<meta name="description">`, unique canonical URL, and entity-aware JSON-LD deduplication (`@id`, `url`, `sku`, `name`).
+- Validates responsive images (`max-width: 100%`, `height: auto`, explicit dimensions for CLS prevention, lazy loading).
+- Enforces accessible navigation semantics (anchors use `aria-current="page"` without inappropriate `aria-selected` attributes).
+
+### Tier 2: External HTML5 Standards Conformance (Nu HTML Checker)
+- Optional external validation against the W3C Nu HTML Checker (v.Nu) engine (`--nu-validate`).
+- Reports results with full transparency: if skipped, it reports `SKIPPED`; if the service or container times out, it reports `UNAVAILABLE` rather than falsely declaring standards conformance.
+
+

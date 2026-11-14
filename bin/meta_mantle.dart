@@ -228,7 +228,16 @@ ArgParser buildMetaMantleCliParser() {
       defaultsTo: 'build/web',
       help: 'Directory containing generated HTML to validate.',
     )
-    ..addFlag('strict', defaultsTo: false, help: 'Fail if any warnings occur.');
+    ..addFlag('strict', defaultsTo: false, help: 'Fail if any warnings occur.')
+    ..addFlag(
+      'nu-validate',
+      defaultsTo: false,
+      help: 'Perform external HTML5 standards conformance validation via Nu HTML Checker.',
+    )
+    ..addOption(
+      'vnu-url',
+      help: 'Custom endpoint URL for Nu HTML Checker (defaults to https://validator.w3.org/nu/?out=json).',
+    );
 
   htmlParser.commands['inspect']!
     ..addFlag('help', abbr: 'h', negatable: false)
@@ -493,6 +502,8 @@ Future<void> main(List<String> arguments) async {
       if (sub.name == 'validate') {
         final dirPath = sub['dir'] as String;
         final strict = sub['strict'] as bool;
+        final enableNuChecker = sub['nu-validate'] as bool;
+        final nuCheckerUrl = sub['vnu-url'] as String?;
         final dir = Directory(dirPath);
 
         if (!await dir.exists()) {
@@ -502,7 +513,12 @@ Future<void> main(List<String> arguments) async {
         }
 
         const validator = HtmlValidator();
-        final report = await validator.validateDirectory(dir, strict: strict);
+        final report = await validator.validateDirectory(
+          dir,
+          strict: strict,
+          enableNuChecker: enableNuChecker,
+          nuCheckerUrl: nuCheckerUrl,
+        );
         stdout.writeln(report.toTerminalSummary());
 
         if (!report.isSuccessful) {

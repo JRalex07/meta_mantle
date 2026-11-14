@@ -4,4 +4,7 @@ coverage/
 build/
 example/build/
 docs/
+e2e/
+test-results/
+playwright-report/
 *.log

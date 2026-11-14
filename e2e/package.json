@@ -1,0 +1,12 @@
+{
+  "name": "meta-mantle-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real browser E2E verification test suite for MetaMantle Flutter Web build output",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1"
+  }
+}

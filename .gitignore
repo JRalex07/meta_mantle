@@ -7,6 +7,9 @@ build/
 coverage/
 *.lcov
 test_results/
+test-results/
+playwright-report/
+node_modules/
 
 # Flutter plugins & platform cache
 .flutter-plugins

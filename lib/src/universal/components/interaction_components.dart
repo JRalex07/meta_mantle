@@ -15,6 +15,7 @@ class MantleButton extends StatelessMantleComponent {
       vertical: 10,
     ),
     this.borderRadius = const MantleBorderRadius.circular(6),
+    this.isPressed,
     super.key,
   });
 
@@ -25,6 +26,7 @@ class MantleButton extends StatelessMantleComponent {
   final MantleColor textColor;
   final MantleEdgeInsets padding;
   final MantleBorderRadius borderRadius;
+  final bool? isPressed;
 
   @override
   MantleNode build(MantleContext context) {
@@ -55,9 +57,15 @@ class MantleButton extends StatelessMantleComponent {
       events['click'] = (_) => onPressed!();
     }
 
+    final attributes = <String, String>{
+      'type': 'button',
+      if (isPressed != null) 'aria-pressed': isPressed! ? 'true' : 'false',
+    };
+
     return MantleElementNode(
       tag: 'button',
       classes: const ['mantle-button'],
+      attributes: attributes,
       styles: styles,
       events: events,
       children: children,

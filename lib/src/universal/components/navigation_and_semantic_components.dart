@@ -290,10 +290,13 @@ class MantleNavigation extends StatelessMantleComponent {
             if (isSelected) 'mantle-nav-item-selected',
           ],
           attributes: {
-            if (isLink) 'href': item.route!,
-            if (isSelected) 'aria-current': 'page',
-            'aria-selected': isSelected ? 'true' : 'false',
-            if (!isLink) 'type': 'button',
+            if (isLink) ...{
+              'href': item.route!,
+              if (isSelected) 'aria-current': 'page',
+            } else ...{
+              'type': 'button',
+              if (isSelected) 'aria-pressed': 'true',
+            },
             'aria-label': item.label,
           },
           styles: {

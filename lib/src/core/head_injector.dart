@@ -226,34 +226,37 @@ class HeadInjector {
         }
       }
 
-      // Rule G: JSON-LD Structured Data
+      // Rule G: JSON-LD Structured Data (Entity-aware deduplication)
       if (tag.tagName == 'script' &&
           tag.attributes['type']?.toLowerCase() == 'application/ld+json') {
-        String? newType;
+        dynamic newDecoded;
         try {
-          final decoded = json.decode(tag.textContent ?? '');
-          if (decoded is Map && decoded.containsKey('@type')) {
-            newType = decoded['@type']?.toString();
-          }
+          newDecoded = json.decode(tag.textContent ?? '');
         } catch (_) {}
 
-        if (newType != null) {
-          // Check if a JSON-LD block with the same @type already exists in head
-          dom.Element? matchedScript;
-          for (final existingScript in headElement.querySelectorAll(
-            'script[type="application/ld+json"]',
-          )) {
-            try {
-              final d = json.decode(existingScript.text.trim());
-              if (d is Map && d['@type'] == newType) {
-                matchedScript = existingScript;
-                break;
-              }
-            } catch (_) {}
-          }
-          if (matchedScript != null) {
-            matchedScript.text = tag.textContent ?? '';
-            continue;
+        if (newDecoded != null) {
+          final newKeys = computeJsonLdEntityKeys(newDecoded);
+
+          if (newKeys.isNotEmpty) {
+            // Check if an existing script tag in <head> represents the EXACT SAME entity
+            dom.Element? matchedScript;
+            for (final existingScript in headElement.querySelectorAll(
+              'script[type="application/ld+json"]',
+            )) {
+              try {
+                final existingDecoded = json.decode(existingScript.text.trim());
+                final existingKeys = computeJsonLdEntityKeys(existingDecoded);
+                if (existingKeys.intersection(newKeys).isNotEmpty) {
+                  matchedScript = existingScript;
+                  break;
+                }
+              } catch (_) {}
+            }
+
+            if (matchedScript != null) {
+              matchedScript.text = tag.textContent ?? '';
+              continue;
+            }
           }
         }
       }
@@ -273,5 +276,73 @@ class HeadInjector {
     for (final stray in headElement.querySelectorAll('html, body')) {
       stray.remove();
     }
+  }
+
+  /// Computes a set of entity identity keys for a JSON-LD payload.
+  /// Used to distinguish different entities sharing the same @type (e.g. multiple Products or Articles).
+  static Set<String> computeJsonLdEntityKeys(dynamic data) {
+    final keys = <String>{};
+    void extract(dynamic node) {
+      if (node is Map) {
+        if (node.containsKey('@graph') && node['@graph'] is List) {
+          for (final item in node['@graph'] as List) {
+            extract(item);
+          }
+          return;
+        }
+
+        final type = node['@type']?.toString();
+
+        // 1. Prefer explicit @id
+        final atId = node['@id']?.toString().trim();
+        if (atId != null && atId.isNotEmpty) {
+          keys.add('@id:$atId');
+          return;
+        }
+
+        // 2. Canonical URL or item URL
+        final url = node['url']?.toString().trim();
+        if (url != null && url.isNotEmpty) {
+          keys.add('$type:url:$url');
+          return;
+        }
+
+        // 3. Entity-specific unique identifiers (sku, identifier, gtin, mpn, isbn)
+        for (final idKey in [
+          'sku',
+          'identifier',
+          'gtin13',
+          'gtin',
+          'mpn',
+          'isbn',
+        ]) {
+          final val = node[idKey]?.toString().trim();
+          if (val != null && val.isNotEmpty) {
+            keys.add('$type:$idKey:$val');
+            return;
+          }
+        }
+
+        // 4. Stable human-readable identity (name, headline, title)
+        for (final nameKey in ['name', 'headline', 'title']) {
+          final val = node[nameKey]?.toString().trim();
+          if (val != null && val.isNotEmpty) {
+            keys.add('$type:$nameKey:$val');
+            return;
+          }
+        }
+
+        // 5. Fallback for anonymous entities: hash of non-empty content
+        final contentSummary = json.encode(node);
+        keys.add('$type:hash:${contentSummary.hashCode}');
+      } else if (node is List) {
+        for (final item in node) {
+          extract(item);
+        }
+      }
+    }
+
+    extract(data);
+    return keys;
   }
 }

@@ -121,7 +121,7 @@ MantleComponent buildAboutPage() {
   return const MantlePage(
     padding: MantleEdgeInsets.all(24),
     children: [
-      MantleNavigation(items: _navItems),
+      MantleNavigation(items: _navItems, currentIndex: 1),
       MantleSizedBox(height: 16),
       MantleBreadcrumb(
         items: [
@@ -175,7 +175,7 @@ MantleComponent buildProductsPage() {
   return const MantlePage(
     padding: MantleEdgeInsets.all(24),
     children: [
-      MantleNavigation(items: _navItems),
+      MantleNavigation(items: _navItems, currentIndex: 2),
       MantleSizedBox(height: 16),
       MantleBreadcrumb(
         items: [
@@ -241,7 +241,7 @@ MantleComponent buildFaqPage() {
   return const MantlePage(
     padding: MantleEdgeInsets.all(24),
     children: [
-      MantleNavigation(items: _navItems),
+      MantleNavigation(items: _navItems, currentIndex: 3),
       MantleSizedBox(height: 16),
       MantleBreadcrumb(
         items: [
@@ -284,7 +284,7 @@ MantleComponent buildProductDetailPage(StoreProduct product) {
   return MantlePage(
     padding: const MantleEdgeInsets.all(24),
     children: [
-      const MantleNavigation(items: _navItems),
+      const MantleNavigation(items: _navItems, currentIndex: 2),
       const MantleSizedBox(height: 16),
       MantleBreadcrumb(
         items: [

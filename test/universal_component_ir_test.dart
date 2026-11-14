@@ -267,7 +267,8 @@ void main() {
       expect(navNode.attributes['role'], equals('navigation'));
       expect(navNode.children.length, equals(2));
       final activeItem = navNode.children[1] as MantleElementNode;
-      expect(activeItem.attributes['aria-selected'], equals('true'));
+      expect(activeItem.attributes['aria-current'], equals('page'));
+      expect(activeItem.attributes['aria-selected'], isNull);
 
       // MantleDrawer
       const drawer = MantleDrawer(

@@ -134,3 +134,33 @@ Purges cached pre-render files safely.
 
 - `dart run meta_mantle crawl --url http://localhost:8080`: Recursively crawls pages, checks link health, detects broken links (404), and checks for SSR readiness.
 - `dart run meta_mantle inspect-url --url https://example.com`: Fetches a remote URL with crawler User-Agent emulation (`Googlebot`, `bingbot`, `Twitterbot`) to verify dynamic rendering.
+
+---
+
+## 8. `html` Validation: Quality vs Standards Conformance
+
+MetaMantle explicitly distinguishes between two levels of HTML validation:
+
+### 1. Custom MetaMantle HTML Quality Validation
+A fast, deterministic, offline structural and SEO quality engine. It executes locally on every build and CI pipeline without external network dependencies.
+- **Rules checked:**
+  - Strict document hierarchy (single root `<html>`, single `<head>`, single `<body>`, no misplaced elements).
+  - Pre-parse source-level duplicate tag inspection (preserves source errors that DOM parser normalization would otherwise hide).
+  - Unique metadata enforcement (single `<title>`, single `<meta name="description">`, unique canonical URLs, deduplicated OG/Twitter tags).
+  - Entity-aware JSON-LD schema deduplication (differentiating independent entities sharing `@type` via `@id`, `url`, `sku`, or `name`).
+  - Responsive image conformance (`max-width: 100%`, `height: auto`, explicit `width`/`height` preventing CLS, `loading="lazy"`, `alt` presence).
+  - Navigation semantics (ordinary links use `<a href="...">` with `aria-current="page"`, no `aria-selected` on links, valid WAI-ARIA tabs).
+  - Internal route link integrity and on-disk asset verification.
+
+```bash
+dart run meta_mantle html validate --dir build/web --strict
+```
+
+### 2. External HTML5 Standards Conformance Validation (Nu HTML Checker)
+An optional compliance stage that queries an official W3C Nu HTML Checker instance (v.Nu) or a local containerized validator.
+- Enabled via `--nu-validate` or `VNU_URL` environment variable.
+- Handles network availability and timeouts honestly: if external validation is not requested, it is reported as `SKIPPED`; if the service times out or is unreachable, it is reported as `UNAVAILABLE` rather than falsely claiming standards conformance passed.
+
+```bash
+dart run meta_mantle html validate --dir build/web --nu-validate
+```

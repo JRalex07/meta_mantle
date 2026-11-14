@@ -303,6 +303,223 @@ void main() {
         equals('https://example.com/new'),
       );
     });
+
+    test('HeadInjector entity-aware JSON-LD deduplication preserves multiple Product schemas with distinct identities', () {
+      const templateHtml =
+          '<!DOCTYPE html><html><head></head><body></body></html>';
+      final doc = html_parser.parse(templateHtml);
+
+      final product1 = const HeadTag(
+        key: 'product_rice',
+        tagName: 'script',
+        attributes: {'type': 'application/ld+json'},
+        textContent: '{"@context":"https://schema.org","@type":"Product","@id":"https://example.com/products/basmati-rice#product","name":"Royal Aged Basmati Rice","url":"https://example.com/products/basmati-rice","offers":{"price":"18.99"}}',
+      );
+
+      final product2 = const HeadTag(
+        key: 'product_milk',
+        tagName: 'script',
+        attributes: {'type': 'application/ld+json'},
+        textContent: '{"@context":"https://schema.org","@type":"Product","@id":"https://example.com/products/whole-milk#product","name":"Farm Fresh Whole Milk","url":"https://example.com/products/whole-milk","offers":{"price":"4.49"}}',
+      );
+
+      final product3 = const HeadTag(
+        key: 'product_oil',
+        tagName: 'script',
+        attributes: {'type': 'application/ld+json'},
+        textContent: '{"@context":"https://schema.org","@type":"Product","sku":"OIL-99","name":"Cold-Pressed Olive Oil","offers":{"price":"14.99"}}',
+      );
+
+      // Inject all three distinct Product schemas
+      HeadInjector.injectTags(
+        document: doc,
+        tags: [product1, product2, product3],
+      );
+
+      final scripts = doc.head!.querySelectorAll(
+        'script[type="application/ld+json"]',
+      );
+      expect(
+        scripts.length,
+        equals(3),
+        reason: 'All 3 independent Product schemas must be preserved',
+      );
+
+      // Now inject an updated version of product 1 (same @id, new price)
+      const updatedProduct1 = HeadTag(
+        key: 'product_rice_updated',
+        tagName: 'script',
+        attributes: {'type': 'application/ld+json'},
+        textContent: '{"@context":"https://schema.org","@type":"Product","@id":"https://example.com/products/basmati-rice#product","name":"Royal Aged Basmati Rice","url":"https://example.com/products/basmati-rice","offers":{"price":"19.99"}}',
+      );
+
+      HeadInjector.injectTags(document: doc, tags: [updatedProduct1]);
+
+      final scriptsAfterUpdate = doc.head!.querySelectorAll(
+        'script[type="application/ld+json"]',
+      );
+      expect(
+        scriptsAfterUpdate.length,
+        equals(3),
+        reason: 'Updating an existing entity must NOT add a 4th script',
+      );
+      expect(
+        scriptsAfterUpdate.any((s) => s.text.contains('"price":"19.99"')),
+        isTrue,
+      );
+      expect(
+        scriptsAfterUpdate.any((s) => s.text.contains('Whole Milk')),
+        isTrue,
+      );
+      expect(scriptsAfterUpdate.any((s) => s.text.contains('OIL-99')), isTrue);
+    });
+
+    test('pre-parse structural checks detect duplicate root, head, and body tags in raw source', () {
+      const htmlWithTwoHeads = '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>First Head</title>
+</head>
+<head>
+  <meta name="description" content="Second Head">
+</head>
+<body><p>Content</p></body>
+</html>
+''';
+      final reportHead = validator.validateHtml(
+        htmlWithTwoHeads,
+        filePath: 'two_heads.html',
+      );
+      expect(
+        reportHead.errors.any((e) => e.rule == 'structure-head-duplicate'),
+        isTrue,
+      );
+
+      const htmlWithTwoBodies = '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+<body><p>Body 1</p></body>
+<body><p>Body 2</p></body>
+</html>
+''';
+      final reportBody = validator.validateHtml(
+        htmlWithTwoBodies,
+        filePath: 'two_bodies.html',
+      );
+      expect(
+        reportBody.errors.any((e) => e.rule == 'structure-body-duplicate'),
+        isTrue,
+      );
+
+      const htmlWithTwoHtmls = '''
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Title</title></head>
+<body></body>
+</html>
+<html lang="fr"><body></body></html>
+''';
+      final reportHtml = validator.validateHtml(
+        htmlWithTwoHtmls,
+        filePath: 'two_htmls.html',
+      );
+      expect(
+        reportHtml.errors.any((e) => e.rule == 'structure-html-duplicate'),
+        isTrue,
+      );
+    });
+
+    test('validates navigation and button ARIA attributes strictly', () {
+      // Anchor links with invalid aria-selected
+      const badNavHtml = '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bad Nav</title>
+</head>
+<body>
+  <nav>
+    <a href="/" aria-selected="true">Home</a>
+  </nav>
+</body>
+</html>
+''';
+      final badNavReport = validator.validateHtml(
+        badNavHtml,
+        filePath: 'bad_nav.html',
+      );
+      expect(
+        badNavReport.errors.any((e) => e.rule == 'nav-aria-selected'),
+        isTrue,
+      );
+
+      // Button with invalid aria-selected outside tabs
+      const badBtnHtml = '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bad Button</title>
+</head>
+<body>
+  <button type="button" aria-selected="true">Toggle</button>
+</body>
+</html>
+''';
+      final badBtnReport = validator.validateHtml(
+        badBtnHtml,
+        filePath: 'bad_btn.html',
+      );
+      expect(
+        badBtnReport.errors.any((e) => e.rule == 'button-aria-selected'),
+        isTrue,
+      );
+    });
+
+    test('Nu HTML Checker external standards validator reports skipped and unavailable status honestly', () async {
+      const cleanHtml = '''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Clean</title>
+</head>
+<body><p>Test</p></body>
+</html>
+''';
+
+      // 1. When not requested, reports skipped
+      final skippedReport = await validator.validateHtmlWithStandards(
+        cleanHtml,
+        enableNuChecker: false,
+      );
+      expect(
+        skippedReport.standardsResult?.status,
+        equals(ExternalStandardsValidationStatus.skipped),
+      );
+
+      // 2. When unreachable endpoint, reports unavailable (never falsely reports passed)
+      final unavailReport = await validator.validateHtmlWithStandards(
+        cleanHtml,
+        enableNuChecker: true,
+        nuCheckerUrl: 'http://127.0.0.1:54321/nonexistent',
+      );
+      expect(
+        unavailReport.standardsResult?.status,
+        equals(ExternalStandardsValidationStatus.unavailable),
+      );
+      expect(
+        unavailReport.standardsResult?.reason,
+        contains('Connection to validator failed'),
+      );
+    });
   });
 
   group('Generated Example Routes Conformance Audit', () {
