@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/JRalex07/meta_mantle/actions/workflows/ci.yml/badge.svg)](https://github.com/JRalex07/meta_mantle/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Dart SDK](https://img.shields.io/badge/Dart-3.6%2B-blue.svg)](https://dart.dev)
-[![Flutter SDK](https://img.shields.io/badge/Flutter-3.27%2B-blue.svg)](https://flutter.dev)
+[![Dart SDK](https://img.shields.io/badge/Dart-3.13%2B-blue.svg)](https://dart.dev)
+[![Flutter SDK](https://img.shields.io/badge/Flutter-3.47%2B-blue.svg)](https://flutter.dev)
 [![WebAssembly](https://img.shields.io/badge/Wasm-Ready-green.svg)](docs/FLUTTER_INTEGRATION.md)
 
 **MetaMantle** is a universal typed metadata management, native server rendering (SSR), and automated SEO infrastructure framework for Flutter Web and Dart applications.
@@ -106,14 +106,7 @@ dependencies:
       ref: main # Or pin to a specific release tag such as v0.1.0
 ```
 
-The server and core entrypoints contain no Flutter imports, but this package manifest currently requires the Flutter SDK to resolve the package. Pure Dart SDK-only consumers need a separately published core/server package, which is not currently provided.
-```yaml
-dependencies:
-  meta_mantle:
-    git:
-      url: https://github.com/JRalex07/meta_mantle.git
-      ref: main
-```
+> **Flutter SDK Requirement**: Because `meta_mantle` declares `flutter: sdk: flutter` and `package:material_ui` in its root package manifest (`pubspec.yaml`), resolving dependencies (`flutter pub get` or `dart pub get`) requires the Flutter SDK to be installed in your environment. Pure-Dart entrypoints (`meta_mantle_core.dart` and `meta_mantle_server.dart`) contain no Flutter imports at runtime, but the package manifest requires the Flutter SDK on the host during dependency resolution.
 
 ### Local Path Dependency
 For monorepos or local package development:

@@ -167,10 +167,85 @@ void main() {
         final res = await http.Response.fromStream(streamed);
         expect(res.statusCode, equals(200));
         expect(res.headers['content-type'], contains('text/html'));
+        expect(res.headers['etag'], isNotNull);
         expect(res.body, isEmpty);
       } finally {
         client.close();
       }
+    });
+
+    test(
+      'Response headers verify ETag, Cache-Control, and Cache Hit behavior',
+      () async {
+        // First request (Cache MISS)
+        final res1 = await http.get(Uri.parse('$serverUrl/about'));
+        expect(res1.statusCode, equals(200));
+        expect(res1.headers['etag'], isNotNull);
+        expect(res1.headers['cache-control'], contains('public'));
+        expect(res1.headers['cache-control'], contains('max-age='));
+        final etag = res1.headers['etag']!;
+
+        // Second request (Cache HIT)
+        final res2 = await http.get(Uri.parse('$serverUrl/about'));
+        expect(res2.statusCode, equals(200));
+        expect(res2.headers['etag'], equals(etag));
+        expect(res2.headers['x-metamantle-cache'], equals('HIT'));
+      },
+    );
+
+    test(
+      'Conditional GET with matching If-None-Match returns 304 Not Modified',
+      () async {
+        // Fetch initial response to get ETag
+        final res1 = await http.get(Uri.parse('$serverUrl/about'));
+        expect(res1.statusCode, equals(200));
+        final etag = res1.headers['etag'];
+        expect(etag, isNotNull);
+
+        // Send conditional GET with exact ETag
+        final res304 = await http.get(
+          Uri.parse('$serverUrl/about'),
+          headers: {'if-none-match': etag!},
+        );
+        expect(res304.statusCode, equals(304));
+        expect(res304.body, isEmpty);
+        expect(res304.headers['etag'], equals(etag));
+
+        // Send conditional GET with uppercase weak ETag format W/"..."
+        final rawEtag = etag.toLowerCase().startsWith('w/')
+            ? etag.substring(2)
+            : etag;
+        final resWeak304 = await http.get(
+          Uri.parse('$serverUrl/about'),
+          headers: {'if-none-match': 'W/$rawEtag'},
+        );
+        expect(resWeak304.statusCode, equals(304));
+        expect(resWeak304.body, isEmpty);
+      },
+    );
+
+    test(
+      'Conditional GET with mismatched If-None-Match returns 200 with content',
+      () async {
+        final res = await http.get(
+          Uri.parse('$serverUrl/about'),
+          headers: {'if-none-match': '"mismatched-nonexistent-etag"'},
+        );
+        expect(res.statusCode, equals(200));
+        expect(res.body, contains('<h1>About Us</h1>'));
+      },
+    );
+
+    test('Conditional GET with If-Modified-Since returns 304 when content is fresh', () async {
+      final futureDate = HttpDate.format(
+        DateTime.now().add(const Duration(days: 1)),
+      );
+      final res = await http.get(
+        Uri.parse('$serverUrl/about'),
+        headers: {'if-modified-since': futureDate},
+      );
+      expect(res.statusCode, equals(304));
+      expect(res.body, isEmpty);
     });
   });
 }

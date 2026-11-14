@@ -49,9 +49,11 @@ jobs:
       - name: Run all tests
         run: |
           flutter test --reporter=expanded > test_results.log 2>&1 || {
-            grep -E -C 3 '(FAIL|Error:|Expected:|Actual:|Exception)' test_results.log | head -n 40 | while IFS= read -r line; do
-              echo "::error title=TestFailure::$line"
-            done
+            echo "::error title=Test Failure::Flutter test suite failed. Inspect the step summary and uploaded test-results-log artifact for details."
+            echo "### ❌ Flutter Test Failures" >> $GITHUB_STEP_SUMMARY
+            echo '```text' >> $GITHUB_STEP_SUMMARY
+            tail -n 120 test_results.log >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
             tail -n 80 test_results.log
             exit 1
           }
@@ -62,6 +64,7 @@ jobs:
         with:
           name: test-results-log
           path: test_results.log
+          if-no-files-found: ignore
 
       - name: Build example Flutter Web JavaScript release
         working-directory: example
@@ -90,6 +93,14 @@ jobs:
       - name: Audit generated SEO and metadata report
         working-directory: example
         run: dart run meta_mantle:meta_mantle report --dir build/web
+
+      - name: Upload web build artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build-artifacts-on-failure
+          path: example/build/web
+          if-no-files-found: ignore
 
       - name: Verify package publish dry-run
         run: dart pub publish --dry-run

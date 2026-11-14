@@ -30,6 +30,11 @@ ArgParser buildMetaMantleCliParser() {
   parser.commands['build-web']!
     ..addFlag('help', abbr: 'h', negatable: false)
     ..addOption(
+      'project-dir',
+      defaultsTo: '.',
+      help: 'Flutter project root directory containing pubspec.yaml and web/.',
+    )
+    ..addOption(
       'mode',
       defaultsTo: 'prerender',
       allowed: ['metadata', 'prerender', 'hybrid'],
@@ -134,7 +139,12 @@ ArgParser buildMetaMantleCliParser() {
   parser.commands['crawl']!
     ..addFlag('help', abbr: 'h', negatable: false)
     ..addOption('config', defaultsTo: 'meta_mantle.config.json')
-    ..addOption('base-url', help: 'Base URL of running server to crawl.');
+    ..addOption('base-url', help: 'Base URL of running server to crawl.')
+    ..addFlag(
+      'allow-localhost',
+      defaultsTo: true,
+      help: 'Allow loopback/localhost requests for local development.',
+    );
 
   parser.commands['preview']!
     ..addFlag('help', abbr: 'h', negatable: false)
@@ -758,9 +768,14 @@ void main(List<String> args) => runStaticManifest(metaMantleRoutes, args);
     }
 
     // Config file resolution
-    var configPath = command.options.contains('config')
-        ? command['config'] as String
-        : 'meta_mantle.config.json';
+    var configPath = 'meta_mantle.config.json';
+    if (command.options.contains('config') && command['config'] != null) {
+      configPath = command['config'] as String;
+    } else if (command.command != null &&
+        command.command!.options.contains('config') &&
+        command.command!['config'] != null) {
+      configPath = command.command!['config'] as String;
+    }
     var configFile = File(configPath);
     if (!await configFile.exists() &&
         configPath == 'meta_mantle.config.json' &&
@@ -1166,9 +1181,14 @@ void main(List<String> args) => runStaticManifest(metaMantleRoutes, args);
     // 13. crawl command
     if (command.name == 'crawl') {
       final baseUrl = command['base-url'] as String? ?? parsedConfig.baseUrl;
+      final allowLocal = command.options.contains('allow-localhost')
+          ? command['allow-localhost'] as bool
+          : true;
 
       stdout.writeln('Crawling routes against $baseUrl ...\n');
-      final inspector = CrawlerInspector();
+      final inspector = CrawlerInspector(
+        ssrfGuard: SsrfGuard(allowLocalhostInDev: allowLocal),
+      );
       var failCount = 0;
 
       try {
@@ -1198,6 +1218,9 @@ void main(List<String> args) => runStaticManifest(metaMantleRoutes, args);
 
     // 14. build-web command
     if (command.name == 'build-web') {
+      final projectDir = command.options.contains('project-dir')
+          ? command['project-dir'] as String
+          : '.';
       final modeStr = command['mode'] as String;
       final mode = BuildMode.fromString(modeStr);
       final isRelease = command['release'] as bool;
@@ -1212,6 +1235,7 @@ void main(List<String> args) => runStaticManifest(metaMantleRoutes, args);
       final manifestPath = command['manifest'] as String?;
 
       final options = BuildWebOptions(
+        projectDir: projectDir,
         mode: mode,
         release: isRelease && !isDebug,
         debug: isDebug,
