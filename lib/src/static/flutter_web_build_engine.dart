@@ -224,10 +224,6 @@ class FlutterWebBuildEngine {
       onProgress?.call(
         'Skipping Flutter Web compilation (--no-compile-flutter).',
       );
-    } else if (!options.compileFlutter) {
-      onProgress?.call(
-        'Skipping Flutter Web compilation (--no-compile-flutter).',
-      );
     } else {
       onProgress?.call('[DRY RUN] Skipping flutter build execution.');
     }

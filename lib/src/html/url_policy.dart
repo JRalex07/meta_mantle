@@ -23,7 +23,7 @@ class UrlPolicy {
     'file',
   };
 
-  static final RegExp _controlChars = RegExp(r'[\x00-\x1F\x7F]');
+  static final RegExp _controlChars = RegExp(r'[\x00-\x1F\x7F-\x9F]');
   static final RegExp _schemeFormat = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*$');
 
   /// Validates RFC 3986 scheme syntax (`^[a-zA-Z][a-zA-Z0-9+.-]*$`).
@@ -32,14 +32,11 @@ class UrlPolicy {
 
   /// Returns `true` when [url] is considered safe by this policy.
   ///
-  /// - Control chars (0x00–0x1F, 0x7F) are stripped before evaluation.
+  /// - Raw control characters (0x00–0x1F, 0x7F-0x9F) and raw unencoded whitespace are strictly rejected.
+  /// - Backslashes (`\`) are strictly rejected.
   /// - Empty string and fragment-only (`#…`) URLs are allowed.
-  /// - Backslash bypasses (`\`, `/\`, `\/`, `\\`, `/\\`) are strictly rejected.
   /// - Protocol-relative (`//`) is rejected unless [allowProtocolRelative] is `true`.
-  /// - Even when [allowProtocolRelative] is `true`, backslash variants (`//\`, `///`)
-  ///   and credentials remain rejected.
-  /// - Encoded and whitespace-obfuscated schemes (`%6a%61%76%61...`, `java\tscript:`)
-  ///   are unmasked and rejected.
+  /// - Encoded obfuscated schemes (`%6a%61%76%61...`) are unmasked and rejected.
   /// - Prohibited schemes ([prohibitedSchemes]) are ALWAYS rejected regardless of configuration.
   /// - Schemed URLs: only [allowedSchemes] (defaults to [defaultAllowedSchemes]) pass.
   static bool isSafe(
@@ -49,28 +46,31 @@ class UrlPolicy {
   }) {
     if (url.isEmpty) return true;
 
-    // Strip control characters (0x00-0x1F, 0x7F) and trim
-    final cleaned = url.replaceAll(_controlChars, '').trim();
-    if (cleaned.isEmpty) return true;
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return true;
 
-    final isProtocolRelative = cleaned.startsWith('//');
+    // Reject raw forbidden control characters (C0: 0x00-0x1F, C1: 0x7F-0x9F)
+    if (trimmed.contains(_controlChars)) {
+      return false;
+    }
+
+    // Reject unencoded whitespace inside URL
+    if (trimmed.contains(RegExp(r'\s'))) {
+      return false;
+    }
+
+    // Reject backslash-based bypasses immediately
+    if (trimmed.contains(r'\')) {
+      return false;
+    }
+
+    final isProtocolRelative = trimmed.startsWith('//');
     if (isProtocolRelative && !allowProtocolRelative) {
       return false;
     }
 
-    // Reject backslash-based bypasses immediately, regardless of protocol-relative setting
-    if (cleaned.startsWith(r'\') ||
-        cleaned.startsWith(r'/\') ||
-        cleaned.startsWith(r'\\') ||
-        cleaned.startsWith(r'/\\') ||
-        cleaned.startsWith(r'\/') ||
-        (isProtocolRelative &&
-            (cleaned.startsWith(r'//\') || cleaned.startsWith(r'///')))) {
-      return false;
-    }
-
     // Iteratively decode percent-encoding to detect obfuscated schemes
-    var decoded = cleaned;
+    var decoded = trimmed;
     for (var i = 0; i < 2; i++) {
       try {
         final next = Uri.decodeComponent(decoded);
@@ -81,21 +81,14 @@ class UrlPolicy {
       }
     }
 
-    // Strip control characters again post-decode
-    decoded = decoded.replaceAll(_controlChars, '').trim();
-
-    // Re-check protocol-relative and backslash bypasses after decoding
-    final isDecodedProtocolRelative = decoded.startsWith('//');
-    if (isDecodedProtocolRelative && !allowProtocolRelative) {
+    // If decoded URL introduces control characters or backslashes, reject
+    if (decoded.contains(_controlChars) || decoded.contains(r'\')) {
       return false;
     }
-    if (decoded.startsWith(r'\') ||
-        decoded.startsWith(r'/\') ||
-        decoded.startsWith(r'\\') ||
-        decoded.startsWith(r'/\\') ||
-        decoded.startsWith(r'\/') ||
-        (isDecodedProtocolRelative &&
-            (decoded.startsWith(r'//\') || decoded.startsWith(r'///')))) {
+
+    // Re-check protocol-relative after decoding
+    final isDecodedProtocolRelative = decoded.startsWith('//');
+    if (isDecodedProtocolRelative && !allowProtocolRelative) {
       return false;
     }
 
@@ -106,9 +99,7 @@ class UrlPolicy {
       final hostPart = slashIndex == -1
           ? afterSlashes
           : afterSlashes.substring(0, slashIndex);
-      if (hostPart.isEmpty ||
-          hostPart.contains('\\') ||
-          hostPart.contains('@')) {
+      if (hostPart.isEmpty || hostPart.contains('@')) {
         return false;
       }
       return true;
@@ -119,10 +110,7 @@ class UrlPolicy {
       return true;
     }
     if (decoded.startsWith('/')) {
-      // Must not be followed by another slash or backslash
-      return !decoded.startsWith('//') &&
-          !decoded.startsWith(r'/\') &&
-          !decoded.startsWith(r'/\\');
+      return !decoded.startsWith('//');
     }
 
     // Extract potential scheme by checking text before first '/', '?', or '#'

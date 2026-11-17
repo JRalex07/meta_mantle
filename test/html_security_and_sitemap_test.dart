@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:meta_mantle/meta_mantle_builder.dart';
@@ -713,6 +715,39 @@ void main() {
         ),
         throwsArgumentError,
       );
+    });
+
+    test('Enforces 50 MB (52,428,800 bytes) uncompressed UTF-8 limit per sitemaps.org protocol', () {
+      const generator = SitemapGenerator();
+
+      // Single entry exceeding 50 MB throws ArgumentError
+      final hugePath = 'a' * 52428800;
+      expect(
+        () => generator.generateSitemapIndex(
+          entries: [SitemapUrlEntry(loc: 'https://example.com/$hugePath')],
+          sitemapBaseUrl: 'https://example.com',
+        ),
+        throwsArgumentError,
+      );
+
+      // Verify that multibyte Unicode paths correctly contribute to byte count
+      final unicodeEntry = SitemapUrlEntry(
+        loc: 'https://example.com/products/%E4%BD%A0%E5%A5%BD',
+        alternates: [
+          const AlternateUrl(
+            language: 'zh-CN',
+            url: 'https://example.com/products/%E4%BD%A0%E5%A5%BD-cn',
+          ),
+        ],
+      );
+      final singleResult = generator.generateSitemapIndex(
+        entries: [unicodeEntry],
+        sitemapBaseUrl: 'https://example.com',
+      );
+      expect(singleResult.containsKey('sitemap.xml'), isTrue);
+      final singleBytes = utf8.encode(singleResult['sitemap.xml']!).length;
+      expect(singleBytes, isPositive);
+      expect(singleBytes, lessThan(SitemapGenerator.maxBytesPerSitemap));
     });
   });
 

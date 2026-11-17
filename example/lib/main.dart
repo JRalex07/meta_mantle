@@ -1,3 +1,7 @@
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
+import 'dart:ui' as ui;
+
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:meta_mantle/meta_mantle.dart';
@@ -23,7 +27,261 @@ void main() {
     ),
   );
 
-  runApp(const ExampleApp());
+  final dispatcher = WidgetsBinding.instance.platformDispatcher;
+  if (dispatcher.implicitView == null) {
+    runWidget(const MultiViewIslandsApp());
+  } else {
+    runApp(const ExampleApp());
+  }
+}
+
+class MultiViewIslandsApp extends StatefulWidget {
+  const MultiViewIslandsApp({super.key});
+
+  @override
+  State<MultiViewIslandsApp> createState() => _MultiViewIslandsAppState();
+}
+
+class _MultiViewIslandsAppState extends State<MultiViewIslandsApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    try {
+      globalContext.setProperty('__mantleMultiViewAppReady'.toJS, true.toJS);
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final views = WidgetsBinding.instance.platformDispatcher.views;
+    if (views.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return ViewCollection(
+      views: [
+        for (final view in views)
+          View(
+            view: view,
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: ThemeData(
+                colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+                useMaterial3: true,
+              ),
+              home: Scaffold(
+                backgroundColor: Colors.transparent,
+                body: _buildIslandForView(view),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildIslandForView(ui.FlutterView view) {
+    String? islandName;
+    try {
+      final activeViews = globalContext.getProperty<JSObject?>(
+        '__mantleActiveViews'.toJS,
+      );
+      if (activeViews != null) {
+        final val = activeViews.getProperty<JSString?>(
+          view.viewId.toString().toJS,
+        );
+        if (val != null) {
+          islandName = val.toDart;
+        }
+      }
+    } catch (_) {}
+
+    if (islandName == 'counter' ||
+        islandName == 'wishlist' ||
+        (islandName == null && view.viewId > 0)) {
+      return const WishlistIslandWidget();
+    }
+    return const CartIslandWidget();
+  }
+}
+
+class CartIslandWidget extends StatefulWidget {
+  const CartIslandWidget({super.key});
+
+  @override
+  State<CartIslandWidget> createState() => _CartIslandWidgetState();
+}
+
+class _CartIslandWidgetState extends State<CartIslandWidget> {
+  int _cartCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      globalContext.setProperty(
+        '__mantleTriggerDartCartClick'.toJS,
+        (() {
+          _handleCartClick();
+        }).toJS,
+      );
+    } catch (_) {}
+  }
+
+  void _handleCartClick() {
+    setState(() {
+      _cartCount++;
+    });
+    try {
+      globalContext.setProperty('__mantleDartCartCount'.toJS, _cartCount.toJS);
+      _dispatchCustomEvent('mantle:flutter-cart-clicked', _cartCount);
+      _updateIslandAttribute('flutter-cart-island', _cartCount);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: _handleCartClick,
+            child: const Text('Add to Cart'),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            _cartCount == 0
+                ? 'In Stock - Fast Delivery'
+                : 'In Cart ($_cartCount) - Fast Delivery',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class WishlistIslandWidget extends StatefulWidget {
+  const WishlistIslandWidget({super.key});
+
+  @override
+  State<WishlistIslandWidget> createState() => _WishlistIslandWidgetState();
+}
+
+class _WishlistIslandWidgetState extends State<WishlistIslandWidget> {
+  int _wishlistCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      globalContext.setProperty(
+        '__mantleTriggerDartWishlistClick'.toJS,
+        (() {
+          _handleWishlistClick();
+        }).toJS,
+      );
+    } catch (_) {}
+  }
+
+  void _handleWishlistClick() {
+    setState(() {
+      _wishlistCount++;
+    });
+    try {
+      globalContext.setProperty(
+        '__mantleDartWishlistCount'.toJS,
+        _wishlistCount.toJS,
+      );
+      _dispatchCustomEvent('mantle:flutter-wishlist-clicked', _wishlistCount);
+      _updateIslandAttribute('flutter-counter-island', _wishlistCount);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.indigo,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: _handleWishlistClick,
+            child: const Text('Add to Wishlist'),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            _wishlistCount == 0 ? '0 Saves' : 'Count: $_wishlistCount',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+void _dispatchCustomEvent(String eventName, int count) {
+  try {
+    final detail = JSObject();
+    detail.setProperty('count'.toJS, count.toJS);
+    final eventInit = JSObject();
+    eventInit.setProperty('detail'.toJS, detail);
+    eventInit.setProperty('bubbles'.toJS, true.toJS);
+    final customEventConstructor = globalContext.getProperty<JSFunction>(
+      'CustomEvent'.toJS,
+    );
+    final event = customEventConstructor.callAsConstructor<JSObject>(
+      eventName.toJS,
+      eventInit,
+    );
+    globalContext.callMethod('dispatchEvent'.toJS, event);
+  } catch (_) {}
+}
+
+void _updateIslandAttribute(String islandId, int count) {
+  try {
+    final document = globalContext.getProperty<JSObject>('document'.toJS);
+    final element = document.callMethod<JSObject?>(
+      'getElementById'.toJS,
+      islandId.toJS,
+    );
+    if (element != null) {
+      element.callMethod(
+        'setAttribute'.toJS,
+        'data-mantle-island-count'.toJS,
+        count.toString().toJS,
+      );
+      element.callMethod(
+        'setAttribute'.toJS,
+        'data-mantle-dart-callback-executed'.toJS,
+        'true'.toJS,
+      );
+    }
+  } catch (_) {}
 }
 
 class ExampleApp extends StatelessWidget {

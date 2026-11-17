@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../models/metadata.dart';
 
 /// Single URL entry for sitemap generation.
@@ -136,12 +138,97 @@ class SitemapGenerator {
     }
   }
 
+  /// Maximum allowed uncompressed UTF-8 bytes per sitemap or sitemap index (50 MB).
+  static const int maxBytesPerSitemap = 52428800;
+
+  /// Formats a single [SitemapUrlEntry] as XML string.
+  String _formatUrlEntry(SitemapUrlEntry entry) {
+    if (entry.loc.trim().isEmpty) {
+      throw ArgumentError.value(
+        entry.loc,
+        'entry.loc',
+        'SitemapUrlEntry loc must not be empty or whitespace-only.',
+      );
+    }
+    final loc = entry.loc;
+
+    // Validate loc as an absolute HTTP(S) URL.
+    _assertAbsoluteHttpUrl(loc, 'loc');
+
+    final buf = StringBuffer();
+    buf.writeln('  <url>');
+    buf.writeln('    <loc>${_escape(loc)}</loc>');
+
+    if (entry.lastMod != null) {
+      final iso = entry.lastMod!.toUtc().toIso8601String().split('T').first;
+      buf.writeln('    <lastmod>$iso</lastmod>');
+    }
+
+    if (entry.changeFreq != null) {
+      final freq = entry.changeFreq!.trim().toLowerCase();
+      if (!validChangeFrequencies.contains(freq)) {
+        throw ArgumentError.value(
+          entry.changeFreq,
+          'changeFreq',
+          'Invalid changefreq "${entry.changeFreq}". Valid values are: ${validChangeFrequencies.join(', ')}.',
+        );
+      }
+      buf.writeln('    <changefreq>$freq</changefreq>');
+    }
+
+    if (entry.priority != null) {
+      final p = entry.priority!;
+      if (p.isNaN || p.isInfinite || p < 0.0 || p > 1.0) {
+        throw ArgumentError.value(
+          p,
+          'priority',
+          'Priority must be a finite number between 0.0 and 1.0, got: $p.',
+        );
+      }
+      buf.writeln('    <priority>${p.toStringAsFixed(1)}</priority>');
+    }
+
+    for (final alt in entry.alternates) {
+      // Validate alternate language and URL.
+      _assertValidLanguage(alt.language);
+      if (alt.url.trim().isEmpty) {
+        throw ArgumentError.value(
+          alt.url,
+          'alternate href',
+          'Alternate href must not be empty or whitespace-only.',
+        );
+      }
+      _assertAbsoluteHttpUrl(alt.url, 'alternate href');
+      buf.writeln(
+        '    <xhtml:link rel="alternate" hreflang="${_escape(alt.language)}" href="${_escape(alt.url)}" />',
+      );
+    }
+
+    for (final img in entry.images) {
+      if (img.trim().isEmpty) {
+        throw ArgumentError.value(
+          img,
+          'image loc',
+          'Image loc must not be empty or whitespace-only.',
+        );
+      }
+      _assertAbsoluteHttpUrl(img, 'image loc');
+      buf.writeln('    <image:image>');
+      buf.writeln('      <image:loc>${_escape(img)}</image:loc>');
+      buf.writeln('    </image:image>');
+    }
+
+    buf.writeln('  </url>');
+    return buf.toString();
+  }
+
   /// Generates a single `<urlset>` XML document string for [entries].
   ///
   /// **Contract:** [entries.length] must not exceed [maxUrlsPerSitemap] (configured
-  /// protocol limit between 1 and 50,000 URLs).
+  /// protocol limit between 1 and 50,000 URLs), and uncompressed UTF-8 byte size must
+  /// not exceed [maxBytesPerSitemap] (52,428,800 bytes / 50 MB).
   ///
-  /// If [entries.length] exceeds [maxUrlsPerSitemap], this method throws an [ArgumentError].
+  /// If limits are exceeded, this method throws an [ArgumentError].
   /// Oversized inputs must use [generateSitemapIndex] to produce chunked sitemaps and
   /// a master `sitemap_index.xml`.
   String generateUrlset(List<SitemapUrlEntry> entries) {
@@ -171,95 +258,33 @@ class SitemapGenerator {
     buf.writeln('        xmlns:xhtml="http://www.w3.org/1999/xhtml">');
 
     for (final entry in entries) {
-      if (entry.loc.trim().isEmpty) {
-        throw ArgumentError.value(
-          entry.loc,
-          'entry.loc',
-          'SitemapUrlEntry loc must not be empty or whitespace-only.',
-        );
-      }
-      final loc = entry.loc;
-
-      // Validate loc as an absolute HTTP(S) URL.
-      _assertAbsoluteHttpUrl(loc, 'loc');
-
-      buf.writeln('  <url>');
-      buf.writeln('    <loc>${_escape(loc)}</loc>');
-
-      if (entry.lastMod != null) {
-        final iso = entry.lastMod!.toUtc().toIso8601String().split('T').first;
-        buf.writeln('    <lastmod>$iso</lastmod>');
-      }
-
-      if (entry.changeFreq != null) {
-        final freq = entry.changeFreq!.trim().toLowerCase();
-        if (!validChangeFrequencies.contains(freq)) {
-          throw ArgumentError.value(
-            entry.changeFreq,
-            'changeFreq',
-            'Invalid changefreq "${entry.changeFreq}". Valid values are: ${validChangeFrequencies.join(', ')}.',
-          );
-        }
-        buf.writeln('    <changefreq>$freq</changefreq>');
-      }
-
-      if (entry.priority != null) {
-        final p = entry.priority!;
-        if (p.isNaN || p.isInfinite || p < 0.0 || p > 1.0) {
-          throw ArgumentError.value(
-            p,
-            'priority',
-            'Priority must be a finite number between 0.0 and 1.0, got: $p.',
-          );
-        }
-        buf.writeln('    <priority>${p.toStringAsFixed(1)}</priority>');
-      }
-
-      for (final alt in entry.alternates) {
-        // Validate alternate language and URL.
-        _assertValidLanguage(alt.language);
-        if (alt.url.trim().isEmpty) {
-          throw ArgumentError.value(
-            alt.url,
-            'alternate href',
-            'Alternate href must not be empty or whitespace-only.',
-          );
-        }
-        _assertAbsoluteHttpUrl(alt.url, 'alternate href');
-        buf.writeln(
-          '    <xhtml:link rel="alternate" hreflang="${_escape(alt.language)}" href="${_escape(alt.url)}" />',
-        );
-      }
-
-      for (final img in entry.images) {
-        if (img.trim().isEmpty) {
-          throw ArgumentError.value(
-            img,
-            'image loc',
-            'Image loc must not be empty or whitespace-only.',
-          );
-        }
-        _assertAbsoluteHttpUrl(img, 'image loc');
-        buf.writeln('    <image:image>');
-        buf.writeln('      <image:loc>${_escape(img)}</image:loc>');
-        buf.writeln('    </image:image>');
-      }
-
-      buf.writeln('  </url>');
+      buf.write(_formatUrlEntry(entry));
     }
 
     buf.writeln('</urlset>');
-    return buf.toString();
+    final xml = buf.toString();
+
+    final byteLength = utf8.encode(xml).length;
+    if (byteLength > maxBytesPerSitemap) {
+      throw ArgumentError(
+        'Generated sitemap byte size ($byteLength bytes) exceeds the sitemaps.org protocol limit of $maxBytesPerSitemap bytes (50 MB). Use generateSitemapIndex() to partition oversized datasets.',
+      );
+    }
+
+    return xml;
   }
 
   /// Splits [entries] into compliant chunks of at most [maxUrlsPerSitemap] (maximum
-  /// 50,000 URLs per file per sitemaps.org protocol) and generates individual sitemaps
+  /// 50,000 URLs per file per sitemaps.org protocol) and at most [maxBytesPerSitemap]
+  /// (52,428,800 bytes uncompressed UTF-8) and generates individual sitemaps
   /// plus a master `sitemap_index.xml`.
   ///
   /// **Contract:**
-  /// - If [entries.length] is within [maxUrlsPerSitemap], returns `{'sitemap.xml': xmlContent}`.
-  /// - If [entries.length] exceeds [maxUrlsPerSitemap], returns `sitemap_index.xml` referencing
-  ///   `sitemap-1.xml`, `sitemap-2.xml`, etc., each containing at most [maxUrlsPerSitemap] URLs.
+  /// - If [entries] can be contained in a single sitemap under both the URL count limit
+  ///   and the 50 MB byte limit, returns `{'sitemap.xml': xmlContent}`.
+  /// - If either limit is exceeded, returns `sitemap_index.xml` referencing
+  ///   `sitemap-1.xml`, `sitemap-2.xml`, etc., each within protocol limits.
+  /// - If any single entry exceeds the 50 MB limit, throws [ArgumentError].
   /// - [sitemapBaseUrl] must be a non-empty, absolute HTTP(S) URL.
   Map<String, String> generateSitemapIndex({
     required List<SitemapUrlEntry> entries,
@@ -291,16 +316,55 @@ class SitemapGenerator {
       );
     }
 
-    if (entries.length <= maxUrlsPerSitemap) {
-      return {'sitemap.xml': generateUrlset(entries)};
+    const header =
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
+        '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"\n'
+        '        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n';
+    const footer = '</urlset>\n';
+    final headerFooterBytes =
+        utf8.encode(header).length + utf8.encode(footer).length;
+
+    // Partition entries based on both maxUrlsPerSitemap AND maxBytesPerSitemap (52,428,800 bytes)
+    final chunks = <List<SitemapUrlEntry>>[];
+    var currentChunk = <SitemapUrlEntry>[];
+    var currentChunkBytes = headerFooterBytes;
+
+    for (final entry in entries) {
+      final entryXml = _formatUrlEntry(entry);
+      final entryBytes = utf8.encode(entryXml).length;
+
+      if (entryBytes + headerFooterBytes > maxBytesPerSitemap) {
+        throw ArgumentError(
+          'Single sitemap entry for "${entry.loc}" exceeds maximum allowed sitemap size of $maxBytesPerSitemap bytes (${entryBytes + headerFooterBytes} bytes).',
+        );
+      }
+
+      if (currentChunk.isNotEmpty &&
+          (currentChunk.length >= maxUrlsPerSitemap ||
+              currentChunkBytes + entryBytes > maxBytesPerSitemap)) {
+        chunks.add(currentChunk);
+        currentChunk = <SitemapUrlEntry>[];
+        currentChunkBytes = headerFooterBytes;
+      }
+
+      currentChunk.add(entry);
+      currentChunkBytes += entryBytes;
     }
 
-    final sitemapCount = (entries.length / maxUrlsPerSitemap).ceil();
-    if (sitemapCount > 50000) {
+    if (currentChunk.isNotEmpty || chunks.isEmpty) {
+      chunks.add(currentChunk);
+    }
+
+    if (chunks.length == 1 && entries.length <= maxUrlsPerSitemap) {
+      return {'sitemap.xml': generateUrlset(chunks.first)};
+    }
+
+    if (chunks.length > 50000) {
       throw ArgumentError.value(
         entries.length,
         'entries',
-        'Dataset requires $sitemapCount sitemaps, which exceeds the sitemaps.org protocol limit of 50,000 sitemaps per sitemap index.',
+        'Dataset requires ${chunks.length} sitemaps, which exceeds the sitemaps.org protocol limit of 50,000 sitemaps per sitemap index.',
       );
     }
 
@@ -316,13 +380,8 @@ class SitemapGenerator {
         ? sitemapBaseUrl.substring(0, sitemapBaseUrl.length - 1)
         : sitemapBaseUrl;
 
-    for (var i = 0; i < sitemapCount; i++) {
-      final startIndex = i * maxUrlsPerSitemap;
-      final endIndex = (startIndex + maxUrlsPerSitemap < entries.length)
-          ? startIndex + maxUrlsPerSitemap
-          : entries.length;
-
-      final chunk = entries.sublist(startIndex, endIndex);
+    for (var i = 0; i < chunks.length; i++) {
+      final chunk = chunks[i];
       final filename = 'sitemap-${i + 1}.xml';
       result[filename] = generateUrlset(chunk);
 
@@ -339,8 +398,15 @@ class SitemapGenerator {
     }
 
     indexBuf.writeln('</sitemapindex>');
-    result['sitemap_index.xml'] = indexBuf.toString();
+    final indexXml = indexBuf.toString();
+    final indexByteLength = utf8.encode(indexXml).length;
+    if (indexByteLength > maxBytesPerSitemap) {
+      throw ArgumentError(
+        'Sitemap index XML exceeds maximum allowed size of $maxBytesPerSitemap bytes ($indexByteLength bytes).',
+      );
+    }
 
+    result['sitemap_index.xml'] = indexXml;
     return result;
   }
 

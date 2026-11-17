@@ -52,7 +52,7 @@ Run `flutter pub get` to fetch dependencies.
 In your `lib/main.dart`, attach `MetaMantleNavigatorObserver` (or `MetaMantleGoRouterObserver` when using GoRouter) to your application so route transitions automatically synchronize page metadata with browser `<head>` tags:
 
 ```dart
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:meta_mantle/meta_mantle.dart';
 
 void main() {

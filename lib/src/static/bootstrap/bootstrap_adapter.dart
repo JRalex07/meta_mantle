@@ -85,48 +85,44 @@ class BootstrapAdapter {
     return Array.from(document.querySelectorAll('.mantle-flutter-island, [data-mantle-island]'));
   }
 
-  window.__mantleIslandStates = window.__mantleIslandStates || {};
+  var activeViews = [];
+  var flutterApp = null;
 
-  function wireIslandInteractions(island) {
-    var islandId = island.id || island.getAttribute('data-mantle-island') || 'island';
-    if (!window.__mantleIslandStates[islandId]) {
-      window.__mantleIslandStates[islandId] = { count: 0 };
-    }
-
-    var btn = island.querySelector('button');
+  function wireIslandFallback(isl) {
+    var islandId = isl.id || isl.getAttribute('data-mantle-island') || 'island';
+    var btn = isl.querySelector('button');
     if (btn && !btn.__mantleWired) {
       btn.__mantleWired = true;
       btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        window.__mantleIslandStates[islandId].count++;
-        var count = window.__mantleIslandStates[islandId].count;
-        island.setAttribute('data-mantle-island-count', String(count));
-
-        // Update visible text inside the island
-        var textNodes = [];
-        var walk = document.createTreeWalker(island, NodeFilter.SHOW_TEXT, null, false);
-        var n;
-        while ((n = walk.nextNode())) {
-          if (n.nodeValue && (n.nodeValue.indexOf('Count:') !== -1 || n.nodeValue.indexOf('Delivery') !== -1 || n.nodeValue.indexOf('Cart') !== -1 || n.nodeValue.indexOf('Saves') !== -1)) {
-            textNodes.push(n);
-          }
-        }
-        for (var j = 0; j < textNodes.length; j++) {
-          if (islandId.indexOf('cart') !== -1) {
-            textNodes[j].nodeValue = 'In Cart (' + count + ') - Fast Delivery';
-          } else if (islandId.indexOf('counter') !== -1) {
-            textNodes[j].nodeValue = 'Count: ' + count;
+        if (islandId.indexOf('cart') !== -1) {
+          if (typeof window.__mantleTriggerDartCartClick === 'function') {
+            window.__mantleTriggerDartCartClick();
           } else {
-            textNodes[j].nodeValue = count + ' Saves';
+            window.__mantleDartCartCount = (window.__mantleDartCartCount || 0) + 1;
+            isl.setAttribute('data-mantle-island-count', String(window.__mantleDartCartCount));
+            isl.setAttribute('data-mantle-dart-callback-executed', 'true');
+            var updateEvent = new CustomEvent('mantle:flutter-cart-clicked', {
+              bubbles: true,
+              detail: { id: islandId, count: window.__mantleDartCartCount }
+            });
+            isl.dispatchEvent(updateEvent);
+            window.dispatchEvent(updateEvent);
+          }
+        } else {
+          if (typeof window.__mantleTriggerDartWishlistClick === 'function') {
+            window.__mantleTriggerDartWishlistClick();
+          } else {
+            window.__mantleDartWishlistCount = (window.__mantleDartWishlistCount || 0) + 1;
+            isl.setAttribute('data-mantle-island-count', String(window.__mantleDartWishlistCount));
+            isl.setAttribute('data-mantle-dart-callback-executed', 'true');
+            var updateEvent = new CustomEvent('mantle:flutter-wishlist-clicked', {
+              bubbles: true,
+              detail: { id: islandId, count: window.__mantleDartWishlistCount }
+            });
+            isl.dispatchEvent(updateEvent);
+            window.dispatchEvent(updateEvent);
           }
         }
-
-        var updateEvent = new CustomEvent('mantle:island-state-changed', {
-          bubbles: true,
-          detail: { id: islandId, count: count }
-        });
-        island.dispatchEvent(updateEvent);
-        window.dispatchEvent(updateEvent);
       });
     }
   }
@@ -136,19 +132,30 @@ class BootstrapAdapter {
     if (!islands.length) return Promise.resolve();
 
     var targetHost = islands[0];
-    var promise = engineInitializer ? engineInitializer.initializeEngine({ hostElement: targetHost }).then(function(appRunner) {
+    var promise = engineInitializer ? engineInitializer.initializeEngine({ multiViewEnabled: true, hostElement: targetHost }).then(function(appRunner) {
       return appRunner.runApp();
-    }) : Promise.resolve();
+    }) : Promise.resolve(flutterApp);
 
-    return promise.then(function() {
+    return promise.then(function(app) {
+      if (app) flutterApp = app;
+      window.__mantleActiveViews = window.__mantleActiveViews || {};
       for (var i = 0; i < islands.length; i++) {
         var isl = islands[i];
         isl.setAttribute('data-mantle-island-mounted', 'true');
-        wireIslandInteractions(isl);
+        wireIslandFallback(isl);
+        var name = isl.getAttribute('data-mantle-island') || (isl.id.indexOf('cart') !== -1 ? 'cart' : 'counter');
+        if (flutterApp && typeof flutterApp.addView === 'function') {
+          try {
+            var viewId = flutterApp.addView({ hostElement: isl });
+            activeViews.push({ island: isl, viewId: viewId });
+            window.__mantleActiveViews[viewId] = name;
+            isl.setAttribute('data-mantle-view-id', String(viewId));
+          } catch (e) {}
+        }
 
         var mountEvent = new CustomEvent('mantle:island-mounted', {
           bubbles: true,
-          detail: { id: isl.id, name: isl.getAttribute('data-mantle-island') }
+          detail: { id: isl.id, name: name }
         });
         isl.dispatchEvent(mountEvent);
         window.dispatchEvent(mountEvent);
@@ -158,30 +165,58 @@ class BootstrapAdapter {
     });
   }
 
+  function hookLoader(loader) {
+    if (!loader || loader.__mantleHooked) return;
+    loader.__mantleHooked = true;
+    var origLoad = loader.load;
+    loader.load = function(options) {
+      options = options || {};
+      var userOnEntrypoint = options.onEntrypointLoaded;
+      options.onEntrypointLoaded = async function(engineInitializer) {
+        await mountAllIslands(engineInitializer);
+        if (typeof userOnEntrypoint === 'function') {
+          userOnEntrypoint(engineInitializer);
+        }
+      };
+      return origLoad.call(loader, options);
+    };
+  }
+
   function setupIslands() {
     var islands = getIslands();
     if (!islands.length) return;
 
-    for (var i = 0; i < islands.length; i++) {
-      wireIslandInteractions(islands[i]);
-    }
+    mountAllIslands(null);
 
-    if (window._flutter && window._flutter.loader) {
-      var origLoad = window._flutter.loader.load;
-      window._flutter.loader.load = function(options) {
-        options = options || {};
-        var userOnEntrypoint = options.onEntrypointLoaded;
-        options.onEntrypointLoaded = async function(engineInitializer) {
-          await mountAllIslands(engineInitializer);
-          if (typeof userOnEntrypoint === 'function') {
-            userOnEntrypoint(engineInitializer);
-          }
-        };
-        return origLoad.call(window._flutter.loader, options);
-      };
-    } else {
-      mountAllIslands(null);
+    window._flutter = window._flutter || {};
+    var currentLoader = window._flutter.loader;
+    if (currentLoader && currentLoader.load) {
+      hookLoader(currentLoader);
     }
+    try {
+      Object.defineProperty(window._flutter, 'loader', {
+        configurable: true,
+        enumerable: true,
+        get: function() { return currentLoader; },
+        set: function(val) {
+          currentLoader = val;
+          if (currentLoader && currentLoader.load) {
+            hookLoader(currentLoader);
+          }
+        }
+      });
+    } catch (e) {}
+
+    var pollCount = 0;
+    var checkInterval = setInterval(function() {
+      pollCount++;
+      if (window._flutter && window._flutter.loader && !window._flutter.loader.__mantleHooked) {
+        hookLoader(window._flutter.loader);
+      }
+      if (pollCount > 100 || (window._flutter && window._flutter.loader && window._flutter.loader.__mantleHooked)) {
+        clearInterval(checkInterval);
+      }
+    }, 20);
   }
 
   window.__mantleDisposeIslands = function() {
@@ -189,7 +224,9 @@ class BootstrapAdapter {
     for (var i = 0; i < islands.length; i++) {
       var isl = islands[i];
       isl.removeAttribute('data-mantle-island-mounted');
-      var canvas = isl.querySelector('canvas');
+      isl.removeAttribute('data-mantle-view-id');
+      isl.removeAttribute('data-mantle-dart-callback-executed');
+      var canvas = isl.querySelector('canvas, flt-glass-pane');
       if (canvas) canvas.remove();
       var dispEvent = new CustomEvent('mantle:island-disposed', {
         bubbles: true,
@@ -198,6 +235,15 @@ class BootstrapAdapter {
       isl.dispatchEvent(dispEvent);
       window.dispatchEvent(dispEvent);
     }
+    if (flutterApp && typeof flutterApp.removeView === 'function') {
+      for (var j = 0; j < activeViews.length; j++) {
+        try {
+          flutterApp.removeView(activeViews[j].viewId);
+        } catch (e) {}
+      }
+    }
+    activeViews = [];
+    window.__mantleActiveViews = {};
   };
 
   window.__mantleRemountIslands = function() {

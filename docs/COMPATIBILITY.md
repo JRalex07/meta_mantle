@@ -28,3 +28,12 @@ MetaMantle Runtime works across all modern browsers:
 - Microsoft Edge (`>= 90`)
 - Android Chrome & Mobile WebViews
 
+---
+
+## 3. UI Framework & Material Compatibility
+
+- **Material UI:** Migrated to standalone `package:material_ui/material_ui.dart` (`^1.11.0`), eliminating deprecated `package:flutter/material.dart` references on Flutter 3.47+ / 3.50+ toolchains.
+- **Flutter Islands Multi-View:** Strategy C (`dom-with-flutter-islands`) leverages Flutter's native multi-view embedding API (`multiViewEnabled: true`, `app.addView({ hostElement })`, and `app.removeView(viewId)`).
+- **Sitemap Protocol Limits:** Full compliance with the sitemaps.org protocol, enforcing both the 50,000 URL limit and the 50 MB (`52,428,800` bytes) uncompressed UTF-8 size limit.
+
+

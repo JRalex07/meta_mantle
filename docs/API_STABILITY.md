@@ -73,3 +73,12 @@ PATCH version: Backward-compatible bug fixes and security patches
 - **WebAssembly Support:** All client-side runtime logic is guaranteed to compile and execute under `dart2wasm` without legacy `dart:html` symbols.
 - **Core Source Boundary:** `meta_mantle_core.dart` will remain free of Flutter, `dart:io`, and browser imports. This source-level boundary does not make the current package independently installable with the Dart SDK alone.
 
+---
+
+## 5. HTML Sanitizer & Security Policy Guarantees
+
+- **`HtmlSanitizer.defaults()`:** Guaranteed as a compile-time constant (`const HtmlSanitizer.defaults()`) providing zero runtime overhead for default configurations.
+- **`HtmlSanitizer({ ... })`:** The default factory constructor validates custom tags, attributes, and schemes at construction time, throwing `ArgumentError` when dangerous schemes (`javascript:`, `vbscript:`, `data:`, `blob:`, `file:`) or event handlers are supplied.
+- **`UrlPolicy.isSafe`:** Strictly rejects forbidden control characters (C0: 0x00–0x1F, C1: 0x7F–0x9F), raw whitespace, and backslashes (`\`), ensuring runtime validation matches output serialization.
+
+

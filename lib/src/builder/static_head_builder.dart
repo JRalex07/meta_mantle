@@ -359,7 +359,7 @@ class StaticHeadBuilder {
     }
 
     final uniqueSitemapUrls = sitemapUrls.toSet().toList()..sort();
-    final isChunked = uniqueSitemapUrls.length > 50000;
+    var isChunked = false;
 
     if (config.sitemap) {
       final entries = uniqueSitemapUrls
@@ -370,6 +370,7 @@ class StaticHeadBuilder {
         entries: entries,
         sitemapBaseUrl: config.baseUrl,
       );
+      isChunked = sitemapFiles.length > 1;
       for (final entry in sitemapFiles.entries) {
         final sitemap = File(
           '${outputDirectory.path}${Platform.pathSeparator}${entry.key}',
