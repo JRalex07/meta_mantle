@@ -246,7 +246,8 @@ class BootstrapAdapter {
         head.append(el);
       }
 
-      if (mode != BuildMode.metadata && renderingStrategy != RenderingStrategy.semanticDom) {
+      if (mode != BuildMode.metadata &&
+          renderingStrategy != RenderingStrategy.semanticDom) {
         final existingStyle = head.querySelector('#mantle-prerender-style');
         if (existingStyle != null) {
           existingStyle.remove();
@@ -290,10 +291,17 @@ class BootstrapAdapter {
 
       if (renderingStrategy == RenderingStrategy.semanticDom) {
         // Strip full-page Flutter bootstrap script so Flutter Canvas never takes over the document
-        final scriptsToRemove = [
-          ...body.querySelectorAll('script'),
-          if (head != null) ...head.querySelectorAll('script'),
-        ].where((s) => s.attributes['src']?.contains('flutter_bootstrap.js') ?? false).toList();
+        final scriptsToRemove =
+            [
+                  ...body.querySelectorAll('script'),
+                  if (head != null) ...head.querySelectorAll('script'),
+                ]
+                .where(
+                  (s) =>
+                      s.attributes['src']?.contains('flutter_bootstrap.js') ??
+                      false,
+                )
+                .toList();
         for (final s in scriptsToRemove) {
           s.remove();
         }

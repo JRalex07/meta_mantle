@@ -270,7 +270,8 @@ class FlutterWebBuildEngine {
     var htmlValidationErrorsCount = 0;
 
     final baseUrl = parsedConfig.baseUrl;
-    final strategy = options.renderingStrategy != RenderingStrategy.flutterCanvas
+    final strategy =
+        options.renderingStrategy != RenderingStrategy.flutterCanvas
         ? options.renderingStrategy
         : (parsedConfig.renderingStrategy ?? options.renderingStrategy);
 
@@ -806,7 +807,8 @@ Future<void> main(List<String> args) async {
       resolvedHead.querySelector('#mantle-prerender-style')?.remove();
 
       // In Mode B & C with FlutterCanvas, inject prerender CSS styles
-      if (mode != BuildMode.metadata && renderingStrategy != RenderingStrategy.semanticDom) {
+      if (mode != BuildMode.metadata &&
+          renderingStrategy != RenderingStrategy.semanticDom) {
         final styleEl = html_parser.parseFragment(
           bootstrapAdapter.generatePrerenderStyles(),
         );
@@ -867,10 +869,18 @@ Future<void> main(List<String> args) async {
 
       if (renderingStrategy == RenderingStrategy.semanticDom) {
         // Strip full-page Flutter bootstrap script so Flutter Canvas never takes over the document
-        final scriptsToRemove = [
-          ...body.querySelectorAll('script'),
-          if (resolvedHead != null) ...resolvedHead.querySelectorAll('script'),
-        ].where((s) => s.attributes['src']?.contains('flutter_bootstrap.js') ?? false).toList();
+        final scriptsToRemove =
+            [
+                  ...body.querySelectorAll('script'),
+                  if (resolvedHead != null)
+                    ...resolvedHead.querySelectorAll('script'),
+                ]
+                .where(
+                  (s) =>
+                      s.attributes['src']?.contains('flutter_bootstrap.js') ??
+                      false,
+                )
+                .toList();
         for (final s in scriptsToRemove) {
           s.remove();
         }
