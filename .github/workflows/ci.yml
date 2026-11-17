@@ -36,6 +36,10 @@ jobs:
         working-directory: example
         run: flutter pub get
 
+      - name: Get external consumer example dependencies
+        working-directory: example/static_html_site
+        run: flutter pub get
+
       - name: Check formatting
         run: dart format --output=none --set-exit-if-changed .
 
@@ -45,10 +49,6 @@ jobs:
       - name: Analyze example
         working-directory: example
         run: flutter analyze
-
-      - name: Get external consumer example dependencies
-        working-directory: example/static_html_site
-        run: flutter pub get
 
       - name: Analyze external consumer example
         working-directory: example/static_html_site
