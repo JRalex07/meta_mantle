@@ -36,11 +36,27 @@ module.exports = defineConfig({
       },
     },
   ],
-  webServer: {
-    command: `dart run bin/meta_mantle.dart preview --config example/meta_mantle.config.json --dir example/build/web --port 8080 --no-watch`,
-    cwd: rootDir,
-    url: 'http://127.0.0.1:8080/',
-    reuseExistingServer: true,
-    timeout: 60000,
-  },
+  webServer: [
+    {
+      command: `dart run bin/meta_mantle.dart preview --config example/meta_mantle.config.json --dir example/build/web --port 8080 --no-watch`,
+      cwd: rootDir,
+      url: 'http://127.0.0.1:8080/',
+      reuseExistingServer: true,
+      timeout: 60000,
+    },
+    {
+      command: `dart run bin/meta_mantle.dart preview --config example/meta_mantle.config.json --dir example/build/web_semantic_dom --port 8081 --no-watch`,
+      cwd: rootDir,
+      url: 'http://127.0.0.1:8081/',
+      reuseExistingServer: true,
+      timeout: 60000,
+    },
+    {
+      command: `dart run bin/meta_mantle.dart preview --config example/meta_mantle.config.json --dir example/build/web_islands --port 8082 --no-watch`,
+      cwd: rootDir,
+      url: 'http://127.0.0.1:8082/',
+      reuseExistingServer: true,
+      timeout: 60000,
+    },
+  ],
 });

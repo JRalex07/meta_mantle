@@ -101,9 +101,17 @@ jobs:
         working-directory: example
         run: dart run meta_mantle:meta_mantle validate --config meta_mantle.config.json
 
-      - name: Execute MetaMantle build-web command
+      - name: Execute MetaMantle build-web command (flutter-canvas)
         working-directory: example
         run: dart run meta_mantle:meta_mantle build-web --mode prerender --strict --release
+
+      - name: Execute MetaMantle build-web command (semantic-dom)
+        working-directory: example
+        run: dart run meta_mantle:meta_mantle build-web --rendering-strategy semantic-dom --output build/web_semantic_dom --mode prerender --strict --release
+
+      - name: Execute MetaMantle build-web command (dom-with-flutter-islands)
+        working-directory: example
+        run: dart run meta_mantle:meta_mantle build-web --rendering-strategy dom-with-flutter-islands --output build/web_islands --mode prerender --strict --release
 
       - name: Validate generated route-specific HTML
         working-directory: example
@@ -127,9 +135,11 @@ jobs:
           npm install --prefix e2e
           npx --prefix e2e playwright install --with-deps chromium
 
-      - name: Start MetaMantle preview server
+      - name: Start MetaMantle preview servers
         run: |
           dart run bin/meta_mantle.dart preview --config example/meta_mantle.config.json --dir example/build/web --port 8080 --no-watch &
+          dart run bin/meta_mantle.dart preview --config example/meta_mantle.config.json --dir example/build/web_semantic_dom --port 8081 --no-watch &
+          dart run bin/meta_mantle.dart preview --config example/meta_mantle.config.json --dir example/build/web_islands --port 8082 --no-watch &
           sleep 5
 
       - name: Run Playwright E2E real browser tests

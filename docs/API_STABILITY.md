@@ -69,7 +69,7 @@ PATCH version: Backward-compatible bug fixes and security patches
 
 ## 4. Binary & Ecosystem Compatibility
 
-- **SDK Compatibility:** Package constraints are Dart `>=3.6.0 <4.0.0` and Flutter `>=3.27.0`. The root package requires Flutter for resolution, even though core/server entrypoint source avoids Flutter imports.
+- **SDK Compatibility:** Package constraints are Dart `>=3.13.0 <4.0.0` and Flutter `>=3.47.0`. The root package requires Flutter for resolution, even though core/server entrypoint source avoids Flutter imports.
 - **WebAssembly Support:** All client-side runtime logic is guaranteed to compile and execute under `dart2wasm` without legacy `dart:html` symbols.
 - **Core Source Boundary:** `meta_mantle_core.dart` will remain free of Flutter, `dart:io`, and browser imports. This source-level boundary does not make the current package independently installable with the Dart SDK alone.
 

@@ -6,8 +6,8 @@ This guide details local development workflows, code quality guidelines, and tes
 
 ## Prerequisites
 
-- **Dart SDK**: `>=3.6.0 <4.0.0`
-- **Flutter SDK**: `>=3.27.0`
+- **Dart SDK**: `>=3.13.0 <4.0.0`
+- **Flutter SDK**: `>=3.47.0`
 - Git
 
 ---

@@ -1,3 +1,5 @@
+import '../html/url_policy.dart';
+
 /// A normalized, platform-neutral representation of one head element.
 class HeadTag {
   const HeadTag({
@@ -5,7 +7,46 @@ class HeadTag {
     required this.tagName,
     this.attributes = const {},
     this.textContent,
+    this.isTrustedContent = false,
   });
+
+  /// Creates an explicitly trusted inline script head tag.
+  factory HeadTag.trustedScript({
+    required String key,
+    Map<String, String> attributes = const {},
+    String? content,
+  }) => HeadTag(
+    key: key,
+    tagName: 'script',
+    attributes: attributes,
+    textContent: content,
+    isTrustedContent: true,
+  );
+
+  /// Creates an explicitly trusted inline stylesheet head tag.
+  factory HeadTag.trustedStyle({
+    required String key,
+    Map<String, String> attributes = const {},
+    required String css,
+  }) => HeadTag(
+    key: key,
+    tagName: 'style',
+    attributes: attributes,
+    textContent: css,
+    isTrustedContent: true,
+  );
+
+  /// Creates a structured JSON-LD data script head tag.
+  factory HeadTag.jsonLd({
+    required String key,
+    required String jsonLdContent,
+  }) => HeadTag(
+    key: key,
+    tagName: 'script',
+    attributes: const {'type': 'application/ld+json'},
+    textContent: jsonLdContent,
+    isTrustedContent: true,
+  );
 
   static final RegExp _tagRegex = RegExp(r'^[a-zA-Z][a-zA-Z0-9-]*$');
   static final RegExp _attrKeyRegex = RegExp(r'^[a-zA-Z_:][a-zA-Z0-9_.:-]*$');
@@ -15,6 +56,7 @@ class HeadTag {
   final String tagName;
   final Map<String, String> attributes;
   final String? textContent;
+  final bool isTrustedContent;
 
   /// Serializes this head tag to an HTML string.
   String toHtml() {
@@ -29,12 +71,16 @@ class HeadTag {
           'Invalid attribute name',
         );
       }
-      if (entry.key.toLowerCase().startsWith('on')) {
+      final lowerKey = entry.key.toLowerCase();
+      if (lowerKey.startsWith('on')) {
         throw ArgumentError.value(
           entry.key,
           'attribute',
           'Event handler attributes (on*) are prohibited in head tags',
         );
+      }
+      if (lowerKey == 'href' || lowerKey == 'src') {
+        UrlPolicy.assertSafe(entry.value, entry.key);
       }
     }
 
@@ -49,6 +95,18 @@ class HeadTag {
     }
 
     if (lowerTag == 'script') {
+      final isJsonLd =
+          attributes['type']?.toLowerCase() == 'application/ld+json';
+      if (textContent != null && textContent!.isNotEmpty) {
+        if (!isJsonLd && !isTrustedContent) {
+          throw ArgumentError.value(
+            textContent,
+            'textContent',
+            'Inline script execution requires explicit trusted content (isTrustedContent: true). '
+                'Ordinary text is never interpreted as executable script.',
+          );
+        }
+      }
       final safeContent = (textContent ?? '').replaceAll(
         RegExp(r'</script', caseSensitive: false),
         r'<\/script',
@@ -56,10 +114,29 @@ class HeadTag {
       return '<script$attrString>$safeContent</script>';
     }
 
+    if (lowerTag == 'style') {
+      if (textContent != null && textContent!.isNotEmpty && !isTrustedContent) {
+        throw ArgumentError.value(
+          textContent,
+          'textContent',
+          'Inline style content requires explicit trusted content (isTrustedContent: true). '
+              'Ordinary text is never interpreted as executable style.',
+        );
+      }
+      final safeCss = (textContent ?? '').replaceAll(
+        RegExp(r'</style', caseSensitive: false),
+        r'<\/style',
+      );
+      return '<style$attrString>$safeCss</style>';
+    }
+
+    if (lowerTag == 'title') {
+      final safeTitle = _escapeText(textContent ?? '');
+      return '<title$attrString>$safeTitle</title>';
+    }
+
     if (textContent != null) {
-      final safeText = lowerTag == 'style'
-          ? textContent!
-          : _escapeText(textContent!);
+      final safeText = _escapeText(textContent!);
       return '<$tagName$attrString>$safeText</$tagName>';
     }
 

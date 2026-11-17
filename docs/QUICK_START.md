@@ -6,9 +6,9 @@ This step-by-step tutorial walks you through creating, configuring, building, an
 
 ## 1. Requirements & Prerequisites
 
-- **Dart SDK**: `>=3.6.0 <4.0.0`
-- **Flutter SDK**: `>=3.27.0`
-- Supported target platforms: Web (CanvasKit, Skwasm, WasmGC, or lightweight DOM), iOS, Android, macOS, Linux, Windows, and Server (Shelf).
+- **Dart SDK**: `>=3.13.0 <4.0.0`
+- **Flutter SDK**: `>=3.47.0`
+- Supported target platforms: Web (CanvasKit, Skwasm, WasmGC, or lightweight Semantic DOM), iOS, Android, macOS, Linux, Windows, and Server (Shelf).
 
 Check your local environment:
 ```bash
@@ -24,15 +24,24 @@ Add `meta_mantle` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  meta_mantle: ^0.2.0
+  meta_mantle: ^0.3.0
   flutter:
     sdk: flutter
 
 dev_dependencies:
-  meta_mantle_builder: ^0.2.0
   flutter_test:
     sdk: flutter
 ```
+
+> **Note on Package Entrypoints:**
+> All MetaMantle tools, server utilities, and builders are included in the single `meta_mantle` package through modular library exports:
+> - `package:meta_mantle/meta_mantle.dart`: Flutter widgets (`MetaHead`, `MetaMantleGoRouterObserver`)
+> - `package:meta_mantle/meta_mantle_core.dart`: Pure-Dart models, metadata, and JSON-LD builders
+> - `package:meta_mantle/meta_mantle_builder.dart`: Static generation builders and sitemap tools
+> - `package:meta_mantle/meta_mantle_server.dart`: Pure-Dart server rendering engine (`MetaMantleServerEngine`)
+> - `package:meta_mantle/meta_mantle_universal.dart`: Universal component architecture (`MantleComponent`, `MantlePage`)
+>
+> Resolving the root `meta_mantle` package requires the Flutter SDK because `meta_mantle` includes Flutter widgets. For server-only or Dart-only environments, see [Architecture & Package Split Proposal](ARCHITECTURE_PACKAGE_SPLIT.md).
 
 Run `flutter pub get` to fetch dependencies.
 

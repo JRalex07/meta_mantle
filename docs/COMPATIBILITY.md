@@ -10,8 +10,8 @@ The server/core source entrypoints avoid Flutter imports, but the root package m
 
 | Target | Supported Version | Notes |
 |---|---|---|
-| **Dart SDK** | `>= 3.6.0 < 4.0.0` | Uses modern patterns, records, and sound null safety. |
-| **Flutter SDK** | `>= 3.27.0` | Compatible with latest Flutter stable. |
+| **Dart SDK** | `>= 3.13.0 < 4.0.0` | Uses modern patterns, records, and sound null safety. |
+| **Flutter SDK** | `>= 3.47.0` | Compatible with latest Flutter stable. |
 | **Flutter WebAssembly (Wasm)** | Fully Supported | Uses `package:web` and `dart:js_interop`. Zero `dart:html` legacy code. |
 | **Flutter CanvasKit / HTML** | Fully Supported | Standard web client builds. |
 | **Dart Server (AOT / JIT)** | Fully Supported | Compiles to native binaries (`dart compile exe`) and Docker containers. |

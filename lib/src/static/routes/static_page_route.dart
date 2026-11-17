@@ -418,7 +418,7 @@ Future<void> runStaticManifest(
   }
 
   final outputJson = jsonEncode({
-    'version': '0.2.0',
+    'version': '0.3.0',
     'timestamp': DateTime.now().toUtc().toIso8601String(),
     'routesCount': routesData.length,
     'routes': routesData,

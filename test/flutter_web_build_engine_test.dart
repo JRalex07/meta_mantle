@@ -412,7 +412,7 @@ dependencies:
         final decoded = jsonDecode(
           tempBundleFile.readAsStringSync(),
         ) as Map<String, dynamic>;
-        expect(decoded['version'], equals('0.2.0'));
+        expect(decoded['version'], equals('0.3.0'));
         expect(decoded['routesCount'], equals(2));
 
         final routes = decoded['routes'] as List<dynamic>;

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'html_sanitizer.dart';
+import 'url_policy.dart';
 
 /// Base class for all HTML DOM nodes rendered by MetaMantle SSR.
 abstract class HtmlNode {
@@ -176,41 +177,7 @@ class ElementNode extends HtmlNode {
   }
 
   void assertSafeUrl(String url, String attrName) {
-    final cleaned = url.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '').trim();
-    if (cleaned.isEmpty || cleaned.startsWith('#')) return;
-
-    if (cleaned.startsWith('//') ||
-        cleaned.startsWith(r'/\\') ||
-        cleaned.startsWith(r'\\')) {
-      throw ArgumentError.value(
-        url,
-        attrName,
-        'Protocol-relative URLs are prohibited for security',
-      );
-    }
-
-    if (cleaned.startsWith('/') && !cleaned.startsWith('//')) {
-      return; // Safe root-relative URL
-    }
-
-    final colonIndex = cleaned.indexOf(':');
-    if (colonIndex != -1) {
-      final scheme = cleaned
-          .substring(0, colonIndex)
-          .replaceAll(RegExp(r'[\s]'), '')
-          .toLowerCase();
-      if (scheme == 'javascript' ||
-          scheme == 'vbscript' ||
-          scheme == 'data' ||
-          scheme == 'blob' ||
-          scheme == 'file') {
-        throw ArgumentError.value(
-          url,
-          attrName,
-          'Unsafe active URL scheme "$scheme:" is prohibited',
-        );
-      }
-    }
+    UrlPolicy.assertSafe(url, attrName);
   }
 }
 

@@ -11,8 +11,8 @@ To ensure stability, security, and developer ergonomics across the tripartite ar
 ## 1. Development Setup
 
 ### Prerequisites
-- **Flutter SDK:** Version `>=3.27.0`
-- **Dart SDK:** Version `>=3.6.0 <4.0.0`
+- **Flutter SDK:** Version `>=3.47.0`
+- **Dart SDK:** Version `>=3.13.0 <4.0.0`
 - **Git**
 
 ### Clone and Install Dependencies

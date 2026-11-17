@@ -872,7 +872,7 @@ class HtmlValidator {
       final uri = Uri.parse(url);
       final request = await client.postUrl(uri);
       request.headers.set('Content-Type', 'text/html; charset=utf-8');
-      request.headers.set('User-Agent', 'MetaMantle-HtmlValidator/0.2.0');
+      request.headers.set('User-Agent', 'MetaMantle-HtmlValidator/0.3.0');
       request.write(htmlContent);
       final response = await request.close().timeout(timeout);
 

@@ -1,6 +1,8 @@
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
+import 'url_policy.dart';
+
 /// Allowlist-based HTML sanitizer for rich text content.
 ///
 /// Strips executable elements (`script`, `iframe`, `object`, `embed`), event
@@ -165,50 +167,6 @@ class HtmlSanitizer {
   }
 
   bool isValidUrl(String url) {
-    // Strip control characters and whitespace
-    final cleaned = url.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '').trim();
-    if (cleaned.isEmpty) return false;
-
-    // Fragment only
-    if (cleaned.startsWith('#')) return true;
-
-    // Reject protocol-relative URLs (e.g. //evil.com) unless explicitly enabled
-    if (cleaned.startsWith('//') ||
-        cleaned.startsWith(r'/\\') ||
-        cleaned.startsWith(r'\\')) {
-      if (!allowProtocolRelative) return false;
-      return true;
-    }
-
-    // Root-relative path (e.g. /products, /about/team)
-    if (cleaned.startsWith('/') && !cleaned.startsWith('//')) {
-      return true;
-    }
-
-    // Check for dangerous schemes before colon (e.g. javascript:, vbscript:, data:)
-    final colonIndex = cleaned.indexOf(':');
-    if (colonIndex != -1) {
-      final schemeCandidate = cleaned
-          .substring(0, colonIndex)
-          .replaceAll(RegExp(r'[\s]'), '')
-          .toLowerCase();
-      if (schemeCandidate == 'javascript' ||
-          schemeCandidate == 'vbscript' ||
-          schemeCandidate == 'data' ||
-          schemeCandidate == 'blob' ||
-          schemeCandidate == 'file') {
-        return false;
-      }
-      return allowedSchemes.contains(schemeCandidate);
-    }
-
-    // Relative path (e.g. 'items/apple', './items', '../items')
-    try {
-      final uri = Uri.parse(cleaned);
-      if (!uri.hasScheme) return true;
-      return allowedSchemes.contains(uri.scheme.toLowerCase());
-    } catch (_) {
-      return false;
-    }
+    return UrlPolicy.isSafe(url);
   }
 }

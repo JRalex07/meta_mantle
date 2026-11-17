@@ -78,7 +78,7 @@ MaterialApp(
 
 ## 3. WebAssembly (Wasm) Compatibility
 
-Flutter 3.27+ supports compiling web applications to WebAssembly (`dart2wasm`).
+Flutter supports compiling web applications to WebAssembly (`dart2wasm`).
 
 MetaMantle's runtime engine uses standard `package:web` interop with zero legacy `dart:html` imports, making it 100% compatible with WebAssembly builds:
 

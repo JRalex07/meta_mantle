@@ -10,10 +10,10 @@ This document specifies the official integration contract for downstream consume
 | :--- | :--- |
 | **Package Name** | `meta_mantle` |
 | **Official Repository** | `https://github.com/JRalex07/meta_mantle` |
-| **Current Stable Baseline** | `0.1.0` |
+| **Current Stable Baseline** | `0.3.0` |
 | **License** | MIT License |
-| **Dart SDK Compatibility** | `>=3.6.0 <4.0.0` |
-| **Flutter SDK Compatibility** | `>=3.27.0` |
+| **Dart SDK Compatibility** | `>=3.13.0 <4.0.0` |
+| **Flutter SDK Compatibility** | `>=3.47.0` |
 | **Package Resolution** | The package manifest requires Flutter SDK resolution, including for core/server entrypoints. |
 | **WebAssembly Support** | Verified under `dart2wasm` |
 | **Canonical Documentation Source** | `docs/` within this repository |

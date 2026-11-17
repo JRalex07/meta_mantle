@@ -174,7 +174,30 @@ class HomeScreen extends StatelessWidget {
 
 ---
 
-## 7. Choosing an Engine
+## 7. Rendering Strategies
+
+MetaMantle supports six distinct rendering strategies. Choosing correctly is critical for SEO, accessibility, and performance:
+
+| Strategy | Description | SEO / Crawlers | Interactivity |
+| :--- | :--- | :--- | :--- |
+| **Flutter Canvas** | Flutter compiles to WebGL/canvas via CanvasKit or Skwasm. No semantic DOM is emitted. | ❌ Crawlers cannot read content without JS/hydration | ✅ Full Flutter UI richness |
+| **Semantic DOM Mode** | MetaMantle generates a complete HTML semantic DOM layer. No Flutter canvas overlay. | ✅ Text is selectable, accessible, and crawler-readable | ⚠️ No Flutter interactivity (server-rendered HTML only) |
+| **DOM + Flutter Islands** | Semantic DOM provides the page shell; Flutter canvas is scoped to specific "island" mount points (e.g. `#flutter-cart-island`). | ✅ Full semantic shell readable by crawlers | ✅ Flutter interactivity within islands |
+| **Static Generation (SSG)** | Build-time generation of route-specific HTML files via `meta_mantle build`. No server runtime required at request time. | ✅ Crawlers receive full HTML immediately | ✅ Flutter hydrates after initial load |
+| **Request-time SSR** | `MetaMantleServerEngine` generates complete HTML on each HTTP request in pure Dart (no headless browser). | ✅ Every response is a complete HTML document | ✅ Flutter hydrates after initial load |
+| **Client-side Rendering (CSR)** | Flutter runs entirely in the browser. MetaMantle `MetaHead` updates `<head>` dynamically as users navigate. | ❌ Crawlers see only the initial skeleton | ✅ Full Flutter UI richness |
+
+> [!NOTE]
+> The **root `meta_mantle` package** depends on `sdk: flutter` and `package:material_ui`, so it requires the **Flutter SDK** to be installed — even when using pure-Dart entrypoints (`meta_mantle_core.dart`, `meta_mantle_server.dart`). These entrypoints contain no Flutter imports at runtime, but the package manifest requires Flutter on the host during dependency resolution.
+>
+> The **`MetaMantleServerEngine`** (accessed via `meta_mantle_server.dart`) runs in pure Dart with no Flutter or browser dependencies and can be deployed to any Dart-capable server environment.
+
+> [!TIP]
+> For maximum SEO without a server runtime, combine **Static Generation (SSG)** with the **DOM + Flutter Islands** strategy: pre-generate semantic HTML for crawlers, then mount Flutter canvas only inside designated island containers.
+
+---
+
+## 8. Choosing an Engine
 
 | Requirement | Recommended Engine | Documentation Guide |
 | :--- | :--- | :--- |
@@ -188,7 +211,7 @@ class HomeScreen extends StatelessWidget {
 
 ---
 
-## 8. Working Examples
+## 9. Working Examples
 
 The repository includes runnable, production-grade reference implementations in [`example/bin/`](example/bin/):
 
@@ -203,7 +226,7 @@ The repository includes runnable, production-grade reference implementations in 
 
 ---
 
-## 9. Documentation Index
+## 10. Documentation Index
 
 Comprehensive technical documentation is maintained in [`docs/`](docs/):
 
@@ -228,7 +251,7 @@ Comprehensive technical documentation is maintained in [`docs/`](docs/):
 
 ---
 
-## 10. Contributing
+## 11. Contributing
 
 Contributions are welcome! Please review [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on setting up your local environment, running static analysis and automated tests, and submitting pull requests.
 
@@ -236,7 +259,7 @@ All contributors must adhere to our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ---
 
-## 11. Security
+## 12. Security
 
 MetaMantle treats security and data protection as core engineering requirements across client-side Flutter Web browsers, static build pipelines, and production server environments (SSR).
 
@@ -284,13 +307,13 @@ If you discover a security vulnerability, please report it privately via GitHub 
 
 ---
 
-## 12. Support & Governance
+## 13. Support & Governance
 
 - **Support:** For bug reports and feature requests, see [SUPPORT.md](SUPPORT.md).
 - **Governance:** For project roles, decision-making, and release management, see [GOVERNANCE.md](GOVERNANCE.md).
 
 ---
 
-## 13. License
+## 14. License
 
 MetaMantle is open-source software licensed under the [MIT License](LICENSE).

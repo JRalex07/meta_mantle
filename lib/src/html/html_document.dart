@@ -2,6 +2,7 @@ import '../core/head_tag.dart';
 import '../core/metadata_renderer.dart';
 import '../models/metadata.dart';
 import 'html_node.dart';
+import 'url_policy.dart';
 
 /// Renders a complete, valid, SEO-ready semantic HTML5 document.
 class HtmlDocument {
@@ -31,7 +32,8 @@ class HtmlDocument {
       ...customHeadTags,
     ];
 
-    final lang = _escapeAttr(metadata.language ?? config.language ?? 'en');
+    final rawLang = metadata.language ?? config.language ?? 'en';
+    final lang = _escapeAttr(rawLang);
     final buf = StringBuffer();
     buf.writeln('<!DOCTYPE html>');
     buf.writeln('<html lang="$lang">');
@@ -45,20 +47,19 @@ class HtmlDocument {
       (t) => t.tagName.toLowerCase() == 'base',
     );
     if (!hasCustomBase && baseHref.isNotEmpty) {
+      UrlPolicy.assertSafe(baseHref, 'baseHref');
       buf.writeln('  <base href="${_escapeAttr(baseHref)}">');
     }
 
-    // Render title first if present
+    // Render title first if present via unified HeadTag serializer
     for (final tag in headTags) {
       if (tag.tagName.toLowerCase() == 'title') {
-        buf.writeln('  <title>${_escape(tag.textContent ?? '')}</title>');
+        buf.writeln('  ${tag.toHtml()}');
         break;
       }
     }
 
-    const voidTags = {'meta', 'link', 'base'};
-
-    // Render other head tags
+    // Render remaining head tags via unified HeadTag serializer
     for (final tag in headTags) {
       final lowerTag = tag.tagName.toLowerCase();
       if (lowerTag == 'title' ||
@@ -68,25 +69,7 @@ class HtmlDocument {
         continue; // handled at document structure level
       }
 
-      final attrBuf = StringBuffer();
-      for (final attr in tag.attributes.entries) {
-        attrBuf.write(' ${attr.key}="${_escapeAttr(attr.value)}"');
-      }
-
-      if (voidTags.contains(lowerTag)) {
-        buf.writeln('  <$lowerTag$attrBuf>');
-      } else if (lowerTag == 'script') {
-        final rawContent = tag.textContent ?? '';
-        final safeContent = rawContent.replaceAll(
-          RegExp(r'</script', caseSensitive: false),
-          r'<\/script',
-        );
-        buf.writeln('  <script$attrBuf>$safeContent</script>');
-      } else {
-        buf.writeln(
-          '  <$lowerTag$attrBuf>${_escape(tag.textContent ?? '')}</$lowerTag>',
-        );
-      }
+      buf.writeln('  ${tag.toHtml()}');
     }
 
     buf.writeln('</head>');
@@ -101,19 +84,15 @@ class HtmlDocument {
 
     // Optionally include progressive Flutter Web enhancement bootstrap
     if (includeFlutterBootstrap) {
-      buf.writeln('  <script src="$flutterBootstrapSrc" async></script>');
+      UrlPolicy.assertSafe(flutterBootstrapSrc, 'flutterBootstrapSrc');
+      buf.writeln(
+        '  <script src="${_escapeAttr(flutterBootstrapSrc)}" async></script>',
+      );
     }
 
     buf.writeln('</body>');
     buf.writeln('</html>');
     return buf.toString();
-  }
-
-  static String _escape(String text) {
-    return text
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
   }
 
   static String _escapeAttr(String value) {

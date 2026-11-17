@@ -6,8 +6,8 @@ This guide details how to install and configure **MetaMantle** in Flutter Web ap
 
 ## 1. Environment Requirements
 
-- **Dart SDK:** `>=3.6.0 <4.0.0`
-- **Flutter SDK:** `>=3.27.0`
+- **Dart SDK:** `>=3.13.0 <4.0.0`
+- **Flutter SDK:** `>=3.47.0`
 - **Platforms Supported:**
   - **Flutter Web:** Fully supported (JavaScript and WebAssembly / `dart2wasm`).
   - **Dart Server / VM:** Fully supported for Native SSR, static generation CLI, and caching.
