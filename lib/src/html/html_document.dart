@@ -31,7 +31,7 @@ class HtmlDocument {
       ...customHeadTags,
     ];
 
-    final lang = metadata.language ?? config.language ?? 'en';
+    final lang = _escapeAttr(metadata.language ?? config.language ?? 'en');
     final buf = StringBuffer();
     buf.writeln('<!DOCTYPE html>');
     buf.writeln('<html lang="$lang">');
@@ -40,31 +40,52 @@ class HtmlDocument {
     buf.writeln(
       '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
     );
-    buf.writeln('  <base href="$baseHref">');
+
+    final hasCustomBase = headTags.any(
+      (t) => t.tagName.toLowerCase() == 'base',
+    );
+    if (!hasCustomBase && baseHref.isNotEmpty) {
+      buf.writeln('  <base href="${_escapeAttr(baseHref)}">');
+    }
 
     // Render title first if present
     for (final tag in headTags) {
-      if (tag.tagName == 'title') {
+      if (tag.tagName.toLowerCase() == 'title') {
         buf.writeln('  <title>${_escape(tag.textContent ?? '')}</title>');
         break;
       }
     }
 
+    const voidTags = {'meta', 'link', 'base'};
+
     // Render other head tags
     for (final tag in headTags) {
-      if (tag.tagName == 'title') continue; // already emitted
+      final lowerTag = tag.tagName.toLowerCase();
+      if (lowerTag == 'title' ||
+          lowerTag == 'html' ||
+          lowerTag == 'head' ||
+          lowerTag == 'body') {
+        continue; // handled at document structure level
+      }
 
       final attrBuf = StringBuffer();
       for (final attr in tag.attributes.entries) {
         attrBuf.write(' ${attr.key}="${_escapeAttr(attr.value)}"');
       }
 
-      if (tag.textContent != null) {
-        buf.writeln(
-          '  <${tag.tagName}$attrBuf>${tag.textContent}</${tag.tagName}>',
+      if (voidTags.contains(lowerTag)) {
+        buf.writeln('  <$lowerTag$attrBuf>');
+      } else if (lowerTag == 'script') {
+        final rawContent = tag.textContent ?? '';
+        final safeContent = rawContent.replaceAll(
+          RegExp(r'</script', caseSensitive: false),
+          r'<\/script',
         );
+        buf.writeln('  <script$attrBuf>$safeContent</script>');
       } else {
-        buf.writeln('  <${tag.tagName}$attrBuf>');
+        buf.writeln(
+          '  <$lowerTag$attrBuf>${_escape(tag.textContent ?? '')}</$lowerTag>',
+        );
       }
     }
 
@@ -88,14 +109,14 @@ class HtmlDocument {
     return buf.toString();
   }
 
-  String _escape(String text) {
+  static String _escape(String text) {
     return text
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;');
   }
 
-  String _escapeAttr(String value) {
+  static String _escapeAttr(String value) {
     return value
         .replaceAll('&', '&amp;')
         .replaceAll('"', '&quot;')

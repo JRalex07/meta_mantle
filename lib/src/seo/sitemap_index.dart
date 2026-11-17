@@ -21,12 +21,34 @@ class SitemapUrlEntry {
 
 /// Generates XML sitemaps and sitemap indexes according to the sitemaps.org protocol.
 class SitemapGenerator {
-  const SitemapGenerator({this.maxUrlsPerSitemap = 50000});
+  const SitemapGenerator({this.maxUrlsPerSitemap = 50000})
+    : assert(
+        maxUrlsPerSitemap > 0 && maxUrlsPerSitemap <= 50000,
+        'maxUrlsPerSitemap must be between 1 and 50,000 per sitemaps.org protocol',
+      );
 
   final int maxUrlsPerSitemap;
 
+  static const Set<String> validChangeFrequencies = {
+    'always',
+    'hourly',
+    'daily',
+    'weekly',
+    'monthly',
+    'yearly',
+    'never',
+  };
+
   /// Generates a single `<urlset>` XML document string for [entries].
   String generateUrlset(List<SitemapUrlEntry> entries) {
+    if (maxUrlsPerSitemap <= 0 || maxUrlsPerSitemap > 50000) {
+      throw ArgumentError.value(
+        maxUrlsPerSitemap,
+        'maxUrlsPerSitemap',
+        'Must be between 1 and 50,000 per sitemaps.org protocol',
+      );
+    }
+
     final buf = StringBuffer();
     buf.writeln('<?xml version="1.0" encoding="UTF-8"?>');
     buf.writeln('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"');
@@ -36,8 +58,11 @@ class SitemapGenerator {
     buf.writeln('        xmlns:xhtml="http://www.w3.org/1999/xhtml">');
 
     for (final entry in entries) {
+      final loc = entry.loc.trim();
+      if (loc.isEmpty) continue;
+
       buf.writeln('  <url>');
-      buf.writeln('    <loc>${_escape(entry.loc)}</loc>');
+      buf.writeln('    <loc>${_escape(loc)}</loc>');
 
       if (entry.lastMod != null) {
         final iso = entry.lastMod!.toUtc().toIso8601String().split('T').first;
@@ -45,25 +70,33 @@ class SitemapGenerator {
       }
 
       if (entry.changeFreq != null) {
-        buf.writeln('    <changefreq>${entry.changeFreq}</changefreq>');
+        final freq = entry.changeFreq!.trim().toLowerCase();
+        final safeFreq = validChangeFrequencies.contains(freq)
+            ? freq
+            : 'weekly';
+        buf.writeln('    <changefreq>${_escape(safeFreq)}</changefreq>');
       }
 
       if (entry.priority != null) {
+        final clampedPriority = entry.priority!.clamp(0.0, 1.0);
         buf.writeln(
-          '    <priority>${entry.priority!.toStringAsFixed(1)}</priority>',
+          '    <priority>${clampedPriority.toStringAsFixed(1)}</priority>',
         );
       }
 
       for (final alt in entry.alternates) {
         buf.writeln(
-          '    <xhtml:link rel="alternate" hreflang="${alt.language}" href="${_escape(alt.url)}" />',
+          '    <xhtml:link rel="alternate" hreflang="${_escape(alt.language)}" href="${_escape(alt.url)}" />',
         );
       }
 
       for (final img in entry.images) {
-        buf.writeln('    <image:image>');
-        buf.writeln('      <image:loc>${_escape(img)}</image:loc>');
-        buf.writeln('    </image:image>');
+        final imgUrl = img.trim();
+        if (imgUrl.isNotEmpty) {
+          buf.writeln('    <image:image>');
+          buf.writeln('      <image:loc>${_escape(imgUrl)}</image:loc>');
+          buf.writeln('    </image:image>');
+        }
       }
 
       buf.writeln('  </url>');
@@ -79,6 +112,14 @@ class SitemapGenerator {
     required List<SitemapUrlEntry> entries,
     required String sitemapBaseUrl,
   }) {
+    if (maxUrlsPerSitemap <= 0 || maxUrlsPerSitemap > 50000) {
+      throw ArgumentError.value(
+        maxUrlsPerSitemap,
+        'maxUrlsPerSitemap',
+        'Must be between 1 and 50,000 per sitemaps.org protocol',
+      );
+    }
+
     if (entries.length <= maxUrlsPerSitemap) {
       return {'sitemap.xml': generateUrlset(entries)};
     }

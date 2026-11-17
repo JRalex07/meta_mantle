@@ -10,6 +10,7 @@ class HtmlSanitizer {
     this.allowedTags = defaultAllowedTags,
     this.allowedAttributes = defaultAllowedAttributes,
     this.allowedSchemes = defaultAllowedSchemes,
+    this.allowProtocolRelative = false,
   });
 
   /// Default safe tags permitted for semantic rich text.
@@ -53,6 +54,18 @@ class HtmlSanitizer {
     'figure',
     'figcaption',
     'time',
+    'div',
+    'button',
+    'label',
+    'input',
+    'aside',
+    'mark',
+    'small',
+    'sub',
+    'sup',
+    'details',
+    'summary',
+    'abbr',
   };
 
   /// Default safe attributes allowed on elements.
@@ -75,11 +88,17 @@ class HtmlSanitizer {
   };
 
   /// Permitted URL schemes for links and images.
-  static const Set<String> defaultAllowedSchemes = {'http', 'https', 'mailto'};
+  static const Set<String> defaultAllowedSchemes = {
+    'http',
+    'https',
+    'mailto',
+    'tel',
+  };
 
   final Set<String> allowedTags;
   final Set<String> allowedAttributes;
   final Set<String> allowedSchemes;
+  final bool allowProtocolRelative;
 
   /// Sanitizes [rawHtml] and returns safe HTML markup.
   String sanitize(String rawHtml) {
@@ -107,16 +126,27 @@ class HtmlSanitizer {
           final attrKey = entry.key.toString().toLowerCase();
           final attrVal = entry.value;
 
-          // Strip event handlers (e.g. onclick, onload)
-          if (attrKey.startsWith('on') ||
-              !allowedAttributes.contains(attrKey)) {
+          // Strip event handlers (e.g. onclick, onload, onmouseover)
+          if (attrKey.startsWith('on')) {
             child.attributes.remove(entry.key);
             continue;
           }
 
-          // Validate URL schemes for href and src
-          if (attrKey == 'href' || attrKey == 'src') {
-            if (!_isValidUrl(attrVal)) {
+          // Allow standard attributes or safe aria-* / data-* attributes
+          final isAria =
+              attrKey.startsWith('aria-') &&
+              RegExp(r'^aria-[a-z0-9_-]+$').hasMatch(attrKey);
+          final isData =
+              attrKey.startsWith('data-') &&
+              RegExp(r'^data-[a-z0-9_-]+$').hasMatch(attrKey);
+          if (!allowedAttributes.contains(attrKey) && !isAria && !isData) {
+            child.attributes.remove(entry.key);
+            continue;
+          }
+
+          // Validate URL schemes for href, src, and action
+          if (attrKey == 'href' || attrKey == 'src' || attrKey == 'action') {
+            if (!isValidUrl(attrVal)) {
               child.attributes.remove(entry.key);
               continue;
             }
@@ -134,14 +164,48 @@ class HtmlSanitizer {
     }
   }
 
-  bool _isValidUrl(String url) {
-    final trimmed = url.trim();
-    if (trimmed.isEmpty) return false;
-    if (trimmed.startsWith('/') || trimmed.startsWith('#')) return true;
+  bool isValidUrl(String url) {
+    // Strip control characters and whitespace
+    final cleaned = url.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '').trim();
+    if (cleaned.isEmpty) return false;
 
+    // Fragment only
+    if (cleaned.startsWith('#')) return true;
+
+    // Reject protocol-relative URLs (e.g. //evil.com) unless explicitly enabled
+    if (cleaned.startsWith('//') ||
+        cleaned.startsWith(r'/\\') ||
+        cleaned.startsWith(r'\\')) {
+      if (!allowProtocolRelative) return false;
+      return true;
+    }
+
+    // Root-relative path (e.g. /products, /about/team)
+    if (cleaned.startsWith('/') && !cleaned.startsWith('//')) {
+      return true;
+    }
+
+    // Check for dangerous schemes before colon (e.g. javascript:, vbscript:, data:)
+    final colonIndex = cleaned.indexOf(':');
+    if (colonIndex != -1) {
+      final schemeCandidate = cleaned
+          .substring(0, colonIndex)
+          .replaceAll(RegExp(r'[\s]'), '')
+          .toLowerCase();
+      if (schemeCandidate == 'javascript' ||
+          schemeCandidate == 'vbscript' ||
+          schemeCandidate == 'data' ||
+          schemeCandidate == 'blob' ||
+          schemeCandidate == 'file') {
+        return false;
+      }
+      return allowedSchemes.contains(schemeCandidate);
+    }
+
+    // Relative path (e.g. 'items/apple', './items', '../items')
     try {
-      final uri = Uri.parse(trimmed);
-      if (!uri.hasScheme) return true; // Relative URL
+      final uri = Uri.parse(cleaned);
+      if (!uri.hasScheme) return true;
       return allowedSchemes.contains(uri.scheme.toLowerCase());
     } catch (_) {
       return false;

@@ -46,6 +46,22 @@ jobs:
         working-directory: example
         run: flutter analyze
 
+      - name: Get external consumer example dependencies
+        working-directory: example/static_html_site
+        run: flutter pub get
+
+      - name: Analyze external consumer example
+        working-directory: example/static_html_site
+        run: flutter analyze
+
+      - name: Run external consumer static site generation
+        working-directory: example/static_html_site
+        run: dart run bin/generate_site.dart
+
+      - name: Run external consumer unit tests
+        working-directory: example/static_html_site
+        run: flutter test
+
       - name: Run all tests
         run: |
           set -o pipefail

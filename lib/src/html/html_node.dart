@@ -50,6 +50,55 @@ class ElementNode extends HtmlNode {
     this.isSelfClosing = false,
   });
 
+  static const Set<String> voidElements = {
+    'area',
+    'base',
+    'br',
+    'col',
+    'embed',
+    'hr',
+    'img',
+    'input',
+    'link',
+    'meta',
+    'source',
+    'track',
+    'wbr',
+  };
+
+  static const Set<String> booleanAttributes = {
+    'disabled',
+    'readonly',
+    'required',
+    'checked',
+    'defer',
+    'async',
+    'hidden',
+    'autofocus',
+    'novalidate',
+    'multiple',
+    'selected',
+    'reversed',
+    'loop',
+    'autoplay',
+    'controls',
+  };
+
+  static const Set<String> urlAttributes = {
+    'href',
+    'src',
+    'action',
+    'formaction',
+    'poster',
+    'cite',
+  };
+
+  static final RegExp _tagRegex = RegExp(r'^[a-zA-Z][a-zA-Z0-9-]*$');
+  static final RegExp _attrKeyRegex = RegExp(r'^[a-zA-Z_:][a-zA-Z0-9_.:-]*$');
+
+  static bool isValidTagName(String name) => _tagRegex.hasMatch(name);
+  static bool isValidAttributeName(String name) => _attrKeyRegex.hasMatch(name);
+
   final String tag;
   final Map<String, String?> attributes;
   final List<HtmlNode> children;
@@ -57,17 +106,64 @@ class ElementNode extends HtmlNode {
 
   @override
   String toHtml() {
+    if (!isValidTagName(tag)) {
+      throw ArgumentError.value(tag, 'tag', 'Invalid HTML tag name');
+    }
+    final lowerTag = tag.toLowerCase();
+    final isVoid = voidElements.contains(lowerTag);
+    if (isVoid && children.isNotEmpty) {
+      throw ArgumentError('Void element <$tag> cannot have child nodes.');
+    }
     final buf = StringBuffer('<$tag');
+
     for (final entry in attributes.entries) {
-      if (entry.value != null) {
+      final key = entry.key;
+      final val = entry.value;
+
+      if (!isValidAttributeName(key)) {
+        throw ArgumentError.value(
+          key,
+          'attribute',
+          'Invalid HTML attribute name',
+        );
+      }
+
+      final lowerKey = key.toLowerCase();
+      if (lowerKey.startsWith('on')) {
+        throw ArgumentError.value(
+          key,
+          'attribute',
+          'Event handler attributes (on*) are prohibited for security',
+        );
+      }
+
+      if (val != null) {
+        if (urlAttributes.contains(lowerKey)) {
+          assertSafeUrl(val, key);
+        }
+
+        if (booleanAttributes.contains(lowerKey)) {
+          if (val == 'false') {
+            continue; // omit false boolean attributes
+          }
+          if (val == 'true' || val.isEmpty || val.toLowerCase() == lowerKey) {
+            buf.write(' $key');
+            continue;
+          }
+        }
+
         final escapedVal = const HtmlEscape(HtmlEscapeMode.attribute)
-            .convert(entry.value!);
-        buf.write(' ${entry.key}="$escapedVal"');
+            .convert(val);
+        buf.write(' $key="$escapedVal"');
       }
     }
 
-    if (isSelfClosing) {
-      buf.write(' />');
+    if (isVoid) {
+      if (isSelfClosing) {
+        buf.write(' />');
+      } else {
+        buf.write('>');
+      }
       return buf.toString();
     }
 
@@ -77,6 +173,44 @@ class ElementNode extends HtmlNode {
     }
     buf.write('</$tag>');
     return buf.toString();
+  }
+
+  void assertSafeUrl(String url, String attrName) {
+    final cleaned = url.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '').trim();
+    if (cleaned.isEmpty || cleaned.startsWith('#')) return;
+
+    if (cleaned.startsWith('//') ||
+        cleaned.startsWith(r'/\\') ||
+        cleaned.startsWith(r'\\')) {
+      throw ArgumentError.value(
+        url,
+        attrName,
+        'Protocol-relative URLs are prohibited for security',
+      );
+    }
+
+    if (cleaned.startsWith('/') && !cleaned.startsWith('//')) {
+      return; // Safe root-relative URL
+    }
+
+    final colonIndex = cleaned.indexOf(':');
+    if (colonIndex != -1) {
+      final scheme = cleaned
+          .substring(0, colonIndex)
+          .replaceAll(RegExp(r'[\s]'), '')
+          .toLowerCase();
+      if (scheme == 'javascript' ||
+          scheme == 'vbscript' ||
+          scheme == 'data' ||
+          scheme == 'blob' ||
+          scheme == 'file') {
+        throw ArgumentError.value(
+          url,
+          attrName,
+          'Unsafe active URL scheme "$scheme:" is prohibited',
+        );
+      }
+    }
   }
 }
 

@@ -1,8 +1,14 @@
 # Changelog
 
-## 0.3.0 - 2026-11-14
+## 0.3.0 - 2026-11-17
 
-### Master Production Stabilization, Feature Completion & Framework Expansion
+### Master Production Stabilization, Multi-Strategy Rendering & Security Hardening
+- **Three Distinct Rendering Strategies:** Added first-class `RenderingStrategy` enum (`flutterCanvas`, `semanticDom`, `domWithFlutterIslands`) enabling pure semantic DOM rendering without canvas takeover, hybrid DOM with scoped Flutter islands, and standard Flutter Web canvas lifecycles.
+- **Universal Island Component (`MantleIsland`):** Added scoped Flutter island container component for Strategy C, allowing interactive Flutter widgets to initialize strictly inside designated container host elements (`#flutter-cart-island`) while keeping the surrounding DOM native and accessible.
+- **HTML Sanitization & URL Security Hardening:** Hardened `HtmlSanitizer` to block protocol-relative URL bypasses (`//evil.com`), dangerous active schemes (`javascript:`, `vbscript:`, `data:`), and inline event handlers, while preserving safe `aria-*` and `data-*` attributes.
+- **Sitemap Protocol Conformance:** Hardened `SitemapGenerator` to enforce sitemaps.org protocol limits (up to 50,000 URLs with automatic `sitemap_index.xml` chunking), XML entity escaping across all text nodes and attributes, and priority clamping between 0.0 and 1.0.
+- **Root Document Structure & Conformance:** Fixed `HtmlDocument` and `MetadataRenderer` to eliminate duplicate `<html>` elements inside `<head>` and guarantee exactly one root `<html lang="...">` element.
+- **Independent External Consumer Example:** Created `example/static_html_site/` demonstrating pure public API usage (`meta_mantle_core.dart` and `meta_mantle_builder.dart`) with zero private `src/` imports, complete with tests and reproducible static site generation.
 - **Expanded CLI Toolchain (14 Command Groups):** Added complete command suites for `html` (`validate`, `inspect`), `routes` (`list`, `validate`, `generate`), and `cache` (`inspect`, `clear`). Upgraded `preview` to an embedded static Shelf HTTP server with SPA fallback and MIME resolution, and `report` to an on-disk HTML audit scanner. Added `--json` machine-readable output across `doctor`, `validate`, `report`, and `html inspect`.
 - **Output Directory Forwarding & Asset Validation:** Updated `FlutterWebBuildEngine` to forward custom output directories to `flutter build web --output` with automatic directory syncing fallback. Implemented truthful asset error calculation (`_validateAssets()`) verifying local images, scripts, and stylesheets on disk.
 - **Real Request-Time Shelf SSR Integration Suite:** Added comprehensive live HTTP integration tests (`test/ssr_http_integration_test.dart`) verifying dynamic parameter resolution, metadata generation, semantic HTML output, 404 handling, HEAD requests, and secure 500 error sanitization without leaking sensitive exception data.

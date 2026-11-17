@@ -7,6 +7,7 @@ import 'package:html/parser.dart' as html_parser;
 import '../core/head_tag.dart';
 import '../core/metadata_renderer.dart';
 import '../models/metadata.dart';
+import '../seo/sitemap_index.dart';
 import 'static_head_config.dart';
 
 /// Result summary of static generation.
@@ -818,12 +819,9 @@ class StaticHeadBuilder {
   }
 
   String _sitemap(List<String> urls) {
-    final entries = urls
-        .map((url) => '  <url><loc>${_xmlEscape(url)}</loc></url>')
-        .join('\n');
-    return '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        '$entries\n</urlset>\n';
+    final entries = urls.map((url) => SitemapUrlEntry(loc: url)).toList();
+    const generator = SitemapGenerator();
+    return generator.generateUrlset(entries);
   }
 
   String _robotsTxt(StaticHeadConfig config) {
@@ -842,11 +840,4 @@ class StaticHeadBuilder {
     }
     return buffer.toString();
   }
-
-  String _xmlEscape(String value) => value
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&apos;');
 }

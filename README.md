@@ -193,6 +193,7 @@ class HomeScreen extends StatelessWidget {
 The repository includes runnable, production-grade reference implementations in [`example/bin/`](example/bin/):
 
 - **[`example/lib/main.dart`](example/lib/main.dart):** Complete Flutter Web client application with reactive `MetaHead` widgets and Navigator observers.
+- **[`example/static_html_site/`](example/static_html_site/):** Independent external consumer demonstration building a static website using purely public APIs (`meta_mantle_core.dart` and `meta_mantle_builder.dart`) with zero private `src/` imports.
 - **[`example/bin/static_marketing_example.dart`](example/bin/static_marketing_example.dart):** Static marketing site generator emitting HTML, `sitemap.xml`, and `robots.txt`.
 - **[`example/bin/ecommerce_server_example.dart`](example/bin/ecommerce_server_example.dart):** E-commerce SSR server with product variants, inventory cache invalidation, and Google Merchant Center feeds.
 - **[`example/bin/jaspr_docs_example.dart`](example/bin/jaspr_docs_example.dart):** Documentation portal with version switching, search indexing, and `/llms.txt`.

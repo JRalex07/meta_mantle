@@ -21,6 +21,7 @@ export 'src/ecommerce/ecommerce_models.dart';
 export 'src/ecommerce/faceted_nav_policy.dart';
 export 'src/ecommerce/inventory_events.dart';
 export 'src/ecommerce/merchant_feed_generator.dart';
+export 'src/html/html_validator.dart';
 export 'src/hybrid/hybrid_generation.dart';
 export 'src/hybrid/regeneration_queue.dart';
 export 'src/hybrid/revalidation_scheduler.dart';
