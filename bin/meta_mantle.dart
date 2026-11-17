@@ -40,6 +40,13 @@ ArgParser buildMetaMantleCliParser() {
       allowed: ['metadata', 'prerender', 'hybrid'],
       help: 'Build mode: metadata, prerender, or hybrid.',
     )
+    ..addOption(
+      'rendering-strategy',
+      abbr: 's',
+      defaultsTo: 'flutter-canvas',
+      allowed: ['flutter-canvas', 'semantic-dom', 'dom-with-flutter-islands'],
+      help: 'Rendering strategy: flutter-canvas, semantic-dom, or dom-with-flutter-islands.',
+    )
     ..addFlag('release', defaultsTo: true, help: 'Compile in release mode.')
     ..addFlag('debug', defaultsTo: false, help: 'Compile in debug mode.')
     ..addOption(
@@ -1219,10 +1226,15 @@ void main(List<String> args) => runStaticManifest(metaMantleRoutes, args);
       final isClean = command['clean'] as bool;
       final isStrict = command['strict'] as bool;
       final manifestPath = command['manifest'] as String?;
+      final strategyStr = command.options.contains('rendering-strategy')
+          ? command['rendering-strategy'] as String?
+          : null;
+      final strategy = RenderingStrategy.fromString(strategyStr);
 
       final options = BuildWebOptions(
         projectDir: projectDir,
         mode: mode,
+        renderingStrategy: strategy,
         release: isRelease && !isDebug,
         debug: isDebug,
         output: output,
@@ -1244,6 +1256,7 @@ void main(List<String> args) => runStaticManifest(metaMantleRoutes, args);
 
       stdout.writeln('\n${result.toReportSummary()}');
       stdout.writeln('\n=== MetaMantle Flutter Web Build Complete ===');
+      stdout.writeln('Strategy:        ${result.renderingStrategy.id}');
       stdout.writeln('Mode:            ${result.mode.name.toUpperCase()}');
       stdout.writeln('Routes:          ${result.routes.length}');
       stdout.writeln('Generated Files: ${result.generatedFiles.length}');

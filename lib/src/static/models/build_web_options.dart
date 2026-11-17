@@ -1,3 +1,5 @@
+import '../../models/rendering_strategy.dart';
+
 /// Operational mode for the Flutter Web build engine.
 enum BuildMode {
   /// Mode A: Injects route-specific metadata and SEO assets into index.html copies.
@@ -35,6 +37,7 @@ enum BuildMode {
 class BuildWebOptions {
   const BuildWebOptions({
     this.mode = BuildMode.prerender,
+    this.renderingStrategy = RenderingStrategy.flutterCanvas,
     this.release = true,
     this.debug = false,
     this.output = 'build/web',
@@ -50,6 +53,7 @@ class BuildWebOptions {
   });
 
   final BuildMode mode;
+  final RenderingStrategy renderingStrategy;
   final bool release;
   final bool debug;
   final String output;
@@ -65,6 +69,7 @@ class BuildWebOptions {
 
   BuildWebOptions copyWith({
     BuildMode? mode,
+    RenderingStrategy? renderingStrategy,
     bool? release,
     bool? debug,
     String? output,
@@ -80,6 +85,7 @@ class BuildWebOptions {
   }) {
     return BuildWebOptions(
       mode: mode ?? this.mode,
+      renderingStrategy: renderingStrategy ?? this.renderingStrategy,
       release: release ?? this.release,
       debug: debug ?? this.debug,
       output: output ?? this.output,
@@ -101,6 +107,7 @@ class FlutterWebBuildResult {
   const FlutterWebBuildResult({
     required this.success,
     required this.mode,
+    this.renderingStrategy = RenderingStrategy.flutterCanvas,
     required this.routes,
     required this.generatedFiles,
     required this.warnings,
@@ -119,6 +126,7 @@ class FlutterWebBuildResult {
 
   final bool success;
   final BuildMode mode;
+  final RenderingStrategy renderingStrategy;
   final List<String> routes;
   final List<String> generatedFiles;
   final List<String> warnings;
@@ -139,6 +147,8 @@ class FlutterWebBuildResult {
     final status = success ? 'SUCCESS' : 'FAILED';
     final buffer = StringBuffer();
     buffer.writeln('MetaMantle Build Report\n');
+    buffer.writeln('Strategy:                ${renderingStrategy.id}');
+    buffer.writeln('Mode:                    ${mode.name}');
     buffer.writeln('Routes discovered:       $routesDiscovered');
     buffer.writeln('Routes rendered:         $routesRendered');
     buffer.writeln('Components serialized:   $componentsSerialized');
@@ -157,6 +167,7 @@ class FlutterWebBuildResult {
       'status': success ? 'success' : 'failed',
       'success': success,
       'mode': mode.name,
+      'renderingStrategy': renderingStrategy.id,
       'routesCount': routes.length,
       'routes': routes,
       'generatedFilesCount': generatedFiles.length,

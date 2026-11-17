@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../models/metadata.dart';
+import '../models/rendering_strategy.dart';
 import '../static/routes/static_page_route.dart';
 
 export '../static/routes/static_page_route.dart'
@@ -24,6 +25,7 @@ class StaticHeadConfig {
     this.sitemap = true,
     this.robotsTxt = true,
     this.manifest,
+    this.renderingStrategy,
   });
 
   final String baseUrl;
@@ -40,6 +42,7 @@ class StaticHeadConfig {
   final bool sitemap;
   final bool robotsTxt;
   final String? manifest;
+  final RenderingStrategy? renderingStrategy;
 
   StaticHeadConfig copyWith({
     String? baseUrl,
@@ -56,6 +59,7 @@ class StaticHeadConfig {
     bool? sitemap,
     bool? robotsTxt,
     String? manifest,
+    RenderingStrategy? renderingStrategy,
   }) {
     return StaticHeadConfig(
       baseUrl: baseUrl ?? this.baseUrl,
@@ -72,6 +76,7 @@ class StaticHeadConfig {
       sitemap: sitemap ?? this.sitemap,
       robotsTxt: robotsTxt ?? this.robotsTxt,
       manifest: manifest ?? this.manifest,
+      renderingStrategy: renderingStrategy ?? this.renderingStrategy,
     );
   }
 
@@ -134,6 +139,9 @@ class StaticHeadConfig {
       sitemap: json['sitemap'] as bool? ?? true,
       robotsTxt: json['robotsTxt'] as bool? ?? true,
       manifest: json['manifest'] as String?,
+      renderingStrategy: json['renderingStrategy'] != null
+          ? RenderingStrategy.fromString(json['renderingStrategy'] as String)
+          : null,
     );
   }
 

@@ -24,6 +24,7 @@ class RegenerationJob {
     this.leaseToken,
     this.errorCode,
     this.fencingEpoch,
+    this.sequence,
   });
 
   final String id;
@@ -50,6 +51,9 @@ class RegenerationJob {
   /// Monotonic fence epoch indicating the ownership revision of this leased job.
   final int? fencingEpoch;
 
+  /// Monotonic sequence number guaranteeing deterministic FIFO ordering across all filesystems.
+  final int? sequence;
+
   RegenerationJob copyWith({
     RegenerationJobStatus? status,
     int? attempts,
@@ -58,6 +62,7 @@ class RegenerationJob {
     String? leaseToken,
     String? errorCode,
     int? fencingEpoch,
+    int? sequence,
     bool clearLease = false,
     bool clearError = false,
   }) => RegenerationJob(
@@ -78,6 +83,7 @@ class RegenerationJob {
     leaseToken: clearLease ? null : leaseToken ?? this.leaseToken,
     errorCode: clearError ? null : errorCode ?? this.errorCode,
     fencingEpoch: clearLease ? null : fencingEpoch ?? this.fencingEpoch,
+    sequence: sequence ?? this.sequence,
   );
 
   Map<String, Object?> toJson() => {
@@ -98,6 +104,7 @@ class RegenerationJob {
     'leaseToken': leaseToken,
     'errorCode': errorCode,
     'fencingEpoch': fencingEpoch,
+    'sequence': sequence,
   };
 
   factory RegenerationJob.fromJson(Map<String, Object?> json) =>
@@ -121,6 +128,7 @@ class RegenerationJob {
         leaseToken: json['leaseToken'] as String?,
         errorCode: json['errorCode'] as String?,
         fencingEpoch: json['fencingEpoch'] as int?,
+        sequence: json['sequence'] as int?,
       );
 }
 
@@ -386,6 +394,7 @@ class FileRegenerationQueue implements RegenerationQueue {
 
     final created = (now ?? DateTime.now()).toUtc();
     final id = '${created.microsecondsSinceEpoch}_${pid}_${_queueNonce()}';
+    final seq = ++state.lastSeq;
     final job = RegenerationJob(
       id: id,
       siteId: siteId,
@@ -400,6 +409,7 @@ class FileRegenerationQueue implements RegenerationQueue {
       maxAttempts: maxAttempts,
       createdAt: created,
       availableAt: created,
+      sequence: seq,
     );
 
     await _save(job);
@@ -407,7 +417,7 @@ class FileRegenerationQueue implements RegenerationQueue {
     state.pending.add(id);
 
     await _appendJournal({
-      'seq': ++state.lastSeq,
+      'seq': seq,
       'op': 'enqueue',
       'id': id,
       'composite': composite,
@@ -462,6 +472,7 @@ class FileRegenerationQueue implements RegenerationQueue {
 
       final id =
           '${createdTime.microsecondsSinceEpoch}_${pid}_${_queueNonce()}';
+      final seq = ++state.lastSeq;
       final job = RegenerationJob(
         id: id,
         siteId: req.siteId,
@@ -476,6 +487,7 @@ class FileRegenerationQueue implements RegenerationQueue {
         maxAttempts: req.maxAttempts,
         createdAt: createdTime,
         availableAt: createdTime,
+        sequence: seq,
       );
 
       jobsToWrite.add(job);
@@ -1288,6 +1300,10 @@ class FileRegenerationQueue implements RegenerationQueue {
       }
     }
     result.sort((a, b) {
+      if (a.sequence != null && b.sequence != null) {
+        final seqCmp = a.sequence!.compareTo(b.sequence!);
+        if (seqCmp != 0) return seqCmp;
+      }
       final cmp = a.createdAt.compareTo(b.createdAt);
       if (cmp != 0) return cmp;
       return a.id.compareTo(b.id);

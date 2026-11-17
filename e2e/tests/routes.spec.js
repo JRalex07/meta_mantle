@@ -120,6 +120,61 @@ test.describe('Initial Server-Generated Content (Before Client Runtime Handoff)'
     const activeLink = page.locator('nav a[href="/products"]').first();
     await expect(activeLink).toHaveAttribute('aria-current', 'page');
   });
+
+  test('Chrome DevTools inspection (elementFromPoint) targets actual semantic DOM nodes', async ({ page }) => {
+    await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
+
+    // 1. Inspect heading via elementFromPoint
+    const heading = page.locator('h1').first();
+    await expect(heading).toBeVisible();
+    const headingBox = await heading.boundingBox();
+    expect(headingBox).toBeTruthy();
+
+    const hitHeadingTag = await page.evaluate(
+      ({ x, y }) => {
+        const el = document.elementFromPoint(x, y);
+        return el ? el.tagName.toUpperCase() : null;
+      },
+      { x: headingBox.x + headingBox.width / 2, y: headingBox.y + headingBox.height / 2 }
+    );
+
+    expect(['H1', 'SPAN', 'DIV']).toContain(hitHeadingTag);
+    expect(hitHeadingTag).not.toBe('FLT-GLASS-PANE');
+
+    // 2. Inspect navigation link via elementFromPoint
+    const navLink = page.locator('nav a').first();
+    await expect(navLink).toBeVisible();
+    const navBox = await navLink.boundingBox();
+    expect(navBox).toBeTruthy();
+
+    const hitNavTag = await page.evaluate(
+      ({ x, y }) => {
+        const el = document.elementFromPoint(x, y);
+        return el ? el.tagName.toUpperCase() : null;
+      },
+      { x: navBox.x + navBox.width / 2, y: navBox.y + navBox.height / 2 }
+    );
+
+    expect(['A', 'SPAN', 'NAV', 'I']).toContain(hitNavTag);
+    expect(hitNavTag).not.toBe('FLT-GLASS-PANE');
+
+    // 3. Inspect image element via elementFromPoint
+    const img = page.locator('img[src*="social-card.png"]').first();
+    await expect(img).toBeVisible();
+    const imgBox = await img.boundingBox();
+    expect(imgBox).toBeTruthy();
+
+    const hitImgTag = await page.evaluate(
+      ({ x, y }) => {
+        const el = document.elementFromPoint(x, y);
+        return el ? el.tagName.toUpperCase() : null;
+      },
+      { x: imgBox.x + imgBox.width / 2, y: imgBox.y + imgBox.height / 2 }
+    );
+
+    expect(['IMG', 'PICTURE', 'FIGURE', 'DIV']).toContain(hitImgTag);
+    expect(hitImgTag).not.toBe('FLT-GLASS-PANE');
+  });
 });
 
 test.describe('Client Runtime Startup & Handoff (With JavaScript)', () => {

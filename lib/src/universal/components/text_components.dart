@@ -41,6 +41,23 @@ class MantleHeading extends StatelessMantleComponent {
   }
 }
 
+class MantleParagraph extends StatelessMantleComponent {
+  const MantleParagraph(this.text, {this.style, super.key});
+
+  final String text;
+  final MantleTextStyle? style;
+
+  @override
+  MantleNode build(MantleContext context) {
+    return MantleElementNode(
+      tag: 'p',
+      styles: style?.toCssProperties() ?? const {},
+      children: [MantleTextNode(text, style: style)],
+      key: key,
+    );
+  }
+}
+
 class MantleTextSpan {
   const MantleTextSpan({required this.text, this.style});
 

@@ -424,5 +424,144 @@ environment:
         throwsA(isA<FormatException>()),
       );
     });
+
+    test('Strategy B (Semantic DOM) produces native HTML DOM elements with zero full-page Flutter canvas', () async {
+      final manifest = StaticRouteManifest();
+      manifest.register(
+        StaticPageRoute(
+          path: '/',
+          metadata: const WebMetadata(title: 'Semantic Store'),
+          componentBuilder: (ctx) => const MantlePage(
+            children: [
+              MantleHeading('Store Header', level: 1),
+              MantleParagraph('Browse products natively in DOM.'),
+              MantleButton(label: 'Buy Now'),
+            ],
+          ),
+        ),
+      );
+
+      final engine = FlutterWebBuildEngine(
+        processRunner: (exe, args, {environment, workingDirectory}) async =>
+            ProcessResult(100, 0, '', ''),
+      );
+      final options = BuildWebOptions(
+        projectDir: projectDir.path,
+        mode: BuildMode.prerender,
+        renderingStrategy: RenderingStrategy.semanticDom,
+        dryRun: false,
+        strict: false,
+      );
+
+      final result = await engine.build(options, routeManifest: manifest);
+      expect(result.success, isTrue);
+      expect(result.renderingStrategy, equals(RenderingStrategy.semanticDom));
+
+      final indexFile = File('${projectDir.path}/build/web/index.html');
+      expect(indexFile.existsSync(), isTrue);
+
+      final html = indexFile.readAsStringSync();
+      final doc = html_parser.parse(html);
+
+      // Strategy attribute stamped on <html>
+      expect(
+        doc.documentElement?.attributes['data-mantle-strategy'],
+        equals('semantic-dom'),
+      );
+      expect(
+        doc.documentElement?.attributes['data-mantle-runtime'],
+        equals('ready'),
+      );
+
+      // Real semantic HTML in DOM
+      expect(doc.querySelector('h1')?.text, equals('Store Header'));
+      expect(
+        doc.querySelector('p')?.text,
+        equals('Browse products natively in DOM.'),
+      );
+      expect(doc.querySelector('button')?.text, equals('Buy Now'));
+
+      // flutter_bootstrap.js stripped so Flutter canvas doesn't take over document
+      final scripts = doc.querySelectorAll('script');
+      final hasFlutterBootstrap = scripts.any(
+        (s) => s.attributes['src']?.contains('flutter_bootstrap.js') ?? false,
+      );
+      expect(hasFlutterBootstrap, isFalse);
+
+      // DOM client bridge injected
+      expect(doc.querySelector('#mantle-dom-client'), isNotNull);
+    });
+
+    test('Strategy C (DOM with Flutter Islands) scopes Flutter engine to island host element', () async {
+      final manifest = StaticRouteManifest();
+      manifest.register(
+        StaticPageRoute(
+          path: '/product/rice',
+          metadata: const WebMetadata(title: 'Basmati Rice'),
+          componentBuilder: (ctx) => const MantlePage(
+            children: [
+              MantleHeading('Basmati Rice Details', level: 1),
+              MantleParagraph('Aged Himalayan rice.'),
+              MantleIsland(
+                id: 'flutter-cart-island',
+                name: 'cart',
+                width: 320,
+                height: 50,
+                fallbackChild: MantleButton(label: 'Add to Cart'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final engine = FlutterWebBuildEngine(
+        processRunner: (exe, args, {environment, workingDirectory}) async =>
+            ProcessResult(100, 0, '', ''),
+      );
+      final options = BuildWebOptions(
+        projectDir: projectDir.path,
+        mode: BuildMode.prerender,
+        renderingStrategy: RenderingStrategy.domWithFlutterIslands,
+        dryRun: false,
+        strict: false,
+      );
+
+      final result = await engine.build(options, routeManifest: manifest);
+      expect(result.success, isTrue);
+      expect(
+        result.renderingStrategy,
+        equals(RenderingStrategy.domWithFlutterIslands),
+      );
+
+      final productFile = File(
+        '${projectDir.path}/build/web/product/rice/index.html',
+      );
+      expect(productFile.existsSync(), isTrue);
+
+      final html = productFile.readAsStringSync();
+      final doc = html_parser.parse(html);
+
+      // Strategy attribute stamped
+      expect(
+        doc.documentElement?.attributes['data-mantle-strategy'],
+        equals('dom-with-flutter-islands'),
+      );
+
+      // Semantic HTML outside island is present
+      expect(doc.querySelector('h1')?.text, equals('Basmati Rice Details'));
+      expect(doc.querySelector('p')?.text, equals('Aged Himalayan rice.'));
+
+      // Island container exists with fallback button
+      final island = doc.querySelector('#flutter-cart-island');
+      expect(island, isNotNull);
+      expect(island?.classes.contains('mantle-flutter-island'), isTrue);
+      expect(island?.attributes['data-mantle-island'], equals('cart'));
+      expect(island?.querySelector('button')?.text, equals('Add to Cart'));
+
+      // Island scoped bootstrap initializer is injected
+      final islandInit = doc.querySelector('#mantle-island-initializer');
+      expect(islandInit, isNotNull);
+      expect(islandInit!.text, contains('hostElement: targetHost'));
+    });
   });
 }

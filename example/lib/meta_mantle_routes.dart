@@ -300,11 +300,23 @@ MantleComponent buildProductDetailPage(StoreProduct product) {
         imageUrl: product.image,
         sku: product.sku,
         price: product.price,
-        action: const MantleRow(
+        action: MantleColumn(
           children: [
-            MantleButton(label: 'Add to Cart', color: MantleColor.blue),
-            MantleSizedBox(width: 16),
-            MantleLink(href: '/products', label: 'Back to Catalog'),
+            MantleIsland(
+              id: 'flutter-cart-island',
+              name: 'cart',
+              width: 320,
+              height: 50,
+              fallbackChild: const MantleRow(
+                children: [
+                  MantleButton(label: 'Add to Cart', color: MantleColor.blue),
+                  MantleSizedBox(width: 16),
+                  MantleText('In Stock - Fast Delivery'),
+                ],
+              ),
+            ),
+            const MantleSizedBox(height: 12),
+            const MantleLink(href: '/products', label: 'Back to Catalog'),
           ],
         ),
       ),

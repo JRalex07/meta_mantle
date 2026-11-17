@@ -34,15 +34,26 @@ dart run meta_mantle build-web [options]
 ```
 
 ### Options:
-- `--mode=<static|hybrid|universal>`: Build rendering mode.
-  - `static`: Pre-renders pure semantic HTML and metadata without bundling heavy JS/CanvasKit.
-  - `hybrid` (default): Pre-renders semantic HTML snapshots that smoothly fade out once Flutter Web hydrates.
-  - `universal`: Generates HTML for initial load and hydrates client DOM via MetaMantle's lightweight DOM reconciler.
-- `--config=<path>`: Path to configuration file (default: `meta_mantle.yaml`).
-- `--manifest=<path>`: Route manifest entrypoint (default: auto-detected from `lib/routes.dart`, `tool/routes.dart`).
-- `--strict`: Enable strict mode (fails build if any route encounters unsupported nodes or validation errors).
-- `--[no-]flutter-build`: Whether to invoke `flutter build web` before pre-rendering (default: enabled).
-- `--[no-]sitemap`: Generate `sitemap.xml` and `robots.txt` (default: enabled).
+- `--mode=<metadata|prerender|hybrid>`: Operational build mode (default: `prerender`).
+  - `metadata`: Injects route-specific metadata and SEO tags without static body markup.
+  - `prerender` (default): Pre-renders semantic HTML trees and SEO assets into route-specific index.html files.
+  - `hybrid`: Pre-renders semantic HTML snapshots and coordinates with Flutter's bootstrap system via client-ready handshake.
+- `-s, --rendering-strategy=<flutter-canvas|semantic-dom|dom-with-flutter-islands>`: Browser rendering strategy (default: `flutter-canvas`).
+  - `flutter-canvas`: Standard full-page Flutter Web CanvasKit/Skwasm widget rendering.
+  - `semantic-dom`: Pure native browser HTML elements (`<h1>`, `<p>`, `<nav>`, `<a>`, `<button>`, `<article>`) with zero full-page Flutter canvas overlay.
+  - `dom-with-flutter-islands`: Semantic HTML document where Flutter is scoped strictly inside designated container host elements (`<div id="flutter-cart-island">`).
+- `--project-dir=<path>`: Flutter project root containing `pubspec.yaml` and `web/` (default: `.`).
+- `--output=<path>`: Output directory for compiled assets and HTML (default: `build/web`).
+- `--base-href=<path>`: Base href for routing (default: `/`).
+- `--[no-]release`: Compile in release mode (default: enabled).
+- `--[no-]debug`: Compile in debug mode.
+- `--[no-]wasm`: Compile with WebAssembly (WasmGC).
+- `--[no-]clean`: Run `flutter clean` before compilation.
+- `--[no-]strict`: Fail build if any route encounters unsupported nodes or validation warnings.
+- `--config=<path>`: Path to configuration file (default: `meta_mantle.config.json`).
+- `--manifest=<path>`: Path to Dart route manifest file (e.g. `lib/meta_mantle_routes.dart`).
+- `--[no-]dry-run`: Simulate generation without compiling or writing to disk.
+- `-v, --[no-]verbose`: Enable detailed logging.
 
 ### Exit Codes:
 - `0`: Build succeeded with valid HTML and metadata.

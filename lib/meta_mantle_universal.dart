@@ -10,6 +10,7 @@ export 'src/universal/accelerator/flutter_web_accelerator.dart';
 export 'src/universal/components/content_and_commerce_components.dart';
 export 'src/universal/components/form_components.dart';
 export 'src/universal/components/interaction_components.dart';
+export 'src/universal/components/island_components.dart';
 export 'src/universal/components/layout_components.dart';
 export 'src/universal/components/mantle_component.dart';
 export 'src/universal/components/media_components.dart';

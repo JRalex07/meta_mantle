@@ -8,6 +8,7 @@ import '../core/head_injector.dart';
 import '../core/metadata_renderer.dart';
 import '../html/html_validator.dart';
 import '../models/metadata.dart';
+import '../models/rendering_strategy.dart';
 import '../universal/ir/mantle_node.dart';
 import '../universal/rendering/server_renderer.dart';
 import '../universal/routing/mantle_route.dart';
@@ -52,11 +53,19 @@ class FlutterWebBuildEngine {
   }) async {
     final stopwatch = Stopwatch()..start();
     final projectDir = Directory(options.projectDir);
-    final outputDir = Directory(
-      options.output.startsWith('/') || options.output.contains(':')
-          ? options.output
-          : '${projectDir.path}${Platform.pathSeparator}${options.output}',
-    );
+    final String resolvedOutputPath;
+    if (options.output.startsWith('/') || options.output.contains(':')) {
+      resolvedOutputPath = options.output;
+    } else if (projectDir.path != '.' &&
+        (options.output == projectDir.path ||
+            options.output.startsWith('${projectDir.path}/') ||
+            options.output.startsWith('${projectDir.path}\\'))) {
+      resolvedOutputPath = options.output;
+    } else {
+      resolvedOutputPath =
+          '${projectDir.path}${Platform.pathSeparator}${options.output}';
+    }
+    final outputDir = Directory(resolvedOutputPath);
 
     onProgress?.call(
       'MetaMantle Web Build Engine starting [Mode: ${options.mode.name.toUpperCase()}]...',
@@ -261,6 +270,9 @@ class FlutterWebBuildEngine {
     var htmlValidationErrorsCount = 0;
 
     final baseUrl = parsedConfig.baseUrl;
+    final strategy = options.renderingStrategy != RenderingStrategy.flutterCanvas
+        ? options.renderingStrategy
+        : (parsedConfig.renderingStrategy ?? options.renderingStrategy);
 
     for (final route in resolvedRoutes) {
       final normPath = _normalizeRoute(route.path);
@@ -289,6 +301,7 @@ class FlutterWebBuildEngine {
         config: parsedConfig,
         canonicalUrl: canonicalUrl,
         mode: options.mode,
+        renderingStrategy: strategy,
         strict: options.strict,
       );
 
@@ -376,6 +389,7 @@ class FlutterWebBuildEngine {
     final buildResult = FlutterWebBuildResult(
       success: isSuccess,
       mode: options.mode,
+      renderingStrategy: strategy,
       routes: resolvedRoutes.map((r) => r.path).toList(),
       generatedFiles: generatedFiles,
       warnings: warnings,
@@ -751,6 +765,7 @@ Future<void> main(List<String> args) async {
     required StaticHeadConfig config,
     required String canonicalUrl,
     required BuildMode mode,
+    required RenderingStrategy renderingStrategy,
     required bool strict,
   }) {
     final mergedMetadata = route.metadata.copyWith(
@@ -773,6 +788,14 @@ Future<void> main(List<String> args) async {
 
     final document = html_parser.parse(templateHtml);
     final body = document.querySelector('body');
+    final htmlEl = document.querySelector('html');
+
+    if (htmlEl != null) {
+      htmlEl.attributes['data-mantle-strategy'] = renderingStrategy.id;
+      if (renderingStrategy == RenderingStrategy.semanticDom) {
+        htmlEl.attributes['data-mantle-runtime'] = 'ready';
+      }
+    }
 
     // 1. Inject Head Tags with strict deduplication and HTML5 conformance
     HeadInjector.injectTags(document: document, tags: tags);
@@ -782,8 +805,8 @@ Future<void> main(List<String> args) async {
       // Remove any previously injected prerender styles for idempotency
       resolvedHead.querySelector('#mantle-prerender-style')?.remove();
 
-      // In Mode B & C, inject prerender CSS styles
-      if (mode != BuildMode.metadata) {
+      // In Mode B & C with FlutterCanvas, inject prerender CSS styles
+      if (mode != BuildMode.metadata && renderingStrategy != RenderingStrategy.semanticDom) {
         final styleEl = html_parser.parseFragment(
           bootstrapAdapter.generatePrerenderStyles(),
         );
@@ -799,7 +822,10 @@ Future<void> main(List<String> args) async {
     if (body != null && mode != BuildMode.metadata) {
       // Remove any previously injected elements for idempotency
       body.querySelector('#mantle-prerender-root')?.remove();
+      body.querySelector('#app')?.remove();
       body.querySelector('#mantle-startup-bridge')?.remove();
+      body.querySelector('#mantle-island-initializer')?.remove();
+      body.querySelector('#mantle-dom-client')?.remove();
 
       String semanticHtml = '';
 
@@ -833,13 +859,32 @@ Future<void> main(List<String> args) async {
       final wrappedContent = bootstrapAdapter.wrapPrerenderContent(
         semanticHtml,
         mode: mode,
+        renderingStrategy: renderingStrategy,
       );
 
       final contentFragment = html_parser.parseFragment(wrappedContent);
       body.children.insert(0, contentFragment.children.first);
 
-      // In Mode C (Hybrid), inject startup coordination script
-      if (mode == BuildMode.hybrid) {
+      if (renderingStrategy == RenderingStrategy.semanticDom) {
+        // Strip full-page Flutter bootstrap script so Flutter Canvas never takes over the document
+        final scriptsToRemove = [
+          ...body.querySelectorAll('script'),
+          if (resolvedHead != null) ...resolvedHead.querySelectorAll('script'),
+        ].where((s) => s.attributes['src']?.contains('flutter_bootstrap.js') ?? false).toList();
+        for (final s in scriptsToRemove) {
+          s.remove();
+        }
+
+        final domClientFragment = html_parser.parseFragment(
+          bootstrapAdapter.generateSemanticDomClientScript(),
+        );
+        body.append(domClientFragment);
+      } else if (renderingStrategy == RenderingStrategy.domWithFlutterIslands) {
+        final islandInitFragment = html_parser.parseFragment(
+          bootstrapAdapter.generateIslandBootstrapScript(),
+        );
+        body.children.insert(0, islandInitFragment.children.first);
+      } else if (mode == BuildMode.hybrid) {
         final bridgeFragment = html_parser.parseFragment(
           bootstrapAdapter.generateClientHandshakeScript(),
         );
