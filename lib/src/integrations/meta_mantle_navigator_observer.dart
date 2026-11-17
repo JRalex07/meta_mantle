@@ -13,10 +13,30 @@ import '../runtime/meta_mantle.dart';
 /// );
 /// ```
 class MetaMantleNavigatorObserver extends NavigatorObserver {
-  MetaMantleNavigatorObserver({this.urlExtractor});
+  MetaMantleNavigatorObserver({
+    this.urlExtractor,
+    this.onRouteChanged,
+    this.markReadyOnFirstFrame = true,
+  }) {
+    if (markReadyOnFirstFrame) {
+      try {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          MetaMantle.markReady();
+        });
+      } catch (_) {
+        // Ignored if executed outside of an initialized WidgetsBinding environment.
+      }
+    }
+  }
 
   /// Optional custom extractor to derive the URL path from a [Route].
   final String? Function(Route<dynamic> route)? urlExtractor;
+
+  /// Optional notification callback invoked whenever the user navigates to a new route.
+  final void Function(String path)? onRouteChanged;
+
+  /// Whether to automatically mark the client-ready handshake on the first frame.
+  final bool markReadyOnFirstFrame;
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
@@ -42,13 +62,11 @@ class MetaMantleNavigatorObserver extends NavigatorObserver {
 
   void _syncUrl(Route<dynamic> route) {
     final customUrl = urlExtractor?.call(route);
-    if (customUrl != null) {
-      MetaMantle.setCurrentUrl(customUrl);
-      return;
-    }
     final name = route.settings.name;
-    if (name != null && name.isNotEmpty) {
-      MetaMantle.setCurrentUrl(name);
+    final path = customUrl ?? (name != null && name.isNotEmpty ? name : null);
+    if (path != null) {
+      MetaMantle.setCurrentUrl(path);
+      onRouteChanged?.call(path);
     }
   }
 }

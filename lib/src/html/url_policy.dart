@@ -1,40 +1,71 @@
 /// Unified URL validation policy for MetaMantle HTML serialization.
 ///
-/// All URL allowlist/denylist logic lives here. Both [ElementNode.assertSafeUrl]
-/// and [HtmlSanitizer.isValidUrl] delegate to this class so they share
-/// identical behavior.
+/// All URL allowlist/denylist logic lives here. [ElementNode.assertSafeUrl],
+/// [HeadTag.toHtml], [HtmlDocument.render], and [HtmlSanitizer.isValidUrl]
+/// delegate to this class so they share unified security behavior.
 class UrlPolicy {
   UrlPolicy._();
 
-  /// Schemes explicitly allowed by policy (allowlist — unknown schemes REJECTED).
-  static const Set<String> _allowedSchemes = {'http', 'https', 'mailto', 'tel'};
+  /// Default schemes explicitly allowed by policy (allowlist).
+  static const Set<String> defaultAllowedSchemes = {
+    'http',
+    'https',
+    'mailto',
+    'tel',
+  };
+
+  /// Inherently dangerous schemes that can NEVER be permitted by policy.
+  static const Set<String> prohibitedSchemes = {
+    'javascript',
+    'vbscript',
+    'data',
+    'blob',
+    'file',
+  };
 
   static final RegExp _controlChars = RegExp(r'[\x00-\x1F\x7F]');
+  static final RegExp _schemeFormat = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*$');
+
+  /// Validates RFC 3986 scheme syntax (`^[a-zA-Z][a-zA-Z0-9+.-]*$`).
+  static bool isValidSchemeName(String scheme) =>
+      _schemeFormat.hasMatch(scheme);
 
   /// Returns `true` when [url] is considered safe by this policy.
   ///
   /// - Control chars (0x00–0x1F, 0x7F) are stripped before evaluation.
   /// - Empty string and fragment-only (`#…`) URLs are allowed.
-  /// - Protocol-relative (`//`), backslash bypasses (`\`, `/\`, `\/`, `\\`) → rejected.
-  /// - Encoded and whitespace-obfuscated schemes (e.g. `%6a%61%76%61...`, `java\tscript:`) → rejected.
-  /// - Root-relative (`/path`) → allowed.
-  /// - Relative paths (no scheme) → allowed.
-  /// - Schemed URLs: only [_allowedSchemes] pass. All other schemes (javascript,
-  ///   vbscript, data, blob, file, unknown) are rejected.
-  static bool isSafe(String url) {
+  /// - Backslash bypasses (`\`, `/\`, `\/`, `\\`, `/\\`) are strictly rejected.
+  /// - Protocol-relative (`//`) is rejected unless [allowProtocolRelative] is `true`.
+  /// - Even when [allowProtocolRelative] is `true`, backslash variants (`//\`, `///`)
+  ///   and credentials remain rejected.
+  /// - Encoded and whitespace-obfuscated schemes (`%6a%61%76%61...`, `java\tscript:`)
+  ///   are unmasked and rejected.
+  /// - Prohibited schemes ([prohibitedSchemes]) are ALWAYS rejected regardless of configuration.
+  /// - Schemed URLs: only [allowedSchemes] (defaults to [defaultAllowedSchemes]) pass.
+  static bool isSafe(
+    String url, {
+    Set<String>? allowedSchemes,
+    bool allowProtocolRelative = false,
+  }) {
     if (url.isEmpty) return true;
 
     // Strip control characters (0x00-0x1F, 0x7F) and trim
     final cleaned = url.replaceAll(_controlChars, '').trim();
     if (cleaned.isEmpty) return true;
 
-    // Reject protocol-relative and backslash-based bypasses immediately
+    final isProtocolRelative = cleaned.startsWith('//');
+    if (isProtocolRelative && !allowProtocolRelative) {
+      return false;
+    }
+
+    // Reject backslash-based bypasses immediately, regardless of protocol-relative setting
     if (cleaned.startsWith(r'\') ||
-        cleaned.startsWith('//') ||
         cleaned.startsWith(r'/\') ||
         cleaned.startsWith(r'\\') ||
         cleaned.startsWith(r'/\\') ||
-        cleaned.startsWith(r'\/')) {
+        cleaned.startsWith(r'\/') ||
+        (isProtocolRelative &&
+            (cleaned.startsWith(r'//\') || cleaned.startsWith(r'///')))) {
       return false;
     }
 
@@ -54,13 +85,33 @@ class UrlPolicy {
     decoded = decoded.replaceAll(_controlChars, '').trim();
 
     // Re-check protocol-relative and backslash bypasses after decoding
+    final isDecodedProtocolRelative = decoded.startsWith('//');
+    if (isDecodedProtocolRelative && !allowProtocolRelative) {
+      return false;
+    }
     if (decoded.startsWith(r'\') ||
-        decoded.startsWith('//') ||
         decoded.startsWith(r'/\') ||
         decoded.startsWith(r'\\') ||
         decoded.startsWith(r'/\\') ||
-        decoded.startsWith(r'\/')) {
+        decoded.startsWith(r'\/') ||
+        (isDecodedProtocolRelative &&
+            (decoded.startsWith(r'//\') || decoded.startsWith(r'///')))) {
       return false;
+    }
+
+    // If allowed protocol-relative URL, verify it has a valid host structure
+    if (isDecodedProtocolRelative && allowProtocolRelative) {
+      final afterSlashes = decoded.substring(2);
+      final slashIndex = afterSlashes.indexOf('/');
+      final hostPart = slashIndex == -1
+          ? afterSlashes
+          : afterSlashes.substring(0, slashIndex);
+      if (hostPart.isEmpty ||
+          hostPart.contains('\\') ||
+          hostPart.contains('@')) {
+        return false;
+      }
+      return true;
     }
 
     // If starts with #, ?, or safe single-slash root-relative, it's relative
@@ -75,14 +126,16 @@ class UrlPolicy {
     }
 
     // Extract potential scheme by checking text before first '/', '?', or '#'
-    // Ignore internal whitespace in candidate scheme to counter `java\nscript:`
     final stripped = decoded.replaceAll(RegExp(r'\s+'), '');
     final firstColon = stripped.indexOf(':');
     final firstSlash = stripped.indexOf('/');
     final firstQuestion = stripped.indexOf('?');
     final firstHash = stripped.indexOf('#');
 
-    // A scheme must precede any path separator '/', query '?', or fragment '#'
+    final activeAllowed = (allowedSchemes ?? defaultAllowedSchemes)
+        .map((s) => s.toLowerCase())
+        .toSet();
+
     if (firstColon != -1) {
       final isBeforeSlash = firstSlash == -1 || firstColon < firstSlash;
       final isBeforeQuestion =
@@ -91,8 +144,11 @@ class UrlPolicy {
 
       if (isBeforeSlash && isBeforeQuestion && isBeforeHash) {
         final scheme = stripped.substring(0, firstColon).toLowerCase();
-        // Allowlist check: ONLY explicitly permitted schemes pass!
-        return _allowedSchemes.contains(scheme);
+        // Dangerous schemes are ALWAYS rejected, even if someone attempted to allowlist them
+        if (prohibitedSchemes.contains(scheme)) {
+          return false;
+        }
+        return activeAllowed.contains(scheme);
       }
     }
 
@@ -100,35 +156,23 @@ class UrlPolicy {
     return true;
   }
 
-  /// Like [isSafe], but throws an [ArgumentError] on violations.
-  ///
-  /// [context] is used as the parameter name in the error message.
-  static void assertSafe(String url, String context) {
-    if (!isSafe(url)) {
-      final cleaned = url.replaceAll(_controlChars, '').trim();
-      final reason = _reason(cleaned, url);
-      throw ArgumentError.value(url, context, reason);
+  /// Throws [ArgumentError] if [url] is not safe according to this policy.
+  static void assertSafe(
+    String url,
+    String attributeName, {
+    Set<String>? allowedSchemes,
+    bool allowProtocolRelative = false,
+  }) {
+    if (!isSafe(
+      url,
+      allowedSchemes: allowedSchemes,
+      allowProtocolRelative: allowProtocolRelative,
+    )) {
+      throw ArgumentError.value(
+        url,
+        attributeName,
+        'Potentially unsafe URL rejected by UrlPolicy ($attributeName)',
+      );
     }
-  }
-
-  static String _reason(String cleaned, String original) {
-    if (cleaned.startsWith(r'\') ||
-        cleaned.startsWith('//') ||
-        cleaned.startsWith(r'/\') ||
-        cleaned.startsWith(r'\\') ||
-        cleaned.startsWith(r'/\\') ||
-        cleaned.startsWith(r'\/')) {
-      return 'Protocol-relative or backslash URLs are prohibited for security';
-    }
-
-    final stripped = cleaned.replaceAll(RegExp(r'\s+'), '');
-    final colonIndex = stripped.indexOf(':');
-    final slashIndex = stripped.indexOf('/');
-    if (colonIndex != -1 && (slashIndex == -1 || colonIndex < slashIndex)) {
-      final scheme = stripped.substring(0, colonIndex).toLowerCase();
-      return 'URL scheme "$scheme:" is not in the allowed list '
-          '(allowed: ${_allowedSchemes.join(', ')})';
-    }
-    return 'URL is not safe: $original';
   }
 }

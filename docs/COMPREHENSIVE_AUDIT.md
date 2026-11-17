@@ -83,7 +83,7 @@ MetaMantle currently provides a stable foundation for client-side Flutter Web me
 
 ## 5. Dependencies & Compatibility Constraints
 
-- **SDK Compatibility:** Dart `>=3.6.0 <4.0.0`, Flutter `>=3.27.0`.
+- **SDK Compatibility:** Dart `>=3.13.0 <4.0.0`, Flutter `>=3.47.0`.
 - **Existing Dependencies:** `args: ^2.7.0`, `html: ^0.15.7`, `web: ^1.1.1`, `cupertino_icons: ^1.0.8`.
 - **New Dependency Boundary Rules:**
   - `shelf: ^1.4.1` and `http: ^1.2.0` added to provide pure Dart server hosting without violating Flutter or web compilation.

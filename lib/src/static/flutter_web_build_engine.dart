@@ -9,6 +9,7 @@ import '../core/metadata_renderer.dart';
 import '../html/html_validator.dart';
 import '../models/metadata.dart';
 import '../models/rendering_strategy.dart';
+import '../seo/sitemap_index.dart';
 import '../universal/ir/mantle_node.dart';
 import '../universal/rendering/server_renderer.dart';
 import '../universal/routing/mantle_route.dart';
@@ -175,8 +176,8 @@ class FlutterWebBuildEngine {
     final routesDiscovered = resolvedRoutes.length;
     onProgress?.call('Resolved $routesDiscovered route(s) for generation.');
 
-    // 4. Compile Flutter Web project (unless dry-run)
-    if (!options.dryRun) {
+    // 4. Compile Flutter Web project (unless dry-run or compileFlutter is disabled)
+    if (!options.dryRun && options.compileFlutter) {
       if (options.clean) {
         onProgress?.call('Running flutter clean...');
         await _executeProcess('flutter', [
@@ -219,6 +220,14 @@ class FlutterWebBuildEngine {
         );
       }
       onProgress?.call('Flutter Web build succeeded.');
+    } else if (!options.compileFlutter) {
+      onProgress?.call(
+        'Skipping Flutter Web compilation (--no-compile-flutter).',
+      );
+    } else if (!options.compileFlutter) {
+      onProgress?.call(
+        'Skipping Flutter Web compilation (--no-compile-flutter).',
+      );
     } else {
       onProgress?.call('[DRY RUN] Skipping flutter build execution.');
     }
@@ -344,20 +353,31 @@ class FlutterWebBuildEngine {
     }
 
     // 7. Generate sitemap.xml & robots.txt
-    if (parsedConfig.sitemap) {
-      final sitemapFile = File(
-        '${outputDir.path}${Platform.pathSeparator}sitemap.xml',
-      );
-      final sortedUrls = sitemapUrls.toSet().toList()..sort();
-      final sitemapXml = _generateSitemapXml(sortedUrls);
+    final sortedUrls = sitemapUrls.toSet().toList()..sort();
+    final isChunked = sortedUrls.length > 50000;
 
-      if (!options.dryRun) {
-        await sitemapFile.parent.create(recursive: true);
-        await sitemapFile.writeAsString(sitemapXml, flush: true);
+    if (parsedConfig.sitemap) {
+      final entries = sortedUrls
+          .map((url) => SitemapUrlEntry(loc: url))
+          .toList();
+      const generator = SitemapGenerator();
+      final sitemapFiles = generator.generateSitemapIndex(
+        entries: entries,
+        sitemapBaseUrl: baseUrl,
+      );
+
+      for (final entry in sitemapFiles.entries) {
+        final sFile = File(
+          '${outputDir.path}${Platform.pathSeparator}${entry.key}',
+        );
+        if (!options.dryRun) {
+          await sFile.parent.create(recursive: true);
+          await sFile.writeAsString(entry.value, flush: true);
+        }
+        generatedFiles.add(sFile.path);
       }
-      generatedFiles.add(sitemapFile.path);
       onProgress?.call(
-        'Generated sitemap.xml with ${sortedUrls.length} entries.',
+        'Generated ${sitemapFiles.keys.join(', ')} with ${sortedUrls.length} entries.',
       );
     }
 
@@ -365,9 +385,10 @@ class FlutterWebBuildEngine {
       final robotsFile = File(
         '${outputDir.path}${Platform.pathSeparator}robots.txt',
       );
+      final sitemapName = isChunked ? 'sitemap_index.xml' : 'sitemap.xml';
       final sitemapUrl = baseUrl.endsWith('/')
-          ? '${baseUrl}sitemap.xml'
-          : '$baseUrl/sitemap.xml';
+          ? '$baseUrl$sitemapName'
+          : '$baseUrl/$sitemapName';
       final robotsContent = 'User-agent: *\nAllow: /\n\nSitemap: $sitemapUrl\n';
 
       if (!options.dryRun) {
@@ -825,6 +846,9 @@ Future<void> main(List<String> args) async {
       // Remove any previously injected elements for idempotency
       body.querySelector('#mantle-prerender-root')?.remove();
       body.querySelector('#app')?.remove();
+      body.querySelector('.mantle-island-page')?.remove();
+      body.querySelector('.mantle-dom-root')?.remove();
+      body.querySelector('.mantle-page')?.remove();
       body.querySelector('#mantle-startup-bridge')?.remove();
       body.querySelector('#mantle-island-initializer')?.remove();
       body.querySelector('#mantle-dom-client')?.remove();
@@ -973,19 +997,6 @@ Future<void> main(List<String> args) async {
     );
   }
 
-  String _generateSitemapXml(List<String> urls) {
-    final buf = StringBuffer();
-    buf.writeln('<?xml version="1.0" encoding="UTF-8"?>');
-    buf.writeln('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
-    for (final u in urls) {
-      buf.writeln('  <url>');
-      buf.writeln('    <loc>${_escape(u)}</loc>');
-      buf.writeln('  </url>');
-    }
-    buf.writeln('</urlset>');
-    return buf.toString();
-  }
-
   Future<ProcessResult> _executeProcess(
     String executable,
     List<String> arguments, {
@@ -1090,15 +1101,6 @@ Future<void> main(List<String> args) async {
         await entity.copy(newFile.path);
       }
     }
-  }
-
-  String _escape(String text) {
-    return text
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
   }
 }
 

@@ -48,19 +48,44 @@ class SitemapGenerator {
   /// Throws [ArgumentError] if the URL fails validation.
   /// [context] is a human-readable label used in the error message.
   void _assertAbsoluteHttpUrl(String url, String context) {
-    // Strip control characters and trim whitespace.
-    final cleaned = url.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '').trim();
-
-    if (cleaned.isEmpty) {
+    if (url.isEmpty) {
       throw ArgumentError.value(url, context, '$context must not be empty.');
     }
 
-    final uri = Uri.tryParse(cleaned);
+    // Check for forbidden control characters ([\x00-\x1F\x7F-\x9F]) and invalid XML characters.
+    if (url.contains(RegExp(r'[\x00-\x1F\x7F-\x9F]'))) {
+      throw ArgumentError.value(
+        url,
+        context,
+        '$context contains forbidden control characters.',
+      );
+    }
+
+    // Reject unencoded whitespace.
+    if (url.contains(RegExp(r'\s'))) {
+      throw ArgumentError.value(
+        url,
+        context,
+        '$context must not contain whitespace: "$url".',
+      );
+    }
+
+    // Validate percent-encoding: '%' must be followed by two hexadecimal digits.
+    final invalidPercent = RegExp(r'%([^0-9a-fA-F]|[0-9a-fA-F][^0-9a-fA-F]|$)');
+    if (invalidPercent.hasMatch(url)) {
+      throw ArgumentError.value(
+        url,
+        context,
+        '$context contains invalid percent-encoding: "$url".',
+      );
+    }
+
+    final uri = Uri.tryParse(url);
     if (uri == null || !uri.isAbsolute) {
       throw ArgumentError.value(
         url,
         context,
-        '$context must be an absolute URL, got: "$cleaned".',
+        '$context must be an absolute URL, got: "$url".',
       );
     }
 
@@ -69,7 +94,7 @@ class SitemapGenerator {
       throw ArgumentError.value(
         url,
         context,
-        '$context must use http or https scheme, got "$scheme" in: "$cleaned".',
+        '$context must use http or https scheme, got "$scheme" in: "$url".',
       );
     }
 
@@ -77,7 +102,7 @@ class SitemapGenerator {
       throw ArgumentError.value(
         url,
         context,
-        '$context must include a valid host, got: "$cleaned".',
+        '$context must include a valid host, got: "$url".',
       );
     }
 
@@ -85,7 +110,15 @@ class SitemapGenerator {
       throw ArgumentError.value(
         url,
         context,
-        '$context must not contain credentials/userinfo: "$cleaned".',
+        '$context must not contain credentials/userinfo: "$url".',
+      );
+    }
+
+    if (uri.hasPort && (uri.port <= 0 || uri.port > 65535)) {
+      throw ArgumentError.value(
+        url,
+        context,
+        '$context contains an invalid port: "$url".',
       );
     }
   }
@@ -138,8 +171,14 @@ class SitemapGenerator {
     buf.writeln('        xmlns:xhtml="http://www.w3.org/1999/xhtml">');
 
     for (final entry in entries) {
-      final loc = entry.loc.trim();
-      if (loc.isEmpty) continue;
+      if (entry.loc.trim().isEmpty) {
+        throw ArgumentError.value(
+          entry.loc,
+          'entry.loc',
+          'SitemapUrlEntry loc must not be empty or whitespace-only.',
+        );
+      }
+      final loc = entry.loc;
 
       // Validate loc as an absolute HTTP(S) URL.
       _assertAbsoluteHttpUrl(loc, 'loc');
@@ -154,30 +193,38 @@ class SitemapGenerator {
 
       if (entry.changeFreq != null) {
         final freq = entry.changeFreq!.trim().toLowerCase();
-        final safeFreq = validChangeFrequencies.contains(freq)
-            ? freq
-            : 'weekly';
-        buf.writeln('    <changefreq>${_escape(safeFreq)}</changefreq>');
+        if (!validChangeFrequencies.contains(freq)) {
+          throw ArgumentError.value(
+            entry.changeFreq,
+            'changeFreq',
+            'Invalid changefreq "${entry.changeFreq}". Valid values are: ${validChangeFrequencies.join(', ')}.',
+          );
+        }
+        buf.writeln('    <changefreq>$freq</changefreq>');
       }
 
       if (entry.priority != null) {
         final p = entry.priority!;
-        if (p.isNaN || p.isInfinite) {
+        if (p.isNaN || p.isInfinite || p < 0.0 || p > 1.0) {
           throw ArgumentError.value(
             p,
             'priority',
-            'Priority must be a finite number between 0.0 and 1.0',
+            'Priority must be a finite number between 0.0 and 1.0, got: $p.',
           );
         }
-        final clampedPriority = p.clamp(0.0, 1.0);
-        buf.writeln(
-          '    <priority>${clampedPriority.toStringAsFixed(1)}</priority>',
-        );
+        buf.writeln('    <priority>${p.toStringAsFixed(1)}</priority>');
       }
 
       for (final alt in entry.alternates) {
         // Validate alternate language and URL.
         _assertValidLanguage(alt.language);
+        if (alt.url.trim().isEmpty) {
+          throw ArgumentError.value(
+            alt.url,
+            'alternate href',
+            'Alternate href must not be empty or whitespace-only.',
+          );
+        }
         _assertAbsoluteHttpUrl(alt.url, 'alternate href');
         buf.writeln(
           '    <xhtml:link rel="alternate" hreflang="${_escape(alt.language)}" href="${_escape(alt.url)}" />',
@@ -185,13 +232,17 @@ class SitemapGenerator {
       }
 
       for (final img in entry.images) {
-        final imgUrl = img.trim();
-        if (imgUrl.isNotEmpty) {
-          _assertAbsoluteHttpUrl(imgUrl, 'image loc');
-          buf.writeln('    <image:image>');
-          buf.writeln('      <image:loc>${_escape(imgUrl)}</image:loc>');
-          buf.writeln('    </image:image>');
+        if (img.trim().isEmpty) {
+          throw ArgumentError.value(
+            img,
+            'image loc',
+            'Image loc must not be empty or whitespace-only.',
+          );
         }
+        _assertAbsoluteHttpUrl(img, 'image loc');
+        buf.writeln('    <image:image>');
+        buf.writeln('      <image:loc>${_escape(img)}</image:loc>');
+        buf.writeln('    </image:image>');
       }
 
       buf.writeln('  </url>');
@@ -224,19 +275,46 @@ class SitemapGenerator {
 
     // Validate sitemapBaseUrl.
     _assertAbsoluteHttpUrl(sitemapBaseUrl, 'sitemapBaseUrl');
+    final baseUri = Uri.parse(sitemapBaseUrl);
+    if (baseUri.hasQuery) {
+      throw ArgumentError.value(
+        sitemapBaseUrl,
+        'sitemapBaseUrl',
+        'sitemapBaseUrl must not contain query parameters.',
+      );
+    }
+    if (baseUri.hasFragment) {
+      throw ArgumentError.value(
+        sitemapBaseUrl,
+        'sitemapBaseUrl',
+        'sitemapBaseUrl must not contain fragment.',
+      );
+    }
 
     if (entries.length <= maxUrlsPerSitemap) {
       return {'sitemap.xml': generateUrlset(entries)};
     }
 
-    final result = <String, String>{};
     final sitemapCount = (entries.length / maxUrlsPerSitemap).ceil();
+    if (sitemapCount > 50000) {
+      throw ArgumentError.value(
+        entries.length,
+        'entries',
+        'Dataset requires $sitemapCount sitemaps, which exceeds the sitemaps.org protocol limit of 50,000 sitemaps per sitemap index.',
+      );
+    }
+
+    final result = <String, String>{};
     final indexBuf = StringBuffer();
 
     indexBuf.writeln('<?xml version="1.0" encoding="UTF-8"?>');
     indexBuf.writeln(
       '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     );
+
+    final normalizedBase = sitemapBaseUrl.endsWith('/')
+        ? sitemapBaseUrl.substring(0, sitemapBaseUrl.length - 1)
+        : sitemapBaseUrl;
 
     for (var i = 0; i < sitemapCount; i++) {
       final startIndex = i * maxUrlsPerSitemap;
@@ -248,9 +326,7 @@ class SitemapGenerator {
       final filename = 'sitemap-${i + 1}.xml';
       result[filename] = generateUrlset(chunk);
 
-      final fullUrl = sitemapBaseUrl.endsWith('/')
-          ? '$sitemapBaseUrl$filename'
-          : '$sitemapBaseUrl/$filename';
+      final fullUrl = '$normalizedBase/$filename';
 
       indexBuf.writeln('  <sitemap>');
       indexBuf.writeln('    <loc>${_escape(fullUrl)}</loc>');

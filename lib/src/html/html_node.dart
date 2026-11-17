@@ -31,9 +31,10 @@ class RawSafeHtmlNode extends HtmlNode {
   /// Creates a safe HTML node by running untrusted HTML through [HtmlSanitizer].
   factory RawSafeHtmlNode.sanitize(
     String untrustedHtml, {
-    HtmlSanitizer sanitizer = const HtmlSanitizer(),
+    HtmlSanitizer? sanitizer,
   }) {
-    return RawSafeHtmlNode._(sanitizer.sanitize(untrustedHtml));
+    final activeSanitizer = sanitizer ?? HtmlSanitizer();
+    return RawSafeHtmlNode._(activeSanitizer.sanitize(untrustedHtml));
   }
 
   final String html;

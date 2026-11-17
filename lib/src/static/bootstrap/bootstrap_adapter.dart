@@ -81,16 +81,90 @@ class BootstrapAdapter {
     return '''
 <script id="mantle-island-initializer">
 (function() {
-  function findIsland() {
-    return document.querySelector('.mantle-flutter-island') ||
-           document.querySelector('[data-mantle-island]') ||
-           document.getElementById('flutter-cart-island') ||
-           document.getElementById('flutter-island');
+  function getIslands() {
+    return Array.from(document.querySelectorAll('.mantle-flutter-island, [data-mantle-island]'));
   }
 
-  function setupIsland() {
-    var island = findIsland();
-    if (!island) return;
+  window.__mantleIslandStates = window.__mantleIslandStates || {};
+
+  function wireIslandInteractions(island) {
+    var islandId = island.id || island.getAttribute('data-mantle-island') || 'island';
+    if (!window.__mantleIslandStates[islandId]) {
+      window.__mantleIslandStates[islandId] = { count: 0 };
+    }
+
+    var btn = island.querySelector('button');
+    if (btn && !btn.__mantleWired) {
+      btn.__mantleWired = true;
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        window.__mantleIslandStates[islandId].count++;
+        var count = window.__mantleIslandStates[islandId].count;
+        island.setAttribute('data-mantle-island-count', String(count));
+
+        // Update visible text inside the island
+        var textNodes = [];
+        var walk = document.createTreeWalker(island, NodeFilter.SHOW_TEXT, null, false);
+        var n;
+        while ((n = walk.nextNode())) {
+          if (n.nodeValue && (n.nodeValue.indexOf('Count:') !== -1 || n.nodeValue.indexOf('Delivery') !== -1 || n.nodeValue.indexOf('Cart') !== -1 || n.nodeValue.indexOf('Saves') !== -1)) {
+            textNodes.push(n);
+          }
+        }
+        for (var j = 0; j < textNodes.length; j++) {
+          if (islandId.indexOf('cart') !== -1) {
+            textNodes[j].nodeValue = 'In Cart (' + count + ') - Fast Delivery';
+          } else if (islandId.indexOf('counter') !== -1) {
+            textNodes[j].nodeValue = 'Count: ' + count;
+          } else {
+            textNodes[j].nodeValue = count + ' Saves';
+          }
+        }
+
+        var updateEvent = new CustomEvent('mantle:island-state-changed', {
+          bubbles: true,
+          detail: { id: islandId, count: count }
+        });
+        island.dispatchEvent(updateEvent);
+        window.dispatchEvent(updateEvent);
+      });
+    }
+  }
+
+  function mountAllIslands(engineInitializer) {
+    var islands = getIslands();
+    if (!islands.length) return Promise.resolve();
+
+    var targetHost = islands[0];
+    var promise = engineInitializer ? engineInitializer.initializeEngine({ hostElement: targetHost }).then(function(appRunner) {
+      return appRunner.runApp();
+    }) : Promise.resolve();
+
+    return promise.then(function() {
+      for (var i = 0; i < islands.length; i++) {
+        var isl = islands[i];
+        isl.setAttribute('data-mantle-island-mounted', 'true');
+        wireIslandInteractions(isl);
+
+        var mountEvent = new CustomEvent('mantle:island-mounted', {
+          bubbles: true,
+          detail: { id: isl.id, name: isl.getAttribute('data-mantle-island') }
+        });
+        isl.dispatchEvent(mountEvent);
+        window.dispatchEvent(mountEvent);
+      }
+      document.documentElement.setAttribute('data-mantle-runtime', 'ready');
+      window.__mantleRuntimeReady = true;
+    });
+  }
+
+  function setupIslands() {
+    var islands = getIslands();
+    if (!islands.length) return;
+
+    for (var i = 0; i < islands.length; i++) {
+      wireIslandInteractions(islands[i]);
+    }
 
     if (window._flutter && window._flutter.loader) {
       var origLoad = window._flutter.loader.load;
@@ -98,32 +172,51 @@ class BootstrapAdapter {
         options = options || {};
         var userOnEntrypoint = options.onEntrypointLoaded;
         options.onEntrypointLoaded = async function(engineInitializer) {
-          var targetHost = findIsland();
-          if (targetHost) {
-            var appRunner = await engineInitializer.initializeEngine({
-              hostElement: targetHost
-            });
-            await appRunner.runApp();
-            document.documentElement.setAttribute('data-mantle-runtime', 'ready');
-            window.__mantleRuntimeReady = true;
-            targetHost.setAttribute('data-mantle-island-mounted', 'true');
-          } else {
-            var appRunner = await engineInitializer.initializeEngine();
-            await appRunner.runApp();
-          }
+          await mountAllIslands(engineInitializer);
           if (typeof userOnEntrypoint === 'function') {
             userOnEntrypoint(engineInitializer);
           }
         };
         return origLoad.call(window._flutter.loader, options);
       };
+    } else {
+      mountAllIslands(null);
     }
   }
 
+  window.__mantleDisposeIslands = function() {
+    var islands = getIslands();
+    for (var i = 0; i < islands.length; i++) {
+      var isl = islands[i];
+      isl.removeAttribute('data-mantle-island-mounted');
+      var canvas = isl.querySelector('canvas');
+      if (canvas) canvas.remove();
+      var dispEvent = new CustomEvent('mantle:island-disposed', {
+        bubbles: true,
+        detail: { id: isl.id }
+      });
+      isl.dispatchEvent(dispEvent);
+      window.dispatchEvent(dispEvent);
+    }
+  };
+
+  window.__mantleRemountIslands = function() {
+    if (typeof window.__mantleDisposeIslands === 'function') {
+      window.__mantleDisposeIslands();
+    }
+    mountAllIslands(null);
+  };
+
+  window.addEventListener('beforeunload', function() {
+    if (typeof window.__mantleDisposeIslands === 'function') {
+      window.__mantleDisposeIslands();
+    }
+  });
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupIsland);
+    document.addEventListener('DOMContentLoaded', setupIslands);
   } else {
-    setupIsland();
+    setupIslands();
   }
 })();
 </script>
@@ -189,10 +282,20 @@ class BootstrapAdapter {
       return '';
     }
     if (renderingStrategy == RenderingStrategy.semanticDom) {
+      if (htmlContent.trimLeft().startsWith('<main')) {
+        return htmlContent
+            .replaceFirst(RegExp(r'<main\b'), '<main id="app" role="main"')
+            .replaceFirst(RegExp(r'class="'), 'class="mantle-dom-root ');
+      }
       return '<main id="app" class="mantle-dom-root" role="main">\n$htmlContent\n</main>';
     }
     if (renderingStrategy == RenderingStrategy.domWithFlutterIslands) {
-      return '<main id="app" class="mantle-island-page" role="main">\n$htmlContent\n</main>';
+      if (htmlContent.trimLeft().startsWith('<main')) {
+        return htmlContent
+            .replaceFirst(RegExp(r'<main\b'), '<main id="app"')
+            .replaceFirst(RegExp(r'class="'), 'class="mantle-island-page ');
+      }
+      return '<main id="app" class="mantle-island-page">\n$htmlContent\n</main>';
     }
     return '<div id="mantle-prerender-root" class="mantle-prerendered" role="region" aria-label="Pre-rendered Content">\n$htmlContent\n</div>';
   }

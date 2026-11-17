@@ -316,6 +316,23 @@ MantleComponent buildProductDetailPage(StoreProduct product) {
               ),
             ),
             const MantleSizedBox(height: 12),
+            MantleIsland(
+              id: 'flutter-counter-island',
+              name: 'counter',
+              width: 320,
+              height: 50,
+              fallbackChild: const MantleRow(
+                children: [
+                  MantleButton(
+                    label: 'Add to Wishlist',
+                    color: MantleColor.indigo,
+                  ),
+                  MantleSizedBox(width: 16),
+                  MantleText('0 Saves'),
+                ],
+              ),
+            ),
+            const MantleSizedBox(height: 12),
             const MantleLink(href: '/products', label: 'Back to Catalog'),
           ],
         ),

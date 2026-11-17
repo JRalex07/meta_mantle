@@ -6,7 +6,7 @@ import 'package:xml/xml.dart';
 
 void main() {
   group('HTML Sanitizer & Security Hardening', () {
-    const sanitizer = HtmlSanitizer();
+    final sanitizer = HtmlSanitizer();
 
     test('Strips active executable script tags and iframes', () {
       final input =
@@ -90,6 +90,105 @@ void main() {
           '<a href="https://external.org" target="_blank">External</a>';
       final cleaned = sanitizer.sanitize(input);
       expect(cleaned, contains('rel="noopener noreferrer"'));
+    });
+
+    test('HtmlSanitizer honors allowProtocolRelative configuration', () {
+      final permissiveSanitizer = HtmlSanitizer(allowProtocolRelative: true);
+      const input = '<a href="//cdn.example.com/file.png">CDN</a>';
+      final cleaned = permissiveSanitizer.sanitize(input);
+      expect(cleaned, contains('href="//cdn.example.com/file.png"'));
+
+      final strictSanitizer = HtmlSanitizer(allowProtocolRelative: false);
+      final strictCleaned = strictSanitizer.sanitize(input);
+      expect(strictCleaned, isNot(contains('//cdn.example.com/file.png')));
+
+      // Dangerous schemes must still be rejected even with allowProtocolRelative: true
+      const evil =
+          '<a href="javascript:alert(1)">Evil</a><a href="//\\evil.com">UNC</a>';
+      final evilCleaned = permissiveSanitizer.sanitize(evil);
+      expect(evilCleaned, isNot(contains('javascript:')));
+      expect(evilCleaned, isNot(contains('//\\evil.com')));
+    });
+
+    test('HtmlSanitizer honors custom allowedSchemes configuration', () {
+      final appSanitizer = HtmlSanitizer(
+        allowedSchemes: const {'https', 'myapp'},
+      );
+
+      const input = '''
+        <a href="https://trusted.com">HTTPS</a>
+        <a href="myapp:launch">App Deep Link</a>
+        <a href="http://unsecured.com">HTTP Not Allowed</a>
+        <a href="ftp://files.org">FTP Not Allowed</a>
+      ''';
+      final cleaned = appSanitizer.sanitize(input);
+      expect(cleaned, contains('href="https://trusted.com"'));
+      expect(cleaned, contains('href="myapp:launch"'));
+      expect(cleaned, isNot(contains('http://unsecured.com')));
+      expect(cleaned, isNot(contains('ftp://files.org')));
+    });
+
+    test(
+      'HtmlSanitizer constructor rejects dangerous schemes in allowedSchemes',
+      () {
+        expect(
+          () => HtmlSanitizer(allowedSchemes: const {'https', 'javascript'}),
+          throwsArgumentError,
+        );
+        expect(
+          () => HtmlSanitizer(allowedSchemes: const {'data', 'https'}),
+          throwsArgumentError,
+        );
+        expect(
+          () => HtmlSanitizer(allowedSchemes: const {'vbscript'}),
+          throwsArgumentError,
+        );
+        expect(
+          () => HtmlSanitizer(allowedSchemes: const {'blob'}),
+          throwsArgumentError,
+        );
+        expect(
+          () => HtmlSanitizer(allowedSchemes: const {'file'}),
+          throwsArgumentError,
+        );
+      },
+    );
+
+    test('HtmlSanitizer constructor validates scheme format, tag names and attributes', () {
+      // Invalid scheme syntax
+      expect(
+        () => HtmlSanitizer(allowedSchemes: const {'invalid scheme!'}),
+        throwsArgumentError,
+      );
+      // Prohibited executable tags
+      expect(
+        () => HtmlSanitizer(allowedTags: const {'p', 'script'}),
+        throwsArgumentError,
+      );
+      expect(
+        () => HtmlSanitizer(allowedTags: const {'p', 'iframe'}),
+        throwsArgumentError,
+      );
+      // Event handler in allowed attributes
+      expect(
+        () => HtmlSanitizer(allowedAttributes: const {'href', 'onclick'}),
+        throwsArgumentError,
+      );
+    });
+
+    test('HtmlSanitizer custom tag and attribute allowlists restrict output', () {
+      final strict = HtmlSanitizer(
+        allowedTags: const {'p', 'b'},
+        allowedAttributes: const {'class'},
+      );
+      const input =
+          '<p class="lead" id="p1">Hello <b>World</b> <a href="https://example.com">Link</a></p>';
+      final cleaned = strict.sanitize(input);
+      expect(cleaned, contains('<p class="lead">'));
+      expect(cleaned, isNot(contains('id="p1"')));
+      expect(cleaned, contains('<b>World</b>'));
+      expect(cleaned, isNot(contains('<a')));
+      expect(cleaned, isNot(contains('Link')));
     });
   });
 
@@ -272,29 +371,59 @@ void main() {
       },
     );
 
-    test('Clamps priority to [0.0, 1.0] and validates changefreq', () {
-      const generator = SitemapGenerator();
-      final xml = generator.generateUrlset([
-        const SitemapUrlEntry(
-          loc: 'https://example.com/page1',
-          priority: 2.5,
-          changeFreq: 'INVALID_FREQ',
-        ),
-        const SitemapUrlEntry(
-          loc: 'https://example.com/page2',
-          priority: -0.4,
-          changeFreq: 'DAILY',
-        ),
-      ]);
+    test(
+      'Rejects invalid changefreq and invalid priority with ArgumentError',
+      () {
+        const generator = SitemapGenerator();
+        final xml = generator.generateUrlset([
+          const SitemapUrlEntry(
+            loc: 'https://example.com/page1',
+            priority: 0.8,
+            changeFreq: 'monthly',
+          ),
+          const SitemapUrlEntry(
+            loc: 'https://example.com/page2',
+            priority: 0.0,
+            changeFreq: 'DAILY',
+          ),
+        ]);
 
-      expect(xml, contains('<priority>1.0</priority>'));
-      expect(xml, contains('<priority>0.0</priority>'));
-      expect(
-        xml,
-        contains('<changefreq>weekly</changefreq>'),
-      ); // Defaults invalid to weekly
-      expect(xml, contains('<changefreq>daily</changefreq>'));
-    });
+        expect(xml, contains('<priority>0.8</priority>'));
+        expect(xml, contains('<priority>0.0</priority>'));
+        expect(xml, contains('<changefreq>monthly</changefreq>'));
+        expect(xml, contains('<changefreq>daily</changefreq>'));
+
+        expect(
+          () => generator.generateUrlset([
+            const SitemapUrlEntry(
+              loc: 'https://example.com/bad-freq',
+              changeFreq: 'invalid_frequency',
+            ),
+          ]),
+          throwsArgumentError,
+        );
+
+        expect(
+          () => generator.generateUrlset([
+            const SitemapUrlEntry(
+              loc: 'https://example.com/bad-p-high',
+              priority: 1.5,
+            ),
+          ]),
+          throwsArgumentError,
+        );
+
+        expect(
+          () => generator.generateUrlset([
+            const SitemapUrlEntry(
+              loc: 'https://example.com/bad-p-low',
+              priority: -0.1,
+            ),
+          ]),
+          throwsArgumentError,
+        );
+      },
+    );
 
     test('Sitemap index generation partitions entries according to maxUrlsPerSitemap', () {
       const generator = SitemapGenerator(maxUrlsPerSitemap: 100);
@@ -400,7 +529,7 @@ void main() {
       expect(doc.findAllElements('url').length, equals(0));
     });
 
-    test('Rejects non-finite priority values and clamps finite priority', () {
+    test('Rejects non-finite, negative, and excessive priority values', () {
       const generator = SitemapGenerator();
       expect(
         () => generator.generateUrlset([
@@ -422,15 +551,29 @@ void main() {
         throwsArgumentError,
       );
 
-      final clampedHigh = generator.generateUrlset([
-        const SitemapUrlEntry(loc: 'https://example.com/high', priority: 2.5),
-      ]);
-      expect(clampedHigh, contains('<priority>1.0</priority>'));
+      expect(
+        () => generator.generateUrlset([
+          const SitemapUrlEntry(
+            loc: 'https://example.com/neg-inf',
+            priority: double.negativeInfinity,
+          ),
+        ]),
+        throwsArgumentError,
+      );
 
-      final clampedLow = generator.generateUrlset([
-        const SitemapUrlEntry(loc: 'https://example.com/low', priority: -0.8),
-      ]);
-      expect(clampedLow, contains('<priority>0.0</priority>'));
+      expect(
+        () => generator.generateUrlset([
+          const SitemapUrlEntry(loc: 'https://example.com/high', priority: 2.5),
+        ]),
+        throwsArgumentError,
+      );
+
+      expect(
+        () => generator.generateUrlset([
+          const SitemapUrlEntry(loc: 'https://example.com/low', priority: -0.8),
+        ]),
+        throwsArgumentError,
+      );
     });
 
     test('Rejects invalid URLs and invalid languages in sitemap', () {
@@ -486,6 +629,68 @@ void main() {
             ],
           ),
         ]),
+        throwsArgumentError,
+      );
+
+      // Empty or whitespace-only loc throws ArgumentError
+      expect(
+        () => generator.generateUrlset([const SitemapUrlEntry(loc: '')]),
+        throwsArgumentError,
+      );
+      expect(
+        () => generator.generateUrlset([const SitemapUrlEntry(loc: '   ')]),
+        throwsArgumentError,
+      );
+
+      // Control characters in loc throws ArgumentError
+      expect(
+        () => generator.generateUrlset([
+          const SitemapUrlEntry(loc: 'https://example.com/test\x00path'),
+        ]),
+        throwsArgumentError,
+      );
+      expect(
+        () => generator.generateUrlset([
+          const SitemapUrlEntry(loc: 'https://example.com/test\x1Fpath'),
+        ]),
+        throwsArgumentError,
+      );
+
+      // Raw unencoded whitespace in loc throws ArgumentError
+      expect(
+        () => generator.generateUrlset([
+          const SitemapUrlEntry(loc: 'https://example.com/with space'),
+        ]),
+        throwsArgumentError,
+      );
+
+      // Invalid percent-encoding in loc throws ArgumentError
+      expect(
+        () => generator.generateUrlset([
+          const SitemapUrlEntry(loc: 'https://example.com/item%ZZ'),
+        ]),
+        throwsArgumentError,
+      );
+      expect(
+        () => generator.generateUrlset([
+          const SitemapUrlEntry(loc: 'https://example.com/item%'),
+        ]),
+        throwsArgumentError,
+      );
+
+      // sitemapBaseUrl validation: must reject query and fragment
+      expect(
+        () => generator.generateSitemapIndex(
+          entries: [const SitemapUrlEntry(loc: 'https://example.com/page')],
+          sitemapBaseUrl: 'https://example.com/sitemaps?feed=1',
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => generator.generateSitemapIndex(
+          entries: [const SitemapUrlEntry(loc: 'https://example.com/page')],
+          sitemapBaseUrl: 'https://example.com/sitemaps#frag',
+        ),
         throwsArgumentError,
       );
 
@@ -861,6 +1066,170 @@ void main() {
           isTrue,
         );
       }
+    });
+
+    test('HeadTag allowlist enforces valid HTML5 head elements (rejects div, span, html, body)', () {
+      expect(
+        () => const HeadTag(key: 'invalid-div', tagName: 'div').toHtml(),
+        throwsArgumentError,
+      );
+      expect(
+        () => const HeadTag(key: 'invalid-span', tagName: 'span').toHtml(),
+        throwsArgumentError,
+      );
+      expect(
+        () => const HeadTag(key: 'invalid-html', tagName: 'html').toHtml(),
+        throwsArgumentError,
+      );
+      expect(
+        () => const HeadTag(key: 'invalid-body', tagName: 'body').toHtml(),
+        throwsArgumentError,
+      );
+
+      // Valid HTML5 head elements succeed
+      for (final tag in HeadTag.allowedHeadTags) {
+        final headTag = HeadTag(
+          key: 'valid-$tag',
+          tagName: tag,
+          textContent: tag == 'script' || tag == 'style' ? null : 'content',
+        );
+        expect(headTag.toHtml(), isNotEmpty);
+      }
+    });
+
+    test(
+      'HeadTag escapes line separators \\u2028 and \\u2029 in script tags',
+      () {
+        final script = HeadTag.trustedScript(
+          key: 'script-separators',
+          content: 'const x = "line1\u2028line2\u2029line3";',
+        );
+        final html = script.toHtml();
+        expect(html, contains(r'\u2028'));
+        expect(html, contains(r'\u2029'));
+        expect(html, isNot(contains('\u2028')));
+        expect(html, isNot(contains('\u2029')));
+      },
+    );
+
+    test('MetadataRenderer does not emit pseudo html-language tag and HtmlDocument preserves lang on root html', () {
+      const renderer = MetadataRenderer();
+      final tags = renderer.render(
+        const WebMetadata(title: 'Title', language: 'fr-FR'),
+      );
+      expect(
+        tags.any(
+          (t) => t.tagName.toLowerCase() == 'html' || t.key == 'html-language',
+        ),
+        isFalse,
+      );
+
+      final doc = HtmlDocument(
+        metadata: const WebMetadata(title: 'Doc', language: 'fr-FR'),
+      );
+      final html = doc.render();
+      expect(html, contains('<html lang="fr-FR">'));
+      expect(html, isNot(contains('<head>\n  <html')));
+    });
+
+    test('HtmlDocument deduplicates title, base, canonical, description, robots, OG and Twitter tags with customHeadTags override', () {
+      final doc = HtmlDocument(
+        metadata: const WebMetadata(
+          title: 'Initial Title',
+          description: 'Initial Description',
+          canonical: 'https://example.com/initial',
+          robots: 'index, follow',
+          openGraph: OpenGraph(
+            title: 'Initial OG',
+            description: 'Initial OG Desc',
+          ),
+          twitter: TwitterCard(title: 'Initial Twitter'),
+        ),
+        baseHref: '/base1/',
+        customHeadTags: [
+          const HeadTag(
+            key: 'custom-title',
+            tagName: 'title',
+            textContent: 'Overridden Title',
+          ),
+          const HeadTag(
+            key: 'custom-desc',
+            tagName: 'meta',
+            attributes: {
+              'name': 'description',
+              'content': 'Overridden Description',
+            },
+          ),
+          const HeadTag(
+            key: 'custom-canonical',
+            tagName: 'link',
+            attributes: {
+              'rel': 'canonical',
+              'href': 'https://example.com/overridden',
+            },
+          ),
+          const HeadTag(
+            key: 'custom-robots',
+            tagName: 'meta',
+            attributes: {'name': 'robots', 'content': 'noindex, nofollow'},
+          ),
+          const HeadTag(
+            key: 'custom-base',
+            tagName: 'base',
+            attributes: {'href': '/overridden-base/'},
+          ),
+          const HeadTag(
+            key: 'custom-og',
+            tagName: 'meta',
+            attributes: {
+              'property': 'og:title',
+              'content': 'Overridden OG Title',
+            },
+          ),
+        ],
+      );
+
+      final html = doc.render();
+      final parsed = html_parser.parse(html);
+
+      // Only 1 title tag, with overridden content
+      final titles = parsed.querySelectorAll('title');
+      expect(titles.length, equals(1));
+      expect(titles.first.text, equals('Overridden Title'));
+
+      // Only 1 canonical tag, with overridden href
+      final canonicals = parsed.querySelectorAll('link[rel="canonical"]');
+      expect(canonicals.length, equals(1));
+      expect(
+        canonicals.first.attributes['href'],
+        equals('https://example.com/overridden'),
+      );
+
+      // Only 1 description meta tag, with overridden content
+      final descriptions = parsed.querySelectorAll('meta[name="description"]');
+      expect(descriptions.length, equals(1));
+      expect(
+        descriptions.first.attributes['content'],
+        equals('Overridden Description'),
+      );
+
+      // Only 1 robots meta tag, with overridden content
+      final robots = parsed.querySelectorAll('meta[name="robots"]');
+      expect(robots.length, equals(1));
+      expect(robots.first.attributes['content'], equals('noindex, nofollow'));
+
+      // Only 1 base tag, with overridden href
+      final bases = parsed.querySelectorAll('base');
+      expect(bases.length, equals(1));
+      expect(bases.first.attributes['href'], equals('/overridden-base/'));
+
+      // OG title is overridden
+      final ogTitles = parsed.querySelectorAll('meta[property="og:title"]');
+      expect(ogTitles.length, equals(1));
+      expect(
+        ogTitles.first.attributes['content'],
+        equals('Overridden OG Title'),
+      );
     });
   });
 }

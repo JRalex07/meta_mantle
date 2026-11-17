@@ -52,6 +52,18 @@ class HeadTag {
   static final RegExp _attrKeyRegex = RegExp(r'^[a-zA-Z_:][a-zA-Z0-9_.:-]*$');
   static const Set<String> _voidHeadTags = {'meta', 'link', 'base'};
 
+  /// Permitted HTML5 head elements. Elements like `<div>`, `<span>`, `<html>`, `<body>` are prohibited.
+  static const Set<String> allowedHeadTags = {
+    'title',
+    'base',
+    'link',
+    'style',
+    'meta',
+    'script',
+    'noscript',
+    'template',
+  };
+
   final String key;
   final String tagName;
   final Map<String, String> attributes;
@@ -62,6 +74,15 @@ class HeadTag {
   String toHtml() {
     if (!_tagRegex.hasMatch(tagName)) {
       throw ArgumentError.value(tagName, 'tagName', 'Invalid head tag name');
+    }
+    final lowerTag = tagName.toLowerCase();
+    if (!allowedHeadTags.contains(lowerTag)) {
+      throw ArgumentError.value(
+        tagName,
+        'tagName',
+        'Invalid head element "$tagName". Only HTML5 head elements '
+            '(title, base, link, style, meta, script, noscript, template) are permitted in head tags.',
+      );
     }
     for (final entry in attributes.entries) {
       if (!_attrKeyRegex.hasMatch(entry.key)) {
@@ -84,7 +105,6 @@ class HeadTag {
       }
     }
 
-    final lowerTag = tagName.toLowerCase();
     final attrs = attributes.entries
         .map((e) => '${e.key}="${_escapeAttr(e.value)}"')
         .join(' ');
@@ -107,10 +127,10 @@ class HeadTag {
           );
         }
       }
-      final safeContent = (textContent ?? '').replaceAll(
-        RegExp(r'</script', caseSensitive: false),
-        r'<\/script',
-      );
+      final safeContent = (textContent ?? '')
+          .replaceAll(RegExp(r'</script', caseSensitive: false), r'<\/script')
+          .replaceAll('\u2028', r'\u2028')
+          .replaceAll('\u2029', r'\u2029');
       return '<script$attrString>$safeContent</script>';
     }
 

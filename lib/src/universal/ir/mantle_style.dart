@@ -36,6 +36,7 @@ class MantleColor {
   static const MantleColor blue = MantleColor(0xFF2196F3);
   static const MantleColor green = MantleColor(0xFF4CAF50);
   static const MantleColor redColor = MantleColor(0xFFF44336);
+  static const MantleColor indigo = MantleColor(0xFF3F51B5);
 
   String toCssRgba() {
     final opacity = (alphaChannel / 255.0).toStringAsFixed(3);

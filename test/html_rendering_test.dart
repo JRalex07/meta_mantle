@@ -27,7 +27,7 @@ void main() {
     });
 
     test('HtmlSanitizer strips malicious script tags and event handlers', () {
-      const sanitizer = HtmlSanitizer();
+      final sanitizer = HtmlSanitizer();
       const malicious =
           '<p>Hello <script>stealCookies()</script><a href="javascript:alert(1)" onclick="hack()">Click</a></p>';
       final clean = sanitizer.sanitize(malicious);
@@ -41,7 +41,7 @@ void main() {
     test(
       'HtmlSanitizer enforces rel="noopener noreferrer" on target="_blank"',
       () {
-        const sanitizer = HtmlSanitizer();
+        final sanitizer = HtmlSanitizer();
         const input =
             '<a href="https://example.com" target="_blank">External</a>';
         final clean = sanitizer.sanitize(input);

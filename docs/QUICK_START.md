@@ -49,10 +49,10 @@ Run `flutter pub get` to fetch dependencies.
 
 ## 3. Application Entrypoint
 
-In your `lib/main.dart`, initialize your app using `MetaMantleApp` and attach the `MetaMantleGoRouterObserver` (or navigator observer) so route updates seamlessly synchronize with browser `<head>` tags:
+In your `lib/main.dart`, attach `MetaMantleNavigatorObserver` (or `MetaMantleGoRouterObserver` when using GoRouter) to your application so route transitions automatically synchronize page metadata with browser `<head>` tags:
 
 ```dart
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 import 'package:meta_mantle/meta_mantle.dart';
 
 void main() {
@@ -67,7 +67,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'MetaMantle Universal App',
       navigatorObservers: [
-        MetaMantleGoRouterObserver(
+        MetaMantleNavigatorObserver(
           markReadyOnFirstFrame: true,
           onRouteChanged: (path) => debugPrint('Navigated to: $path'),
         ),
@@ -79,6 +79,20 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+```
+
+If you are using `go_router`:
+
+```dart
+final router = GoRouter(
+  observers: [
+    MetaMantleGoRouterObserver(
+      markReadyOnFirstFrame: true,
+      onRouteChanged: (path) => debugPrint('Navigated to: $path'),
+    ),
+  ],
+  routes: [ /* your routes */ ],
+);
 ```
 
 ---
@@ -93,31 +107,31 @@ MetaMantle enables writing UI components once that can render to:
 ```dart
 import 'package:meta_mantle/meta_mantle_universal.dart';
 
-class ProductCard extends MantleComponent {
+class ProductCard extends StatelessMantleComponent {
   const ProductCard({
     super.key,
     required this.name,
     required this.price,
-    required this.onAddToCart,
+    this.onAddToCart,
   });
 
   final String name;
   final double price;
-  final VoidCallback onAddToCart;
+  final MantleVoidCallback? onAddToCart;
 
   @override
   MantleNode build(MantleContext context) {
     return MantleArticle(
-      className: 'product-card',
+      title: name,
       children: [
-        MantleHeading(2, name),
+        MantleHeading(name, level: 2),
         MantleText('Price: \$${price.toStringAsFixed(2)}'),
         MantleButton(
           label: 'Add to Cart',
           onPressed: onAddToCart,
         ),
       ],
-    );
+    ).toNode(context);
   }
 }
 ```

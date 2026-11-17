@@ -46,6 +46,7 @@ class BuildWebOptions {
     this.verbose = false,
     this.dryRun = false,
     this.clean = false,
+    this.compileFlutter = true,
     this.strict = false,
     this.configPath = 'meta_mantle.config.json',
     this.projectDir = '.',
@@ -62,6 +63,7 @@ class BuildWebOptions {
   final bool verbose;
   final bool dryRun;
   final bool clean;
+  final bool compileFlutter;
   final bool strict;
   final String configPath;
   final String projectDir;
@@ -78,6 +80,7 @@ class BuildWebOptions {
     bool? verbose,
     bool? dryRun,
     bool? clean,
+    bool? compileFlutter,
     bool? strict,
     String? configPath,
     String? projectDir,
@@ -94,6 +97,7 @@ class BuildWebOptions {
       verbose: verbose ?? this.verbose,
       dryRun: dryRun ?? this.dryRun,
       clean: clean ?? this.clean,
+      compileFlutter: compileFlutter ?? this.compileFlutter,
       strict: strict ?? this.strict,
       configPath: configPath ?? this.configPath,
       projectDir: projectDir ?? this.projectDir,

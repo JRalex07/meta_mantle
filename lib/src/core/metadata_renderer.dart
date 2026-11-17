@@ -55,7 +55,6 @@ class MetadataRenderer {
     final ogSiteName = metadata.openGraph?.siteName ?? config.siteName;
     final ogType = metadata.openGraph?.type ?? OpenGraphType.website;
     final twitter = metadata.twitter;
-    final resolvedLanguage = metadata.language ?? config.language;
     final tags = <HeadTag>[];
 
     void addMeta(String key, String name, String content) {
@@ -117,15 +116,6 @@ class MetadataRenderer {
     final themeColor = metadata.themeColor ?? config.themeColor;
     if (themeColor != null && themeColor.isNotEmpty) {
       addMeta('theme-color', 'theme-color', themeColor);
-    }
-    if (resolvedLanguage != null && resolvedLanguage.isNotEmpty) {
-      tags.add(
-        HeadTag(
-          key: 'html-language',
-          tagName: 'html',
-          attributes: {'lang': resolvedLanguage},
-        ),
-      );
     }
 
     // Search Engine Verifications

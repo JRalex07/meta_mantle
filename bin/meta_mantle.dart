@@ -81,6 +81,11 @@ ArgParser buildMetaMantleCliParser() {
       help: 'Run flutter clean before building.',
     )
     ..addFlag(
+      'compile-flutter',
+      defaultsTo: true,
+      help: 'Compile Flutter web project with flutter build web.',
+    )
+    ..addFlag(
       'strict',
       defaultsTo: false,
       help: 'Fail build if any metadata or route warnings occur.',
@@ -1224,6 +1229,7 @@ void main(List<String> args) => runStaticManifest(metaMantleRoutes, args);
       final isVerbose = command['verbose'] as bool;
       final isDryRun = command['dry-run'] as bool;
       final isClean = command['clean'] as bool;
+      final isCompileFlutter = command['compile-flutter'] as bool? ?? true;
       final isStrict = command['strict'] as bool;
       final manifestPath = command['manifest'] as String?;
       final strategyStr = command.options.contains('rendering-strategy')
@@ -1243,6 +1249,7 @@ void main(List<String> args) => runStaticManifest(metaMantleRoutes, args);
         verbose: isVerbose,
         dryRun: isDryRun,
         clean: isClean,
+        compileFlutter: isCompileFlutter,
         strict: isStrict,
         configPath: configPath,
         manifestPath: manifestPath,

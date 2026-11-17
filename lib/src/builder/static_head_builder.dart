@@ -358,19 +358,31 @@ class StaticHeadBuilder {
       }
     }
 
+    final uniqueSitemapUrls = sitemapUrls.toSet().toList()..sort();
+    final isChunked = uniqueSitemapUrls.length > 50000;
+
     if (config.sitemap) {
-      final sitemap = File(
-        '${outputDirectory.path}${Platform.pathSeparator}sitemap.xml',
+      final entries = uniqueSitemapUrls
+          .map((url) => SitemapUrlEntry(loc: url))
+          .toList();
+      const generator = SitemapGenerator();
+      final sitemapFiles = generator.generateSitemapIndex(
+        entries: entries,
+        sitemapBaseUrl: config.baseUrl,
       );
-      if (!dryRun) {
-        await sitemap.parent.create(recursive: true);
-        final uniqueSitemapUrls = sitemapUrls.toSet().toList()..sort();
-        await sitemap.writeAsString(_sitemap(uniqueSitemapUrls), flush: true);
+      for (final entry in sitemapFiles.entries) {
+        final sitemap = File(
+          '${outputDirectory.path}${Platform.pathSeparator}${entry.key}',
+        );
+        if (!dryRun) {
+          await sitemap.parent.create(recursive: true);
+          await sitemap.writeAsString(entry.value, flush: true);
+        }
+        generated.add(sitemap);
       }
-      generated.add(sitemap);
       if (verbose) {
         onProgress?.call(
-          'Generated sitemap.xml with ${sitemapUrls.length} entries',
+          'Generated ${sitemapFiles.keys.join(', ')} with ${uniqueSitemapUrls.length} entries',
         );
       }
     }
@@ -381,7 +393,10 @@ class StaticHeadBuilder {
       );
       if (!dryRun) {
         await robots.parent.create(recursive: true);
-        await robots.writeAsString(_robotsTxt(config), flush: true);
+        await robots.writeAsString(
+          _robotsTxt(config, isIndex: isChunked),
+          flush: true,
+        );
       }
       generated.add(robots);
       if (verbose) {
@@ -818,13 +833,7 @@ class StaticHeadBuilder {
     }
   }
 
-  String _sitemap(List<String> urls) {
-    final entries = urls.map((url) => SitemapUrlEntry(loc: url)).toList();
-    const generator = SitemapGenerator();
-    return generator.generateUrlset(entries);
-  }
-
-  String _robotsTxt(StaticHeadConfig config) {
+  String _robotsTxt(StaticHeadConfig config, {bool isIndex = false}) {
     final base = config.baseUrl.endsWith('/')
         ? config.baseUrl.substring(0, config.baseUrl.length - 1)
         : config.baseUrl;
@@ -836,7 +845,8 @@ class StaticHeadBuilder {
       buffer.writeln('Allow: /');
     }
     if (config.sitemap) {
-      buffer.writeln('Sitemap: $base/sitemap.xml');
+      final sitemapName = isIndex ? 'sitemap_index.xml' : 'sitemap.xml';
+      buffer.writeln('Sitemap: $base/$sitemapName');
     }
     return buffer.toString();
   }

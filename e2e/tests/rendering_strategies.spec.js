@@ -359,4 +359,81 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     );
     expect(canvasCount).toBeLessThanOrEqual(1);
   });
+
+  test('C8: Two independent island hosts exist with deterministic mount markers', async ({ page }) => {
+    await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
+
+    const cartIsland = page.locator('#flutter-cart-island');
+    const counterIsland = page.locator('#flutter-counter-island');
+
+    await expect(cartIsland).toBeAttached();
+    await expect(counterIsland).toBeAttached();
+
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-mounted', 'true');
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-mounted', 'true');
+  });
+
+  test('C9: Real button click in Island 1 updates its state and leaves Island 2 independent', async ({ page }) => {
+    await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
+
+    const cartButton = page.locator('#flutter-cart-island button');
+    await expect(cartButton).toBeVisible();
+
+    // Click cart button
+    await cartButton.click();
+
+    // Island 1 state updates
+    const cartIsland = page.locator('#flutter-cart-island');
+    await expect(cartIsland).toContainText('In Cart (1) - Fast Delivery');
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-count', '1');
+
+    // Island 2 remains untouched
+    const counterIsland = page.locator('#flutter-counter-island');
+    await expect(counterIsland).toContainText('0 Saves');
+    expect(await counterIsland.getAttribute('data-mantle-island-count')).toBeNull();
+  });
+
+  test('C10: Clicking Island 2 button increments counter independently', async ({ page }) => {
+    await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
+
+    const counterButton = page.locator('#flutter-counter-island button');
+    await expect(counterButton).toBeVisible();
+
+    // Click counter button twice
+    await counterButton.click();
+    await counterButton.click();
+
+    const counterIsland = page.locator('#flutter-counter-island');
+    await expect(counterIsland).toContainText('Count: 2');
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-count', '2');
+  });
+
+  test('C11: Navigation disposal and remounting creates no duplicate canvases or listeners', async ({ page }) => {
+    await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
+
+    // Trigger disposal
+    await page.evaluate(() => {
+      if (typeof window.__mantleDisposeIslands === 'function') {
+        window.__mantleDisposeIslands();
+      }
+    });
+
+    const cartIsland = page.locator('#flutter-cart-island');
+    await expect(cartIsland).not.toHaveAttribute('data-mantle-island-mounted', 'true');
+
+    // Trigger remount
+    await page.evaluate(() => {
+      if (typeof window.__mantleRemountIslands === 'function') {
+        window.__mantleRemountIslands();
+      }
+    });
+
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-mounted', 'true');
+
+    // Canvas count remains <= 1
+    const canvasCount = await page.evaluate(
+      () => document.querySelectorAll('canvas').length
+    );
+    expect(canvasCount).toBeLessThanOrEqual(1);
+  });
 });
