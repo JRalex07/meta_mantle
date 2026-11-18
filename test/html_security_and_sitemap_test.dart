@@ -1502,4 +1502,482 @@ void main() {
       );
     });
   });
+
+  group('Sitemap Protocol Comprehensive Verification & Boundary Tests', () {
+    test('Exact byte limit boundary: accepts at limit, rejects at limit - 1, accepts at limit + 1', () {
+      const baseGen = SitemapGenerator();
+      final entry = const SitemapUrlEntry(
+        loc: 'https://example.com/boundary-test',
+      );
+      final baselineXml = baseGen.generateUrlset([entry]);
+      final exactBytes = utf8.encode(baselineXml).length;
+
+      // 1. Exactly the configured byte limit: succeeds
+      final exactGen = SitemapGenerator(maxBytesPerSitemap: exactBytes);
+      final exactXml = exactGen.generateUrlset([entry]);
+      expect(utf8.encode(exactXml).length, equals(exactBytes));
+
+      // 2. One byte below the configured limit: throws ArgumentError
+      final underGen = SitemapGenerator(maxBytesPerSitemap: exactBytes - 1);
+      expect(
+        () => underGen.generateUrlset([entry]),
+        throwsArgumentError,
+        reason: 'Should reject when serialized XML exceeds maxBytesPerSitemap by 1 byte',
+      );
+
+      // 3. One byte above the configured limit: succeeds
+      final overGen = SitemapGenerator(maxBytesPerSitemap: exactBytes + 1);
+      final overXml = overGen.generateUrlset([entry]);
+      expect(utf8.encode(overXml).length, lessThanOrEqualTo(exactBytes + 1));
+    });
+
+    test('Single oversized entry exceeding byte limit throws ArgumentError in generateSitemapIndex', () {
+      const generator = SitemapGenerator(maxBytesPerSitemap: 500);
+      // Entry with many alternates and images that alone exceeds 500 bytes
+      final oversizedEntry = SitemapUrlEntry(
+        loc: 'https://example.com/oversized-page-with-a-very-long-url-path-that-exceeds-the-limit',
+        alternates: List.generate(
+          10,
+          (i) => AlternateUrl(
+            language: 'es-$i',
+            url:
+                'https://example.com/es-$i/oversized-page-with-a-very-long-url-path-that-exceeds-the-limit',
+          ),
+        ),
+      );
+
+      expect(
+        () => generator.generateSitemapIndex(
+          entries: [oversizedEntry],
+          sitemapBaseUrl: 'https://example.com/sitemaps',
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('Combined URL-count and byte-size constraints partition on whichever limit is hit first', () {
+      // Limit to 5 URLs or 1200 bytes
+      const generator = SitemapGenerator(
+        maxUrlsPerSitemap: 5,
+        maxBytesPerSitemap: 1200,
+      );
+
+      // 12 small entries: hits URL count limit (5) before byte limit
+      final entries = List.generate(
+        12,
+        (i) => SitemapUrlEntry(loc: 'https://example.com/p$i'),
+      );
+      final files = generator.generateSitemapIndex(
+        entries: entries,
+        sitemapBaseUrl: 'https://example.com/sitemaps',
+      );
+
+      expect(files.containsKey('sitemap_index.xml'), isTrue);
+      expect(files.containsKey('sitemap-1.xml'), isTrue);
+      expect(files.containsKey('sitemap-2.xml'), isTrue);
+      expect(files.containsKey('sitemap-3.xml'), isTrue);
+
+      // Verify each chunk is <= maxUrlsPerSitemap and <= maxBytesPerSitemap
+      final doc1 = XmlDocument.parse(files['sitemap-1.xml']!);
+      expect(doc1.findAllElements('url').length, equals(5));
+      expect(
+        utf8.encode(files['sitemap-1.xml']!).length,
+        lessThanOrEqualTo(1200),
+      );
+
+      final doc2 = XmlDocument.parse(files['sitemap-2.xml']!);
+      expect(doc2.findAllElements('url').length, equals(5));
+      expect(
+        utf8.encode(files['sitemap-2.xml']!).length,
+        lessThanOrEqualTo(1200),
+      );
+
+      final doc3 = XmlDocument.parse(files['sitemap-3.xml']!);
+      expect(doc3.findAllElements('url').length, equals(2));
+      expect(
+        utf8.encode(files['sitemap-3.xml']!).length,
+        lessThanOrEqualTo(1200),
+      );
+    });
+
+    test('Escaped XML entities expanding byte count are correctly measured after serialization', () {
+      // An entry with characters that expand under XML escaping (&, <, >, ", ')
+      final rawEntry = SitemapUrlEntry(
+        loc: 'https://example.com/search?q=organic&cat=food&filter="fresh"&tier=<1>',
+      );
+
+      const baseGen = SitemapGenerator();
+      final xml = baseGen.generateUrlset([rawEntry]);
+      final actualByteCount = utf8.encode(xml).length;
+
+      // Ensure that configuring maxBytesPerSitemap to actualByteCount succeeds
+      final exactGen = SitemapGenerator(maxBytesPerSitemap: actualByteCount);
+      expect(exactGen.generateUrlset([rawEntry]), isNotEmpty);
+
+      // And 1 byte less throws ArgumentError
+      final underGen = SitemapGenerator(
+        maxBytesPerSitemap: actualByteCount - 1,
+      );
+      expect(() => underGen.generateUrlset([rawEntry]), throwsArgumentError);
+    });
+
+    test(
+      'Multibyte Unicode in loc, alternate hreflang/href, and image loc',
+      () {
+        const generator = SitemapGenerator();
+        final unicodeEntry = SitemapUrlEntry(
+          loc: 'https://example.com/products/%E6%97%A5%E6%9C%AC%E8%AA%9E-%E4%BA%AC%E9%83%BD',
+          alternates: [
+            const AlternateUrl(
+              language: 'ja-JP',
+              url: 'https://example.com/ja/%E4%BA%AC%E9%83%BD',
+            ),
+            const AlternateUrl(
+              language: 'hi-IN',
+              url: 'https://example.com/hi/%E0%A4%A8%E0%A4%AE%E0%A4%B8%E0%A5%8D%E0%A4%A4%E0%A5%87',
+            ),
+          ],
+          images: [
+            'https://example.com/images/%E5%AF%8C%E5%A3%AB%E5%B1%B1.jpg',
+          ],
+        );
+
+        final xml = generator.generateUrlset([unicodeEntry]);
+        final doc = XmlDocument.parse(xml);
+        expect(doc.findAllElements('url').length, equals(1));
+        expect(doc.findAllElements('xhtml:link').length, equals(2));
+        expect(doc.findAllElements('image:image').length, equals(1));
+        expect(utf8.encode(xml).length, isPositive);
+      },
+    );
+
+    test('Runtime bounds checks throw ArgumentError on out-of-bounds configuration in release mode', () {
+      // maxUrlsPerSitemap bounds: <= 0 or > 50000
+      expect(
+        () => SitemapGenerator(maxUrlsPerSitemap: 0).generateUrlset([]),
+        throwsA(anyOf(isArgumentError, isAssertionError)),
+      );
+      expect(
+        () => SitemapGenerator(maxUrlsPerSitemap: 50001).generateUrlset([]),
+        throwsA(anyOf(isArgumentError, isAssertionError)),
+      );
+
+      // maxBytesPerSitemap bounds: <= 0 or > 52428800
+      expect(
+        () => SitemapGenerator(maxBytesPerSitemap: 0).generateUrlset([]),
+        throwsA(anyOf(isArgumentError, isAssertionError)),
+      );
+      expect(
+        () => SitemapGenerator(maxBytesPerSitemap: 52428801).generateUrlset([]),
+        throwsA(anyOf(isArgumentError, isAssertionError)),
+      );
+    });
+  });
+
+  group('URL Security Audit Across All Serialization Entry Points', () {
+    const dangerousSchemes = [
+      'javascript:alert(1)',
+      'vbscript:msgbox(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'blob:https://example.com/uuid',
+      'file:///etc/passwd',
+    ];
+
+    test('UrlPolicy.isSafe rejects C0 and C1 control characters, raw whitespace, and backslashes', () {
+      // C0 control characters
+      expect(UrlPolicy.isSafe('https://example.com/\x00test'), isFalse);
+      expect(UrlPolicy.isSafe('https://example.com/\x1Ftest'), isFalse);
+      expect(UrlPolicy.isSafe('\x00https://example.com/'), isFalse);
+      expect(UrlPolicy.isSafe('https://example.com/\x08'), isFalse);
+
+      // C1 control characters
+      expect(UrlPolicy.isSafe('https://example.com/\x7Ftest'), isFalse);
+      expect(UrlPolicy.isSafe('https://example.com/\x80test'), isFalse);
+      expect(UrlPolicy.isSafe('https://example.com/\x9Ftest'), isFalse);
+
+      // Leading, trailing, and embedded whitespace
+      expect(UrlPolicy.isSafe('  https://example.com'), isFalse);
+      expect(UrlPolicy.isSafe('\thttps://example.com'), isFalse);
+      expect(UrlPolicy.isSafe('\nhttps://example.com'), isFalse);
+      expect(UrlPolicy.isSafe('https://example.com  '), isFalse);
+      expect(UrlPolicy.isSafe('https://example.com\t'), isFalse);
+      expect(UrlPolicy.isSafe('https://example.com\n'), isFalse);
+      expect(UrlPolicy.isSafe('https://example.com/foo bar'), isFalse);
+
+      // Backslashes
+      expect(UrlPolicy.isSafe(r'https://example.com\evil'), isFalse);
+      expect(UrlPolicy.isSafe(r'https:\\example.com'), isFalse);
+      expect(UrlPolicy.isSafe(r'\malicious.com'), isFalse);
+
+      // Dangerous schemes
+      for (final bad in dangerousSchemes) {
+        expect(UrlPolicy.isSafe(bad), isFalse);
+      }
+
+      // Obfuscated schemes
+      expect(
+        UrlPolicy.isSafe('%6a%61%76%61%73%63%72%69%70%74:alert(1)'),
+        isFalse,
+      );
+      expect(UrlPolicy.isSafe('jav%00ascript:alert(1)'), isFalse);
+    });
+
+    test('ElementNode rejects unsafe URLs across all URL attributes', () {
+      final urlAttrs = [
+        'href',
+        'src',
+        'action',
+        'formaction',
+        'poster',
+        'cite',
+      ];
+      for (final attr in urlAttrs) {
+        expect(
+          () => ElementNode(
+            'a',
+            attributes: {attr: 'javascript:alert(1)'},
+          ).toHtml(),
+          throwsArgumentError,
+        );
+        expect(
+          () => ElementNode(
+            'a',
+            attributes: {attr: r'https://example.com\evil'},
+          ).toHtml(),
+          throwsArgumentError,
+        );
+        expect(
+          () => ElementNode(
+            'a',
+            attributes: {attr: ' \thttps://example.com'},
+          ).toHtml(),
+          throwsArgumentError,
+        );
+        expect(
+          () => ElementNode(
+            'a',
+            attributes: {attr: 'https://example.com\x00'},
+          ).toHtml(),
+          throwsArgumentError,
+        );
+      }
+    });
+
+    test('HeadTag rejects unsafe URLs in href, src, action, formaction, cite, poster, and data', () {
+      expect(
+        () => HeadTag(
+          key: 'bad-link',
+          tagName: 'link',
+          attributes: {'href': 'javascript:alert(1)'},
+        ).toHtml(),
+        throwsArgumentError,
+      );
+      expect(
+        () => HeadTag(
+          key: 'bad-script',
+          tagName: 'script',
+          attributes: {'src': 'data:text/javascript,evil()'},
+        ).toHtml(),
+        throwsArgumentError,
+      );
+      expect(
+        () => HeadTag(
+          key: 'bad-backslash',
+          tagName: 'link',
+          attributes: {'href': r'https://example.com\evil'},
+        ).toHtml(),
+        throwsArgumentError,
+      );
+      expect(
+        () => HeadTag(
+          key: 'bad-control',
+          tagName: 'link',
+          attributes: {'href': 'https://example.com/\x00test'},
+        ).toHtml(),
+        throwsArgumentError,
+      );
+    });
+
+    test('HtmlDocument rejects unsafe baseHref and flutterBootstrapSrc', () {
+      expect(
+        () => const HtmlDocument(
+          metadata: WebMetadata(title: 'Test'),
+          baseHref: 'javascript:alert(1)',
+        ).render(),
+        throwsArgumentError,
+      );
+      expect(
+        () => const HtmlDocument(
+          metadata: WebMetadata(title: 'Test'),
+          baseHref: r'https://example.com\evil',
+        ).render(),
+        throwsArgumentError,
+      );
+      expect(
+        () => const HtmlDocument(
+          metadata: WebMetadata(title: 'Test'),
+          includeFlutterBootstrap: true,
+          flutterBootstrapSrc: 'data:text/javascript,evil()',
+        ).render(),
+        throwsArgumentError,
+      );
+      expect(
+        () => const HtmlDocument(
+          metadata: WebMetadata(title: 'Test'),
+          includeFlutterBootstrap: true,
+          flutterBootstrapSrc: ' \tflutter_bootstrap.js',
+        ).render(),
+        throwsArgumentError,
+      );
+    });
+
+    test('HtmlSanitizer strips unsafe URLs across href, src, action, formaction, poster, and cite', () {
+      final sanitizer = HtmlSanitizer();
+      final dirtyHtml = '''
+<div>
+  <a href="javascript:alert(1)">Bad Link</a>
+  <img src="data:text/html,evil" alt="Bad Img">
+  <form action="vbscript:msgbox(1)">
+    <button formaction="javascript:void(0)">Submit</button>
+  </form>
+  <blockquote cite="https://example.com\\evil">Quote</blockquote>
+</div>
+''';
+      final cleanHtml = sanitizer.sanitize(dirtyHtml);
+      expect(cleanHtml, isNot(contains('javascript:')));
+      expect(cleanHtml, isNot(contains('vbscript:')));
+      expect(cleanHtml, isNot(contains('data:')));
+      expect(cleanHtml, isNot(contains(r'\evil')));
+    });
+
+    test('MetadataRenderer validates URLs against UrlPolicy, control chars, whitespace, and backslashes', () {
+      const renderer = MetadataRenderer();
+
+      // Canonical validation
+      expect(
+        () => renderer.render(
+          const WebMetadata(canonical: 'javascript:alert(1)'),
+          config: const MetaMantleConfig(baseUrl: 'https://example.com'),
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => renderer.render(
+          const WebMetadata(canonical: r'https://example.com\evil'),
+          config: const MetaMantleConfig(baseUrl: 'https://example.com'),
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => renderer.render(
+          const WebMetadata(canonical: ' https://example.com/page'),
+          config: const MetaMantleConfig(baseUrl: 'https://example.com'),
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => renderer.render(
+          const WebMetadata(canonical: 'https://example.com/page\x00'),
+          config: const MetaMantleConfig(baseUrl: 'https://example.com'),
+        ),
+        throwsFormatException,
+      );
+
+      // OpenGraph Image validation
+      expect(
+        () => renderer.render(
+          const WebMetadata(
+            openGraph: OpenGraph(image: 'data:image/svg+xml,evil'),
+          ),
+          config: const MetaMantleConfig(baseUrl: 'https://example.com'),
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => renderer.render(
+          const WebMetadata(
+            openGraph: OpenGraph(image: r'https://example.com\image.png'),
+          ),
+          config: const MetaMantleConfig(baseUrl: 'https://example.com'),
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => renderer.render(
+          const WebMetadata(
+            openGraph: OpenGraph(image: ' https://example.com/image.png'),
+          ),
+          config: const MetaMantleConfig(baseUrl: 'https://example.com'),
+        ),
+        throwsFormatException,
+      );
+    });
+  });
+
+  group('Flutter Islands Loader & Lifecycle Script Contract', () {
+    const adapter = BootstrapAdapter();
+    final script = adapter.generateIslandBootstrapScript();
+
+    test('Emits single engine initialization wrapper', () {
+      expect(script, contains('var engineInitialized = false;'));
+      expect(script, contains('var appRunStarted = false;'));
+      expect(script, contains('function createWrappedEngineInitializer'));
+      expect(script, contains('multiViewEnabled: true'));
+    });
+
+    test('Preserves options.config and merges userConfig', () {
+      expect(
+        script,
+        contains('var rawConfig = options ? options.config : null;'),
+      );
+      expect(
+        script,
+        contains(
+          'var merged = Object.assign({}, rawConfig || {}, consumerConfig || {}, {',
+        ),
+      );
+    });
+
+    test('Invokes user onEntrypointLoaded with wrappedInitializer and avoids duplicate initializeEngine', () {
+      expect(
+        script,
+        contains('var userOnEntrypoint = options.onEntrypointLoaded;'),
+      );
+      expect(
+        script,
+        contains('var cbResult = userOnEntrypoint(wrappedInitializer);'),
+      );
+      expect(script, contains('if (!engineInitialized) {'));
+    });
+
+    test('Tracks expectedIslandElements separately from activeViews', () {
+      expect(script, contains('var activeViews = [];'));
+      expect(script, contains('var expectedIslandElements = [];'));
+      expect(script, contains('function checkGlobalReadiness() {'));
+      expect(
+        script,
+        contains('var totalExpected = expectedIslandElements.length;'),
+      );
+      expect(
+        script,
+        contains(
+          "document.documentElement.setAttribute('data-mantle-runtime', 'error');",
+        ),
+      );
+      expect(
+        script,
+        contains(
+          "document.documentElement.setAttribute('data-mantle-islands-ready', 'false');",
+        ),
+      );
+      expect(script, contains('window.__mantleRuntimeReady = false;'));
+    });
+
+    test('Provides deterministic disposal and remounting functions', () {
+      expect(script, contains('window.__mantleDisposeIslands = function() {'));
+      expect(script, contains('window.__mantleRemountIslands = function() {'));
+      expect(script, contains('flutterApp.removeView(activeViews[j].viewId)'));
+      expect(script, contains('flutterApp.addView({ hostElement: isl })'));
+    });
+  });
 }

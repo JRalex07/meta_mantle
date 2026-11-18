@@ -87,7 +87,7 @@ PATCH version: Backward-compatible bug fixes and security patches
 
 - **`SitemapGenerator`:** Guaranteed compliance with the sitemaps.org specification:
   - Enforces maximum 50,000 URLs and uncompressed UTF-8 50 MB (`52,428,800` bytes) per individual sitemap file (`SitemapGenerator.protocolMaxBytes`).
-  - Configurable `maxBytesPerSitemap` parameter validated to ensure `0 < maxBytesPerSitemap <= SitemapGenerator.protocolMaxBytes`, throwing `ArgumentError` on out-of-bounds inputs.
+  - Configurable `maxBytesPerSitemap` parameter validated in debug mode (via assertions) and at runtime by `generateUrlset` and `generateSitemapIndex` to ensure `0 < maxBytesPerSitemap <= SitemapGenerator.protocolMaxBytes`, throwing `ArgumentError` on out-of-bounds inputs in both debug and release modes.
   - Automatically splits entries across chunked sitemaps (`sitemap_1.xml`, `sitemap_2.xml`, etc.) and emits a master `sitemap_index.xml` without duplicate URLs or missing routes.
   - Rejects single entries whose individual XML size exceeds the configured byte threshold.
 

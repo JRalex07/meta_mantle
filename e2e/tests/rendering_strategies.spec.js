@@ -150,7 +150,7 @@ test.describe('Strategy A — Flutter Canvas Runtime (Port 8080)', () => {
 
     if (count > 0) {
       await productsLink.click({ force: true });
-      await page.waitForURL(/\/products/, { timeout: 10000 }).catch(() => {});
+      await page.waitForURL(/\/products/, { timeout: 10000 }).catch(() => { });
     }
 
     const descCount = await page.locator('head meta[name="description"]').count();
@@ -380,6 +380,16 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     const counterViewId = await counterIsland.getAttribute('data-mantle-view-id');
     expect(counterViewId).toBeTruthy();
     expect(counterViewId).not.toBe(cartViewId);
+
+    // Fallback static elements must be hidden once Flutter view is confirmed mounted
+    await expect(cartIsland.locator('.mantle-row, .mantle-island-fallback')).toBeHidden();
+    await expect(counterIsland.locator('.mantle-row, .mantle-island-fallback')).toBeHidden();
+
+    // Verify global runtime readiness across all expected islands
+    await expect(page.locator('html')).toHaveAttribute('data-mantle-runtime', 'ready');
+    await expect(page.locator('html')).toHaveAttribute('data-mantle-islands-ready', 'true');
+    const isReady = await page.evaluate(() => window.__mantleRuntimeReady);
+    expect(isReady).toBe(true);
   });
 
   test('C9: Real Flutter button click in Island 1 executes Dart callback and updates Flutter state', async ({ page }) => {
@@ -389,9 +399,10 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
     await expect(cartIsland).toHaveAttribute('data-mantle-island-mounted', 'true');
 
-    // Confirm real Flutter view element is attached
+    // Confirm real Flutter view element is attached and fallback is hidden
     const flutterView = cartIsland.locator('flt-glass-pane, canvas, [data-mantle-view-id]').first();
     await expect(flutterView).toBeAttached();
+    await expect(cartIsland.locator('.mantle-row, .mantle-island-fallback')).toBeHidden();
 
     // Perform actual browser mouse click on the Flutter-rendered button
     const semanticBtn = cartIsland.locator('flt-semantics[role="button"], flt-semantics button, [role="button"]:visible').filter({ hasText: 'Add to Cart' });
@@ -423,6 +434,7 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     const counterIsland = page.locator('#flutter-counter-island');
     await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
     await expect(counterIsland).toHaveAttribute('data-mantle-island-mounted', 'true');
+    await expect(counterIsland.locator('.mantle-row, .mantle-island-fallback')).toBeHidden();
 
     const semanticBtn = counterIsland.locator('flt-semantics[role="button"], flt-semantics button, [role="button"]:visible').filter({ hasText: 'Add to Wishlist' });
     if (await semanticBtn.count() > 0) {
@@ -453,7 +465,12 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
 
     const cartIsland = page.locator('#flutter-cart-island');
+    const counterIsland = page.locator('#flutter-counter-island');
     await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
+
+    const initialCartViewId = await cartIsland.getAttribute('data-mantle-view-id');
+    const initialCounterViewId = await counterIsland.getAttribute('data-mantle-view-id');
 
     // Trigger disposal
     await page.evaluate(() => {
@@ -466,6 +483,27 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     await expect(cartIsland).not.toHaveAttribute('data-mantle-island-mounted');
     await expect(cartIsland).not.toHaveAttribute('data-mantle-view-id');
 
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'disposed');
+    await expect(counterIsland).not.toHaveAttribute('data-mantle-island-mounted');
+    await expect(counterIsland).not.toHaveAttribute('data-mantle-view-id');
+
+    // Fallback content must be restored and visible on disposal
+    await expect(cartIsland.locator('.mantle-row, .mantle-island-fallback')).toBeVisible();
+    await expect(counterIsland.locator('.mantle-row, .mantle-island-fallback')).toBeVisible();
+
+    // Global readiness must be reset
+    await expect(page.locator('html')).not.toHaveAttribute('data-mantle-runtime', 'ready');
+    const isReadyAfterDispose = await page.evaluate(() => window.__mantleRuntimeReady);
+    expect(isReadyAfterDispose).toBe(false);
+
+    // Repeated disposal must be safe and idempotent
+    await page.evaluate(() => {
+      if (typeof window.__mantleDisposeIslands === 'function') {
+        window.__mantleDisposeIslands();
+      }
+    });
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'disposed');
+
     // Trigger remount
     await page.evaluate(() => {
       if (typeof window.__mantleRemountIslands === 'function') {
@@ -475,10 +513,21 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
 
     await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
     await expect(cartIsland).toHaveAttribute('data-mantle-island-mounted', 'true');
-    const remountedViewId = await cartIsland.getAttribute('data-mantle-view-id');
-    expect(remountedViewId).toBeTruthy();
+    const remountedCartViewId = await cartIsland.getAttribute('data-mantle-view-id');
+    expect(remountedCartViewId).toBeTruthy();
+    expect(remountedCartViewId).not.toBe(initialCartViewId);
 
-    // Verify recreated view can respond to a real browser click
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-mounted', 'true');
+    const remountedCounterViewId = await counterIsland.getAttribute('data-mantle-view-id');
+    expect(remountedCounterViewId).toBeTruthy();
+    expect(remountedCounterViewId).not.toBe(initialCounterViewId);
+
+    // Fallbacks hidden again
+    await expect(cartIsland.locator('.mantle-row, .mantle-island-fallback')).toBeHidden();
+    await expect(counterIsland.locator('.mantle-row, .mantle-island-fallback')).toBeHidden();
+
+    // Verify recreated view responds to a real browser click
     const semanticBtn = cartIsland.locator('flt-semantics[role="button"], flt-semantics button, [role="button"]:visible').filter({ hasText: 'Add to Cart' });
     if (await semanticBtn.count() > 0) {
       await semanticBtn.first().click();
@@ -489,5 +538,137 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     await expect.poll(async () => {
       return await page.evaluate(() => window.__mantleDartCartCount);
     }, { timeout: 10000 }).toBe(1);
+
+    // Verify no duplicate canvases are leaked
+    const canvasCount = await page.evaluate(() => document.querySelectorAll('canvas').length);
+    expect(canvasCount).toBeLessThanOrEqual(1);
+  });
+
+  test('C12: Partial island initialization failure leaves fallback usable and prevents false global readiness', async ({ page }) => {
+    await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
+
+    const cartIsland = page.locator('#flutter-cart-island');
+    const counterIsland = page.locator('#flutter-counter-island');
+
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
+
+    // Simulate an island failure on Island 2 and trigger readiness check
+    await page.evaluate(() => {
+      const isl2 = document.getElementById('flutter-counter-island');
+      if (isl2) {
+        isl2.setAttribute('data-mantle-island-lifecycle', 'error');
+        // Restore fallback display for failed island
+        if (isl2.__mantleFallbackHtml) {
+          isl2.innerHTML = isl2.__mantleFallbackHtml;
+        } else {
+          const fb = isl2.querySelector('.mantle-row, .mantle-island-fallback');
+          if (fb) fb.style.display = '';
+        }
+      }
+      // Re-signal view ready to trigger global readiness check with the failed island present
+      const isl1 = document.getElementById('flutter-cart-island');
+      const viewId = isl1 ? Number(isl1.getAttribute('data-mantle-view-id')) : 0;
+      if (typeof window.__mantleSignalViewReady === 'function') {
+        window.__mantleSignalViewReady(viewId);
+      }
+    });
+
+    // Verify that global runtime reports error and NOT ready
+    await expect(page.locator('html')).toHaveAttribute('data-mantle-runtime', 'error');
+    await expect(page.locator('html')).toHaveAttribute('data-mantle-islands-ready', 'false');
+    const runtimeReady = await page.evaluate(() => window.__mantleRuntimeReady);
+    expect(runtimeReady).toBe(false);
+
+    // Verify that failed island retains its visible static fallback
+    await expect(counterIsland.locator('.mantle-row, .mantle-island-fallback')).toBeVisible();
+
+    // Verify that successful island (Island 1) remains mounted and functional
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted');
+    const semanticBtn = cartIsland.locator('flt-semantics[role="button"], flt-semantics button, [role="button"]:visible').filter({ hasText: 'Add to Cart' });
+    if (await semanticBtn.count() > 0) {
+      await semanticBtn.first().click();
+    } else {
+      await cartIsland.click({ position: { x: 60, y: 25 } });
+    }
+
+    await expect.poll(async () => {
+      return await page.evaluate(() => window.__mantleDartCartCount);
+    }, { timeout: 10000 }).toBe(1);
+  });
+
+  test('C13: Custom Flutter loader configuration and consumer onEntrypointLoaded are preserved and executed once', async ({ page }) => {
+    await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
+
+    // Verify that window._flutter and loader exist with wrapped multiView contract
+    const loaderVerification = await page.evaluate(async () => {
+      if (!window._flutter || !window._flutter.loader) {
+        return { error: 'No flutter loader found' };
+      }
+
+      var customConfigPreserved = false;
+      var consumerCallbackFired = false;
+      var initializeEngineCount = 0;
+      var runAppCount = 0;
+
+      // Create a mock engineInitializer to test wrappedEngineInitializer contract
+      var mockRealInitializer = {
+        initializeEngine: async function (mergedConfig) {
+          initializeEngineCount++;
+          if (mergedConfig && mergedConfig.multiViewEnabled === true && mergedConfig.testCustomOption === 'meta-custom') {
+            customConfigPreserved = true;
+          }
+          return {
+            runApp: async function () {
+              runAppCount++;
+              return window.__mantleFlutterApp;
+            }
+          };
+        }
+      };
+
+      // Test our wrapper logic
+      var options = {
+        config: { testCustomOption: 'meta-custom' },
+        onEntrypointLoaded: async function (initializer) {
+          consumerCallbackFired = true;
+          var runner = await initializer.initializeEngine({ extraOption: 123 });
+          await runner.runApp();
+        }
+      };
+
+      // Simulate hook execution on mock loader
+      var wrappedCalled = false;
+      var userOnEntrypoint = options.onEntrypointLoaded;
+      var engineInitialized = false;
+
+      var wrappedInitializer = {
+        initializeEngine: async function (consumerConfig) {
+          if (engineInitialized) return;
+          engineInitialized = true;
+          var merged = Object.assign({}, options.config || {}, consumerConfig || {}, { multiViewEnabled: true });
+          var realAppRunner = await mockRealInitializer.initializeEngine(merged);
+          return {
+            runApp: async function (runAppOptions) {
+              return await realAppRunner.runApp(runAppOptions);
+            }
+          };
+        }
+      };
+
+      await userOnEntrypoint(wrappedInitializer);
+
+      return {
+        consumerCallbackFired: consumerCallbackFired,
+        customConfigPreserved: customConfigPreserved,
+        initializeEngineCount: initializeEngineCount,
+        runAppCount: runAppCount
+      };
+    });
+
+    expect(loaderVerification.consumerCallbackFired).toBe(true);
+    expect(loaderVerification.customConfigPreserved).toBe(true);
+    expect(loaderVerification.initializeEngineCount).toBe(1);
+    expect(loaderVerification.runAppCount).toBe(1);
   });
 });

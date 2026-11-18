@@ -23,6 +23,12 @@ class SitemapUrlEntry {
 }
 
 /// Generates XML sitemaps and sitemap indexes according to the sitemaps.org protocol.
+///
+/// **Validation Contract:**
+/// In debug mode, constructor assertions enforce that [maxUrlsPerSitemap] is between
+/// 1 and 50,000, and [maxBytesPerSitemap] is between 1 and [protocolMaxBytes] (52,428,800 bytes / 50 MB).
+/// In both debug and release modes, execution methods ([generateUrlset] and [generateSitemapIndex])
+/// perform strict runtime bounds checking and throw [ArgumentError] on any invalid configuration.
 class SitemapGenerator {
   const SitemapGenerator({
     this.maxUrlsPerSitemap = 50000,

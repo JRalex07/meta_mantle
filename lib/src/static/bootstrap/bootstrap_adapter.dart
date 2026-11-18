@@ -86,41 +86,152 @@ class BootstrapAdapter {
   }
 
   var activeViews = [];
+  var expectedIslandElements = [];
   var flutterApp = null;
+  var engineInitialized = false;
+  var appRunStarted = false;
 
   // Signal from Dart notifying that a specific multi-view island has rendered and is ready
   window.__mantleSignalViewReady = function(viewId) {
+    if (typeof viewId !== 'number' || viewId < 0) {
+      console.warn('[MetaMantle] Invalid viewId signaled:', viewId);
+      return;
+    }
+
+    var targetView = null;
     for (var i = 0; i < activeViews.length; i++) {
       if (activeViews[i].viewId === viewId) {
-        var isl = activeViews[i].island;
-        isl.setAttribute('data-mantle-island-lifecycle', 'mounted');
-        isl.setAttribute('data-mantle-island-mounted', 'true');
-
-        // Hide static fallback content now that real Flutter view is mounted
-        var fallback = isl.querySelector('.mantle-row, .mantle-island-fallback');
-        if (fallback) {
-          fallback.style.display = 'none';
-        }
-
-        var name = activeViews[i].name;
-        var mountEvent = new CustomEvent('mantle:island-mounted', {
-          bubbles: true,
-          detail: { id: isl.id, name: name, viewId: viewId }
-        });
-        isl.dispatchEvent(mountEvent);
-        window.dispatchEvent(mountEvent);
+        targetView = activeViews[i];
         break;
       }
     }
 
-    var allMounted = activeViews.length > 0 && activeViews.every(function(v) {
-      return v.island.getAttribute('data-mantle-island-lifecycle') === 'mounted';
-    });
-    if (allMounted) {
-      document.documentElement.setAttribute('data-mantle-runtime', 'ready');
-      window.__mantleRuntimeReady = true;
+    if (!targetView) {
+      console.warn('[MetaMantle] No active view registered for viewId:', viewId);
+      return;
     }
+
+    var isl = targetView.island;
+    isl.setAttribute('data-mantle-island-lifecycle', 'mounted');
+    isl.setAttribute('data-mantle-island-mounted', 'true');
+
+    // Hide static fallback content now that real Flutter view is mounted
+    var fallback = isl.querySelector('.mantle-row, .mantle-island-fallback');
+    if (fallback) {
+      fallback.style.display = 'none';
+    }
+
+    var mountEvent = new CustomEvent('mantle:island-mounted', {
+      bubbles: true,
+      detail: { id: isl.id, name: targetView.name, viewId: viewId }
+    });
+    isl.dispatchEvent(mountEvent);
+    window.dispatchEvent(mountEvent);
+
+    checkGlobalReadiness();
   };
+
+  function checkGlobalReadiness() {
+    if (!expectedIslandElements || expectedIslandElements.length === 0) {
+      return;
+    }
+
+    var totalExpected = expectedIslandElements.length;
+    var mountedCount = 0;
+    var errorCount = 0;
+
+    for (var i = 0; i < totalExpected; i++) {
+      var state = expectedIslandElements[i].getAttribute('data-mantle-island-lifecycle');
+      if (state === 'mounted') {
+        mountedCount++;
+      } else if (state === 'error') {
+        errorCount++;
+      }
+    }
+
+    if (mountedCount === totalExpected && totalExpected > 0) {
+      document.documentElement.setAttribute('data-mantle-runtime', 'ready');
+      document.documentElement.setAttribute('data-mantle-islands-ready', 'true');
+      window.__mantleRuntimeReady = true;
+    } else if (errorCount > 0) {
+      // If any expected island encountered an error, runtime readiness MUST NOT be reported as ready.
+      document.documentElement.setAttribute('data-mantle-runtime', 'error');
+      document.documentElement.setAttribute('data-mantle-islands-ready', 'false');
+      window.__mantleRuntimeReady = false;
+    } else {
+      document.documentElement.removeAttribute('data-mantle-runtime');
+      document.documentElement.setAttribute('data-mantle-islands-ready', 'false');
+      window.__mantleRuntimeReady = false;
+    }
+  }
+
+  async function attachExpectedIslands(app) {
+    if (!app || typeof app.addView !== 'function') {
+      throw new Error('[MetaMantle] Invalid Flutter application instance: missing addView()');
+    }
+    flutterApp = app;
+    window.__mantleFlutterApp = flutterApp;
+    window.__mantleActiveViews = window.__mantleActiveViews || {};
+
+    for (var j = 0; j < expectedIslandElements.length; j++) {
+      var isl = expectedIslandElements[j];
+      if (!isl.__mantleFallbackHtml) {
+        isl.__mantleFallbackHtml = isl.innerHTML;
+      }
+      var name = isl.getAttribute('data-mantle-island') || (isl.id.indexOf('cart') !== -1 ? 'cart' : 'counter');
+      try {
+        var viewId = app.addView({ hostElement: isl });
+        if (typeof viewId === 'number' && viewId >= 0) {
+          activeViews.push({ island: isl, viewId: viewId, name: name });
+          window.__mantleActiveViews[viewId] = name;
+          isl.setAttribute('data-mantle-view-id', String(viewId));
+          // Island remains in 'initializing' until Dart signals view readiness
+        } else {
+          console.error('[MetaMantle] addView returned invalid view ID for island #' + isl.id, viewId);
+          isl.setAttribute('data-mantle-island-lifecycle', 'error');
+          if (isl.__mantleFallbackHtml) isl.innerHTML = isl.__mantleFallbackHtml;
+        }
+      } catch (addErr) {
+        console.error('[MetaMantle] addView threw for island #' + isl.id, addErr);
+        isl.setAttribute('data-mantle-island-lifecycle', 'error');
+        if (isl.__mantleFallbackHtml) isl.innerHTML = isl.__mantleFallbackHtml;
+      }
+    }
+    checkGlobalReadiness();
+  }
+
+  function createWrappedEngineInitializer(realInitializer, options) {
+    var rawConfig = options ? options.config : null;
+    return {
+      _realInitializer: realInitializer,
+      initializeEngine: async function(consumerConfig) {
+        if (engineInitialized && flutterApp) {
+          return {
+            runApp: async function() { return flutterApp; }
+          };
+        }
+        engineInitialized = true;
+        // Merge consumerConfig and options.config with multiViewEnabled: true
+        var merged = Object.assign({}, rawConfig || {}, consumerConfig || {}, {
+          multiViewEnabled: true
+        });
+
+        var realAppRunner = await realInitializer.initializeEngine(merged);
+        return {
+          _realAppRunner: realAppRunner,
+          runApp: async function(runAppOptions) {
+            if (appRunStarted && flutterApp) {
+              return flutterApp;
+            }
+            appRunStarted = true;
+            var app = await realAppRunner.runApp(runAppOptions);
+            await attachExpectedIslands(app);
+            return app;
+          }
+        };
+      }
+    };
+  }
 
   function hookLoader(loader) {
     if (!loader || loader.__mantleHooked) return;
@@ -129,58 +240,42 @@ class BootstrapAdapter {
     loader.load = function(options) {
       options = options || {};
       var userOnEntrypoint = options.onEntrypointLoaded;
+
       options.onEntrypointLoaded = async function(engineInitializer) {
-        var islands = getIslands();
-        if (!islands.length) {
+        expectedIslandElements = getIslands();
+        if (!expectedIslandElements.length) {
           if (typeof userOnEntrypoint === 'function') {
-            userOnEntrypoint(engineInitializer);
+            return userOnEntrypoint(engineInitializer);
           }
-          return;
+          var defaultRunner = await engineInitializer.initializeEngine(options.config);
+          return defaultRunner.runApp();
         }
 
         // Transition islands to initializing state
-        for (var i = 0; i < islands.length; i++) {
-          islands[i].setAttribute('data-mantle-island-lifecycle', 'initializing');
+        for (var i = 0; i < expectedIslandElements.length; i++) {
+          expectedIslandElements[i].setAttribute('data-mantle-island-lifecycle', 'initializing');
         }
 
-        try {
-          // Initialize Flutter Engine in multi-view mode per supported SDK API.
-          // In multi-view mode, hostElement is NOT passed to initializeEngine().
-          var appRunner = await engineInitializer.initializeEngine({
-            multiViewEnabled: true
-          });
-          flutterApp = await appRunner.runApp();
-          window.__mantleFlutterApp = flutterApp;
-          window.__mantleActiveViews = window.__mantleActiveViews || {};
+        var wrappedInitializer = createWrappedEngineInitializer(engineInitializer, options);
 
-          // Attach each island host element using app.addView({ hostElement })
-          for (var j = 0; j < islands.length; j++) {
-            var isl = islands[j];
-            var name = isl.getAttribute('data-mantle-island') || (isl.id.indexOf('cart') !== -1 ? 'cart' : 'counter');
-            try {
-              var viewId = flutterApp.addView({ hostElement: isl });
-              if (typeof viewId === 'number' && viewId >= 0) {
-                activeViews.push({ island: isl, viewId: viewId, name: name });
-                window.__mantleActiveViews[viewId] = name;
-                isl.setAttribute('data-mantle-view-id', String(viewId));
-                // Island remains in 'initializing' until Dart signals view readiness
-              } else {
-                isl.setAttribute('data-mantle-island-lifecycle', 'error');
-              }
-            } catch (addErr) {
-              console.error('[MetaMantle] addView failed for island #' + isl.id, addErr);
-              isl.setAttribute('data-mantle-island-lifecycle', 'error');
+        try {
+          if (typeof userOnEntrypoint === 'function') {
+            var cbResult = userOnEntrypoint(wrappedInitializer);
+            if (cbResult && typeof cbResult.then === 'function') {
+              await cbResult;
             }
           }
 
-          if (typeof userOnEntrypoint === 'function') {
-            userOnEntrypoint(engineInitializer);
+          if (!engineInitialized) {
+            var runner = await wrappedInitializer.initializeEngine();
+            await runner.runApp();
           }
         } catch (engineErr) {
-          console.error('[MetaMantle] Multi-view engine initialization failed:', engineErr);
-          for (var k = 0; k < islands.length; k++) {
-            islands[k].setAttribute('data-mantle-island-lifecycle', 'error');
+          console.error('[MetaMantle] Island initialization error:', engineErr);
+          for (var k = 0; k < expectedIslandElements.length; k++) {
+            expectedIslandElements[k].setAttribute('data-mantle-island-lifecycle', 'error');
           }
+          checkGlobalReadiness();
         }
       };
       return origLoad.call(loader, options);
@@ -191,9 +286,14 @@ class BootstrapAdapter {
     var islands = getIslands();
     if (!islands.length) return;
 
+    expectedIslandElements = islands;
+
     // Set initial uninitialized lifecycle state on each island host
     for (var i = 0; i < islands.length; i++) {
       var isl = islands[i];
+      if (!isl.__mantleFallbackHtml) {
+        isl.__mantleFallbackHtml = isl.innerHTML;
+      }
       isl.setAttribute('data-mantle-island-lifecycle', 'uninitialized');
       isl.removeAttribute('data-mantle-island-mounted');
       isl.removeAttribute('data-mantle-view-id');
@@ -233,17 +333,20 @@ class BootstrapAdapter {
 
   window.__mantleDisposeIslands = function() {
     var islands = getIslands();
+    document.documentElement.removeAttribute('data-mantle-runtime');
+    document.documentElement.removeAttribute('data-mantle-islands-ready');
+    window.__mantleRuntimeReady = false;
+
     for (var i = 0; i < islands.length; i++) {
       islands[i].setAttribute('data-mantle-island-lifecycle', 'disposing');
     }
 
-    // Call supported removeView(viewId) for each active view to let Flutter clean up
     if (flutterApp && typeof flutterApp.removeView === 'function') {
       for (var j = 0; j < activeViews.length; j++) {
         try {
           flutterApp.removeView(activeViews[j].viewId);
         } catch (e) {
-          console.warn('[MetaMantle] Failed to remove view ' + activeViews[j].viewId, e);
+          console.warn('[MetaMantle] removeView error for view ' + activeViews[j].viewId, e);
         }
       }
     }
@@ -257,10 +360,14 @@ class BootstrapAdapter {
       isl.removeAttribute('data-mantle-view-id');
       isl.removeAttribute('data-mantle-dart-callback-executed');
 
-      // Restore static fallback visibility
-      var fallback = isl.querySelector('.mantle-row, .mantle-island-fallback');
-      if (fallback) {
-        fallback.style.display = '';
+      // Restore static fallback content on disposal
+      if (isl.__mantleFallbackHtml) {
+        isl.innerHTML = isl.__mantleFallbackHtml;
+      } else {
+        var fallback = isl.querySelector('.mantle-row, .mantle-island-fallback');
+        if (fallback) {
+          fallback.style.display = '';
+        }
       }
 
       var dispEvent = new CustomEvent('mantle:island-disposed', {
@@ -280,9 +387,21 @@ class BootstrapAdapter {
       return Promise.reject(new Error('Flutter application not initialized'));
     }
 
-    var islands = getIslands();
-    for (var i = 0; i < islands.length; i++) {
-      var isl = islands[i];
+    expectedIslandElements = getIslands();
+    if (!expectedIslandElements.length) {
+      return Promise.resolve();
+    }
+
+    document.documentElement.removeAttribute('data-mantle-runtime');
+    document.documentElement.removeAttribute('data-mantle-islands-ready');
+    window.__mantleRuntimeReady = false;
+
+    for (var i = 0; i < expectedIslandElements.length; i++) {
+      var isl = expectedIslandElements[i];
+      // Ensure fallback HTML is present before addView attaches Flutter view
+      if (isl.__mantleFallbackHtml) {
+        isl.innerHTML = isl.__mantleFallbackHtml;
+      }
       isl.setAttribute('data-mantle-island-lifecycle', 'initializing');
       var name = isl.getAttribute('data-mantle-island') || (isl.id.indexOf('cart') !== -1 ? 'cart' : 'counter');
       try {
@@ -293,12 +412,15 @@ class BootstrapAdapter {
           isl.setAttribute('data-mantle-view-id', String(viewId));
         } else {
           isl.setAttribute('data-mantle-island-lifecycle', 'error');
+          if (isl.__mantleFallbackHtml) isl.innerHTML = isl.__mantleFallbackHtml;
         }
       } catch (err) {
         console.error('[MetaMantle] Remount addView failed for island #' + isl.id, err);
         isl.setAttribute('data-mantle-island-lifecycle', 'error');
+        if (isl.__mantleFallbackHtml) isl.innerHTML = isl.__mantleFallbackHtml;
       }
     }
+    checkGlobalReadiness();
     return Promise.resolve();
   };
 

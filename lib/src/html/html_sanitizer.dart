@@ -251,8 +251,14 @@ class HtmlSanitizer {
             continue;
           }
 
-          // Validate URL schemes for href, src, and action
-          if (attrKey == 'href' || attrKey == 'src' || attrKey == 'action') {
+          // Validate URL schemes for href, src, action, formaction, poster, cite, and data
+          if (attrKey == 'href' ||
+              attrKey == 'src' ||
+              attrKey == 'action' ||
+              attrKey == 'formaction' ||
+              attrKey == 'poster' ||
+              attrKey == 'cite' ||
+              attrKey == 'data') {
             if (!isValidUrl(attrVal)) {
               child.attributes.remove(entry.key);
               continue;

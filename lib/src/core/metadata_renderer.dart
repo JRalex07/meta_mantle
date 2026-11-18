@@ -1,3 +1,4 @@
+import '../html/url_policy.dart';
 import '../models/metadata.dart';
 import 'head_tag.dart';
 
@@ -30,6 +31,11 @@ class MetadataRenderer {
     );
 
     if (canonical != null) {
+      if (!UrlPolicy.isSafe(canonical, allowedSchemes: {'http', 'https'})) {
+        throw FormatException(
+          'Canonical URL failed UrlPolicy security validation: $canonical',
+        );
+      }
       final canonicalUri = Uri.parse(canonical);
       if (!canonicalUri.hasScheme ||
           (canonicalUri.scheme != 'http' && canonicalUri.scheme != 'https') ||
@@ -475,11 +481,36 @@ class MetadataRenderer {
     return url;
   }
 
+  static final RegExp _controlChars = RegExp(r'[\x00-\x1F\x7F-\x9F]');
+  static final RegExp _rawWhitespace = RegExp(r'\s');
+
   String? _resolveUrl(String? value, String? baseUrl) {
     if (value == null) return null;
-    if (value.trim().isEmpty) {
+    if (value.isEmpty) {
       throw const FormatException('Metadata URLs must not be empty.');
     }
+    // Strict pre-normalization checks: reject control chars, whitespace, backslashes
+    if (value.contains(_controlChars)) {
+      throw FormatException(
+        'Metadata URL contains forbidden control characters: $value',
+      );
+    }
+    if (value.contains(_rawWhitespace)) {
+      throw FormatException(
+        'Metadata URL contains forbidden whitespace: $value',
+      );
+    }
+    if (value.contains(r'\')) {
+      throw FormatException(
+        'Metadata URL contains forbidden backslashes: $value',
+      );
+    }
+    if (!UrlPolicy.isSafe(value, allowedSchemes: {'http', 'https'})) {
+      throw FormatException(
+        'Potentially unsafe metadata URL rejected by UrlPolicy: $value',
+      );
+    }
+
     final uri = Uri.tryParse(value);
     if (uri == null) throw FormatException('Invalid URL: $value');
     if (uri.hasScheme) {
@@ -499,6 +530,15 @@ class MetadataRenderer {
       );
     }
     if (baseUrl == null) return value;
+
+    if (baseUrl.isEmpty ||
+        baseUrl.contains(_controlChars) ||
+        baseUrl.contains(_rawWhitespace) ||
+        baseUrl.contains(r'\') ||
+        !UrlPolicy.isSafe(baseUrl, allowedSchemes: {'http', 'https'})) {
+      throw FormatException('Invalid or unsafe baseUrl: $baseUrl');
+    }
+
     final base = Uri.parse(baseUrl);
     if ((base.scheme != 'http' && base.scheme != 'https') ||
         !base.hasAuthority ||
@@ -513,6 +553,12 @@ class MetadataRenderer {
     final normalizedBase = base.toString().endsWith('/')
         ? base
         : Uri.parse('${base.toString()}/');
-    return normalizedBase.resolveUri(uri).toString();
+    final resolved = normalizedBase.resolveUri(uri).toString();
+    if (!UrlPolicy.isSafe(resolved, allowedSchemes: {'http', 'https'})) {
+      throw FormatException(
+        'Resolved metadata URL failed UrlPolicy: $resolved',
+      );
+    }
+    return resolved;
   }
 }

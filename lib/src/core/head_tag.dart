@@ -100,7 +100,13 @@ class HeadTag {
           'Event handler attributes (on*) are prohibited in head tags',
         );
       }
-      if (lowerKey == 'href' || lowerKey == 'src') {
+      if (lowerKey == 'href' ||
+          lowerKey == 'src' ||
+          lowerKey == 'action' ||
+          lowerKey == 'formaction' ||
+          lowerKey == 'cite' ||
+          lowerKey == 'poster' ||
+          lowerKey == 'data') {
         UrlPolicy.assertSafe(entry.value, entry.key);
       }
     }
