@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'package:web/web.dart' as web;
 
@@ -261,6 +262,12 @@ class _WebHeadAdapter implements HeadAdapter {
     _markedReady = true;
 
     web.document.documentElement?.setAttribute('data-mantle-runtime', 'ready');
+    try {
+      (web.window as JSObject).setProperty(
+        '__mantleRuntimeReady'.toJS,
+        true.toJS,
+      );
+    } catch (_) {}
 
     final prerenderRoot = web.document.getElementById('mantle-prerender-root');
     if (prerenderRoot != null) {

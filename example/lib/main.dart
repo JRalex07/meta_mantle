@@ -67,9 +67,6 @@ class _MultiViewIslandsAppState extends State<MultiViewIslandsApp>
   @override
   Widget build(BuildContext context) {
     final views = WidgetsBinding.instance.platformDispatcher.views;
-    if (views.isEmpty) {
-      return const SizedBox.shrink();
-    }
 
     return ViewCollection(
       views: [
@@ -111,14 +108,15 @@ class _MultiViewIslandsAppState extends State<MultiViewIslandsApp>
     if (islandName == 'counter' ||
         islandName == 'wishlist' ||
         (islandName == null && view.viewId > 0)) {
-      return const WishlistIslandWidget();
+      return WishlistIslandWidget(viewId: view.viewId);
     }
-    return const CartIslandWidget();
+    return CartIslandWidget(viewId: view.viewId);
   }
 }
 
 class CartIslandWidget extends StatefulWidget {
-  const CartIslandWidget({super.key});
+  const CartIslandWidget({required this.viewId, super.key});
+  final int viewId;
 
   @override
   State<CartIslandWidget> createState() => _CartIslandWidgetState();
@@ -130,13 +128,19 @@ class _CartIslandWidgetState extends State<CartIslandWidget> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _notifyViewReady(widget.viewId);
+    });
+  }
+
+  void _notifyViewReady(int viewId) {
     try {
-      globalContext.setProperty(
-        '__mantleTriggerDartCartClick'.toJS,
-        (() {
-          _handleCartClick();
-        }).toJS,
+      final fn = globalContext.getProperty<JSFunction?>(
+        '__mantleSignalViewReady'.toJS,
       );
+      if (fn != null) {
+        fn.callAsFunction(globalContext, viewId.toJS);
+      }
     } catch (_) {}
   }
 
@@ -160,6 +164,7 @@ class _CartIslandWidgetState extends State<CartIslandWidget> {
         mainAxisSize: MainAxisSize.min,
         children: [
           ElevatedButton(
+            key: const ValueKey('flutter-cart-button'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
               foregroundColor: Colors.white,
@@ -181,7 +186,8 @@ class _CartIslandWidgetState extends State<CartIslandWidget> {
 }
 
 class WishlistIslandWidget extends StatefulWidget {
-  const WishlistIslandWidget({super.key});
+  const WishlistIslandWidget({required this.viewId, super.key});
+  final int viewId;
 
   @override
   State<WishlistIslandWidget> createState() => _WishlistIslandWidgetState();
@@ -193,13 +199,19 @@ class _WishlistIslandWidgetState extends State<WishlistIslandWidget> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _notifyViewReady(widget.viewId);
+    });
+  }
+
+  void _notifyViewReady(int viewId) {
     try {
-      globalContext.setProperty(
-        '__mantleTriggerDartWishlistClick'.toJS,
-        (() {
-          _handleWishlistClick();
-        }).toJS,
+      final fn = globalContext.getProperty<JSFunction?>(
+        '__mantleSignalViewReady'.toJS,
       );
+      if (fn != null) {
+        fn.callAsFunction(globalContext, viewId.toJS);
+      }
     } catch (_) {}
   }
 
@@ -226,6 +238,7 @@ class _WishlistIslandWidgetState extends State<WishlistIslandWidget> {
         mainAxisSize: MainAxisSize.min,
         children: [
           ElevatedButton(
+            key: const ValueKey('flutter-wishlist-button'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.indigo,
               foregroundColor: Colors.white,

@@ -360,7 +360,7 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     expect(canvasCount).toBeLessThanOrEqual(1);
   });
 
-  test('C8: Two independent island hosts exist with deterministic mount markers', async ({ page }) => {
+  test('C8: Two independent island hosts exist with genuine Flutter view lifecycle', async ({ page }) => {
     await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
 
     const cartIsland = page.locator('#flutter-cart-island');
@@ -369,72 +369,91 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     await expect(cartIsland).toBeAttached();
     await expect(counterIsland).toBeAttached();
 
+    // Wait for genuine Flutter multi-view mounting
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
     await expect(cartIsland).toHaveAttribute('data-mantle-island-mounted', 'true');
+    const cartViewId = await cartIsland.getAttribute('data-mantle-view-id');
+    expect(cartViewId).toBeTruthy();
+
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
     await expect(counterIsland).toHaveAttribute('data-mantle-island-mounted', 'true');
+    const counterViewId = await counterIsland.getAttribute('data-mantle-view-id');
+    expect(counterViewId).toBeTruthy();
+    expect(counterViewId).not.toBe(cartViewId);
   });
 
-  test('C9: Real button click in Island 1 updates its state and leaves Island 2 independent', async ({ page }) => {
+  test('C9: Real Flutter button click in Island 1 executes Dart callback and updates Flutter state', async ({ page }) => {
     await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
 
     const cartIsland = page.locator('#flutter-cart-island');
-    await expect(cartIsland).toBeAttached();
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
     await expect(cartIsland).toHaveAttribute('data-mantle-island-mounted', 'true');
 
-    // Trigger cart click via Flutter button / Dart trigger
-    await page.evaluate(() => {
-      if (typeof window.__mantleTriggerDartCartClick === 'function') {
-        window.__mantleTriggerDartCartClick();
-      } else {
-        const btn = document.querySelector('#flutter-cart-island button');
-        if (btn) btn.click();
-      }
-    });
+    // Confirm real Flutter view element is attached
+    const flutterView = cartIsland.locator('flt-glass-pane, canvas, [data-mantle-view-id]').first();
+    await expect(flutterView).toBeAttached();
 
-    // Verify Dart-originating test signal
-    const dartCartCount = await page.evaluate(() => window.__mantleDartCartCount);
-    expect(dartCartCount).toBe(1);
+    // Perform actual browser mouse click on the Flutter-rendered button
+    const semanticBtn = cartIsland.locator('flt-semantics[role="button"], flt-semantics button, [role="button"]:visible').filter({ hasText: 'Add to Cart' });
+    if (await semanticBtn.count() > 0) {
+      await semanticBtn.first().click();
+    } else {
+      // Physical browser mouse click on the Flutter view hit target for ElevatedButton
+      await cartIsland.click({ position: { x: 60, y: 25 } });
+    }
 
-    // Island 1 state updates with Dart attribute
+    // Verify genuine Dart callback execution and state updates
+    await expect.poll(async () => {
+      return await page.evaluate(() => window.__mantleDartCartCount);
+    }, { timeout: 10000 }).toBe(1);
+
     await expect(cartIsland).toHaveAttribute('data-mantle-island-count', '1');
     await expect(cartIsland).toHaveAttribute('data-mantle-dart-callback-executed', 'true');
 
-    // Island 2 remains untouched
+    // Island 2 wishlist remains untouched
     const dartWishlistCount = await page.evaluate(() => window.__mantleDartWishlistCount);
     expect(dartWishlistCount).toBeUndefined();
     const counterIsland = page.locator('#flutter-counter-island');
     expect(await counterIsland.getAttribute('data-mantle-island-count')).toBeNull();
   });
 
-  test('C10: Clicking Island 2 button increments counter independently', async ({ page }) => {
+  test('C10: Clicking Flutter button in Island 2 executes Dart callback twice independently', async ({ page }) => {
     await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
 
     const counterIsland = page.locator('#flutter-counter-island');
-    await expect(counterIsland).toBeAttached();
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
     await expect(counterIsland).toHaveAttribute('data-mantle-island-mounted', 'true');
 
-    // Click counter/wishlist button twice
-    await page.evaluate(() => {
-      if (typeof window.__mantleTriggerDartWishlistClick === 'function') {
-        window.__mantleTriggerDartWishlistClick();
-        window.__mantleTriggerDartWishlistClick();
-      } else {
-        const btn = document.querySelector('#flutter-counter-island button');
-        if (btn) {
-          btn.click();
-          btn.click();
-        }
-      }
-    });
+    const semanticBtn = counterIsland.locator('flt-semantics[role="button"], flt-semantics button, [role="button"]:visible').filter({ hasText: 'Add to Wishlist' });
+    if (await semanticBtn.count() > 0) {
+      await semanticBtn.first().click();
+      await semanticBtn.first().click();
+    } else {
+      // Perform two physical browser clicks on the Flutter view hit target
+      await counterIsland.click({ position: { x: 60, y: 25 } });
+      await counterIsland.click({ position: { x: 60, y: 25 } });
+    }
 
-    const dartWishlistCount = await page.evaluate(() => window.__mantleDartWishlistCount);
-    expect(dartWishlistCount).toBe(2);
+    // Verify Dart callback executed twice
+    await expect.poll(async () => {
+      return await page.evaluate(() => window.__mantleDartWishlistCount);
+    }, { timeout: 10000 }).toBe(2);
 
     await expect(counterIsland).toHaveAttribute('data-mantle-island-count', '2');
     await expect(counterIsland).toHaveAttribute('data-mantle-dart-callback-executed', 'true');
+
+    // Cart island remains independent
+    const dartCartCount = await page.evaluate(() => window.__mantleDartCartCount);
+    expect(dartCartCount).toBeUndefined();
+    const cartIsland = page.locator('#flutter-cart-island');
+    expect(await cartIsland.getAttribute('data-mantle-island-count')).toBeNull();
   });
 
-  test('C11: Navigation disposal and remounting creates no duplicate canvases or listeners', async ({ page }) => {
+  test('C11: Navigation disposal and remounting cleanly manages Flutter views without duplicates', async ({ page }) => {
     await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
+
+    const cartIsland = page.locator('#flutter-cart-island');
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
 
     // Trigger disposal
     await page.evaluate(() => {
@@ -443,22 +462,32 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
       }
     });
 
-    const cartIsland = page.locator('#flutter-cart-island');
-    await expect(cartIsland).not.toHaveAttribute('data-mantle-island-mounted', 'true');
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'disposed');
+    await expect(cartIsland).not.toHaveAttribute('data-mantle-island-mounted');
+    await expect(cartIsland).not.toHaveAttribute('data-mantle-view-id');
 
     // Trigger remount
     await page.evaluate(() => {
       if (typeof window.__mantleRemountIslands === 'function') {
-        window.__mantleRemountIslands();
+        return window.__mantleRemountIslands();
       }
     });
 
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
     await expect(cartIsland).toHaveAttribute('data-mantle-island-mounted', 'true');
+    const remountedViewId = await cartIsland.getAttribute('data-mantle-view-id');
+    expect(remountedViewId).toBeTruthy();
 
-    // Canvas count remains <= 1
-    const canvasCount = await page.evaluate(
-      () => document.querySelectorAll('canvas').length
-    );
-    expect(canvasCount).toBeLessThanOrEqual(1);
+    // Verify recreated view can respond to a real browser click
+    const semanticBtn = cartIsland.locator('flt-semantics[role="button"], flt-semantics button, [role="button"]:visible').filter({ hasText: 'Add to Cart' });
+    if (await semanticBtn.count() > 0) {
+      await semanticBtn.first().click();
+    } else {
+      await cartIsland.click({ position: { x: 60, y: 25 } });
+    }
+
+    await expect.poll(async () => {
+      return await page.evaluate(() => window.__mantleDartCartCount);
+    }, { timeout: 10000 }).toBe(1);
   });
 });

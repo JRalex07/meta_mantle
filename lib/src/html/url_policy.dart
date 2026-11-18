@@ -24,6 +24,7 @@ class UrlPolicy {
   };
 
   static final RegExp _controlChars = RegExp(r'[\x00-\x1F\x7F-\x9F]');
+  static final RegExp _rawWhitespace = RegExp(r'\s');
   static final RegExp _schemeFormat = RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*$');
 
   /// Validates RFC 3986 scheme syntax (`^[a-zA-Z][a-zA-Z0-9+.-]*$`).
@@ -32,9 +33,12 @@ class UrlPolicy {
 
   /// Returns `true` when [url] is considered safe by this policy.
   ///
-  /// - Raw control characters (0x00–0x1F, 0x7F-0x9F) and raw unencoded whitespace are strictly rejected.
+  /// - Validates original input before any normalization or trimming.
+  /// - Raw control characters (C0: 0x00–0x1F, C1: 0x7F–0x9F) and raw whitespace
+  ///   (including leading/trailing whitespace such as `\n`, `\r`, `\t`) are strictly rejected.
   /// - Backslashes (`\`) are strictly rejected.
-  /// - Empty string and fragment-only (`#…`) URLs are allowed.
+  /// - Empty string is allowed.
+  /// - Fragment-only (`#…`) and query-only (`?…`) URLs are allowed.
   /// - Protocol-relative (`//`) is rejected unless [allowProtocolRelative] is `true`.
   /// - Encoded obfuscated schemes (`%6a%61%76%61...`) are unmasked and rejected.
   /// - Prohibited schemes ([prohibitedSchemes]) are ALWAYS rejected regardless of configuration.
@@ -46,32 +50,30 @@ class UrlPolicy {
   }) {
     if (url.isEmpty) return true;
 
-    final trimmed = url.trim();
-    if (trimmed.isEmpty) return true;
-
-    // Reject raw forbidden control characters (C0: 0x00-0x1F, C1: 0x7F-0x9F)
-    if (trimmed.contains(_controlChars)) {
+    // 1. Reject original C0 (0x00-0x1F) and C1 (0x7F-0x9F) control characters immediately
+    if (url.contains(_controlChars)) {
       return false;
     }
 
-    // Reject unencoded whitespace inside URL
-    if (trimmed.contains(RegExp(r'\s'))) {
+    // 2. Reject raw whitespace (including leading/trailing whitespace such as \n, \r, \t)
+    if (url.contains(_rawWhitespace)) {
       return false;
     }
 
-    // Reject backslash-based bypasses immediately
-    if (trimmed.contains(r'\')) {
+    // 3. Reject backslashes immediately
+    if (url.contains(r'\')) {
       return false;
     }
 
-    final isProtocolRelative = trimmed.startsWith('//');
+    // 4. Protocol-relative check on raw URL
+    final isProtocolRelative = url.startsWith('//');
     if (isProtocolRelative && !allowProtocolRelative) {
       return false;
     }
 
-    // Iteratively decode percent-encoding to detect obfuscated schemes
-    var decoded = trimmed;
-    for (var i = 0; i < 2; i++) {
+    // 5. Iteratively decode percent-encoding to detect obfuscated schemes or bypasses
+    var decoded = url;
+    for (var i = 0; i < 3; i++) {
       try {
         final next = Uri.decodeComponent(decoded);
         if (next == decoded) break;
@@ -81,12 +83,14 @@ class UrlPolicy {
       }
     }
 
-    // If decoded URL introduces control characters or backslashes, reject
-    if (decoded.contains(_controlChars) || decoded.contains(r'\')) {
+    // 6. If decoded URL introduces control characters, whitespace, or backslashes, reject
+    if (decoded.contains(_controlChars) ||
+        decoded.contains(_rawWhitespace) ||
+        decoded.contains(r'\')) {
       return false;
     }
 
-    // Re-check protocol-relative after decoding
+    // 7. Re-check protocol-relative after decoding
     final isDecodedProtocolRelative = decoded.startsWith('//');
     if (isDecodedProtocolRelative && !allowProtocolRelative) {
       return false;
@@ -105,7 +109,7 @@ class UrlPolicy {
       return true;
     }
 
-    // If starts with #, ?, or safe single-slash root-relative, it's relative
+    // 8. If starts with #, ?, or safe single-slash root-relative, it's relative
     if (decoded.startsWith('#') || decoded.startsWith('?')) {
       return true;
     }
@@ -113,12 +117,11 @@ class UrlPolicy {
       return !decoded.startsWith('//');
     }
 
-    // Extract potential scheme by checking text before first '/', '?', or '#'
-    final stripped = decoded.replaceAll(RegExp(r'\s+'), '');
-    final firstColon = stripped.indexOf(':');
-    final firstSlash = stripped.indexOf('/');
-    final firstQuestion = stripped.indexOf('?');
-    final firstHash = stripped.indexOf('#');
+    // 9. Extract potential scheme by checking text before first '/', '?', or '#'
+    final firstColon = decoded.indexOf(':');
+    final firstSlash = decoded.indexOf('/');
+    final firstQuestion = decoded.indexOf('?');
+    final firstHash = decoded.indexOf('#');
 
     final activeAllowed = (allowedSchemes ?? defaultAllowedSchemes)
         .map((s) => s.toLowerCase())
@@ -131,7 +134,7 @@ class UrlPolicy {
       final isBeforeHash = firstHash == -1 || firstColon < firstHash;
 
       if (isBeforeSlash && isBeforeQuestion && isBeforeHash) {
-        final scheme = stripped.substring(0, firstColon).toLowerCase();
+        final scheme = decoded.substring(0, firstColon).toLowerCase();
         // Dangerous schemes are ALWAYS rejected, even if someone attempted to allowlist them
         if (prohibitedSchemes.contains(scheme)) {
           return false;

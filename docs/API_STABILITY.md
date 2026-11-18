@@ -79,6 +79,25 @@ PATCH version: Backward-compatible bug fixes and security patches
 
 - **`HtmlSanitizer.defaults()`:** Guaranteed as a compile-time constant (`const HtmlSanitizer.defaults()`) providing zero runtime overhead for default configurations.
 - **`HtmlSanitizer({ ... })`:** The default factory constructor validates custom tags, attributes, and schemes at construction time, throwing `ArgumentError` when dangerous schemes (`javascript:`, `vbscript:`, `data:`, `blob:`, `file:`) or event handlers are supplied.
-- **`UrlPolicy.isSafe`:** Strictly rejects forbidden control characters (C0: 0x00–0x1F, C1: 0x7F–0x9F), raw whitespace, and backslashes (`\`), ensuring runtime validation matches output serialization.
+- **`UrlPolicy.isSafe`:** Strictly checks the raw, un-normalized URL before any trimming, rejecting raw forbidden control characters (C0: 0x00–0x1F, C1: 0x7F–0x9F), raw whitespace, and backslashes (`\`). Decodes percent-encoding iteratively to detect obfuscated attacks while preventing leading or trailing control characters from evading detection.
+
+---
+
+## 6. Sitemap Protocol & Byte-Size Guarantees
+
+- **`SitemapGenerator`:** Guaranteed compliance with the sitemaps.org specification:
+  - Enforces maximum 50,000 URLs and uncompressed UTF-8 50 MB (`52,428,800` bytes) per individual sitemap file (`SitemapGenerator.protocolMaxBytes`).
+  - Configurable `maxBytesPerSitemap` parameter validated to ensure `0 < maxBytesPerSitemap <= SitemapGenerator.protocolMaxBytes`, throwing `ArgumentError` on out-of-bounds inputs.
+  - Automatically splits entries across chunked sitemaps (`sitemap_1.xml`, `sitemap_2.xml`, etc.) and emits a master `sitemap_index.xml` without duplicate URLs or missing routes.
+  - Rejects single entries whose individual XML size exceeds the configured byte threshold.
+
+---
+
+## 7. Flutter Islands Multi-View Lifecycle Guarantees
+
+- **`MantleIsland` & Bootstrap:**
+  - Strict lifecycle transitions: `uninitialized` on DOM creation, `initializing` upon entrypoint loading, `mounted` upon receiving `__mantleSignalViewReady(viewId)` from Dart, `disposing` on teardown, and `disposed` after view detachment.
+  - Multi-view initialization strictly calls `initializeEngine({ multiViewEnabled: true })` without a host element, then attaches each island individually via `app.addView({ hostElement })`.
+  - Static fallback content is hidden upon `mounted` state to guarantee that real Flutter interactive hit targets receive clicks and native events.
 
 

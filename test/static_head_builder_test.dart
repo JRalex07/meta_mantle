@@ -294,5 +294,63 @@ _flutter.loader.load();
         throwsFormatException,
       );
     });
+
+    test('generates robots.txt referencing sitemap.xml for unchunked routes and supports dry-run', () async {
+      final temp = await Directory.systemTemp.createTemp('fwh_robots_test_');
+      addTearDown(() => temp.delete(recursive: true));
+      final input = Directory('${temp.path}/input')..createSync();
+      final output = Directory('${temp.path}/output')..createSync();
+      File('${input.path}/index.html').writeAsStringSync(
+        '<!doctype html><html><head><title>App</title></head><body><script src="flutter_bootstrap.js"></script></body></html>',
+      );
+
+      final config = const StaticHeadConfig(
+        baseUrl: 'https://example.com',
+        sitemap: true,
+        robotsTxt: true,
+        routes: [
+          StaticRoute(
+            path: '/',
+            metadata: WebMetadata(title: 'Home', description: 'Home page'),
+          ),
+          StaticRoute(
+            path: '/contact',
+            metadata: WebMetadata(
+              title: 'Contact',
+              description: 'Contact page',
+            ),
+          ),
+        ],
+      );
+
+      // Verify dry-run does not write files to outputDirectory
+      final dryRunResult = await const StaticHeadBuilder().build(
+        inputDirectory: input,
+        outputDirectory: output,
+        config: config,
+        dryRun: true,
+      );
+      expect(dryRunResult.generatedFiles, isNotEmpty);
+      expect(File('${output.path}/robots.txt').existsSync(), isFalse);
+      expect(File('${output.path}/sitemap.xml').existsSync(), isFalse);
+
+      // Real build writes robots.txt and sitemap.xml
+      final realResult = await const StaticHeadBuilder().build(
+        inputDirectory: input,
+        outputDirectory: output,
+        config: config,
+      );
+      expect(realResult.generatedFiles, isNotEmpty);
+      final robotsFile = File('${output.path}/robots.txt');
+      expect(robotsFile.existsSync(), isTrue);
+      final robotsContent = robotsFile.readAsStringSync();
+      expect(robotsContent, contains('User-agent: *'));
+      expect(robotsContent, contains('Allow: /'));
+      expect(
+        robotsContent,
+        contains('Sitemap: https://example.com/sitemap.xml'),
+      );
+      expect(File('${output.path}/sitemap.xml').existsSync(), isTrue);
+    });
   });
 }

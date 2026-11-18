@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../html/url_policy.dart';
 import '../models/metadata.dart';
 
 /// Single URL entry for sitemap generation.
@@ -23,13 +24,23 @@ class SitemapUrlEntry {
 
 /// Generates XML sitemaps and sitemap indexes according to the sitemaps.org protocol.
 class SitemapGenerator {
-  const SitemapGenerator({this.maxUrlsPerSitemap = 50000})
-    : assert(
-        maxUrlsPerSitemap > 0 && maxUrlsPerSitemap <= 50000,
-        'maxUrlsPerSitemap must be between 1 and 50,000 per sitemaps.org protocol',
-      );
+  const SitemapGenerator({
+    this.maxUrlsPerSitemap = 50000,
+    this.maxBytesPerSitemap = protocolMaxBytes,
+  }) : assert(
+         maxUrlsPerSitemap > 0 && maxUrlsPerSitemap <= 50000,
+         'maxUrlsPerSitemap must be between 1 and 50,000 per sitemaps.org protocol',
+       ),
+       assert(
+         maxBytesPerSitemap > 0 && maxBytesPerSitemap <= protocolMaxBytes,
+         'maxBytesPerSitemap must be between 1 and 52,428,800 bytes per sitemaps.org protocol',
+       );
+
+  /// Maximum allowed uncompressed UTF-8 bytes per sitemap XML document per sitemaps.org protocol (50 MB).
+  static const int protocolMaxBytes = 52428800;
 
   final int maxUrlsPerSitemap;
+  final int maxBytesPerSitemap;
 
   static const Set<String> validChangeFrequencies = {
     'always',
@@ -52,6 +63,24 @@ class SitemapGenerator {
   void _assertAbsoluteHttpUrl(String url, String context) {
     if (url.isEmpty) {
       throw ArgumentError.value(url, context, '$context must not be empty.');
+    }
+
+    // Reject backslashes immediately.
+    if (url.contains(r'\')) {
+      throw ArgumentError.value(
+        url,
+        context,
+        '$context must not contain backslashes: "$url".',
+      );
+    }
+
+    // Verify against unified URL security policy.
+    if (!UrlPolicy.isSafe(url, allowedSchemes: {'http', 'https'})) {
+      throw ArgumentError.value(
+        url,
+        context,
+        '$context failed UrlPolicy security validation: "$url".',
+      );
     }
 
     // Check for forbidden control characters ([\x00-\x1F\x7F-\x9F]) and invalid XML characters.
@@ -137,9 +166,6 @@ class SitemapGenerator {
       );
     }
   }
-
-  /// Maximum allowed uncompressed UTF-8 bytes per sitemap or sitemap index (50 MB).
-  static const int maxBytesPerSitemap = 52428800;
 
   /// Formats a single [SitemapUrlEntry] as XML string.
   String _formatUrlEntry(SitemapUrlEntry entry) {
@@ -239,6 +265,13 @@ class SitemapGenerator {
         'Must be between 1 and 50,000 per sitemaps.org protocol',
       );
     }
+    if (maxBytesPerSitemap <= 0 || maxBytesPerSitemap > protocolMaxBytes) {
+      throw ArgumentError.value(
+        maxBytesPerSitemap,
+        'maxBytesPerSitemap',
+        'Must be between 1 and $protocolMaxBytes per sitemaps.org protocol',
+      );
+    }
 
     if (entries.length > maxUrlsPerSitemap) {
       throw ArgumentError.value(
@@ -295,6 +328,13 @@ class SitemapGenerator {
         maxUrlsPerSitemap,
         'maxUrlsPerSitemap',
         'Must be between 1 and 50,000 per sitemaps.org protocol',
+      );
+    }
+    if (maxBytesPerSitemap <= 0 || maxBytesPerSitemap > protocolMaxBytes) {
+      throw ArgumentError.value(
+        maxBytesPerSitemap,
+        'maxBytesPerSitemap',
+        'Must be between 1 and $protocolMaxBytes per sitemaps.org protocol',
       );
     }
 

@@ -561,7 +561,8 @@ environment:
       // Island scoped bootstrap initializer is injected
       final islandInit = doc.querySelector('#mantle-island-initializer');
       expect(islandInit, isNotNull);
-      expect(islandInit!.text, contains('hostElement: targetHost'));
+      expect(islandInit!.text, contains('multiViewEnabled: true'));
+      expect(islandInit.text, contains('addView({ hostElement: isl })'));
     });
   });
 }

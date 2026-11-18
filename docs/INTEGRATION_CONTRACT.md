@@ -61,9 +61,23 @@ Downstream consumers can integrate MetaMantle across three distinct rendering pa
 - **Core Component:** `MetaMantleServerEngine`, `MetaRoute`, `CacheStore`.
 - **Behavior:** Renders full semantic HTML documents in pure Dart VM, executes database queries via `MetaMantleDataProvider`, handles RFC 7232 conditional requests (`ETag`, `304 Not Modified`), and serves crawlers sub-50ms responses without client JavaScript.
 
+### Engine D: Hybrid DOM with Flutter Islands (Multi-View)
+- **Target:** High-performance content websites with selective interactive Flutter widgets.
+- **Core Component:** `MantleIsland`, `RenderingStrategy.domWithFlutterIslands`.
+- **Behavior:** Renders accessible, SEO-indexed semantic DOM for 95% of the page while embedding isolated, interactive Flutter Web views strictly inside designated island container host elements.
+- **Engine Multi-View API:** Initialized with `initializeEngine({ multiViewEnabled: true })` without hostElement, dynamically adding views via `app.addView({ hostElement })` and disposing via `app.removeView(viewId)`. State and callbacks execute natively within the Dart runtime.
+- **Lifecycle Contract:** Island host elements declare `data-mantle-island-lifecycle` (`uninitialized → initializing → mounted → disposing → disposed`). Fallback markup is automatically hidden upon view readiness.
+
 ---
 
-## 4. Documentation Synchronization Contract
+## 4. Sitemap & URL Validation Contract
+
+- **Sitemap Limits:** Dual-threshold partitioning at 50,000 URLs or 50 MB (`52,428,800` bytes) UTF-8 encoded payload size. Emits `sitemap_index.xml` and updates `robots.txt` automatically.
+- **URL Validation:** `UrlPolicy.isSafe` validates URLs before any normalization or whitespace trimming, rejecting raw control characters, backslashes, and unauthorized schemes.
+
+---
+
+## 5. Documentation Synchronization Contract
 
 The **MetaMantle package repository** remains the canonical, authoritative source for all technical documentation.
 
@@ -73,7 +87,7 @@ The separate **Landing Website repository** should consume or display documentat
 2. **Automated Synchronization:** Downstream website repositories should mirror or fetch Markdown files from `https://raw.githubusercontent.com/JRalex07/meta_mantle/main/docs/` or bundle them via Git subtrees/submodules.
 3. **No Duplicate Maintenance:** Technical guides, API specifications, and security policies must never be manually duplicated in the website repository.
 4. **Relative Link Resolution:** Downstream documentation viewers must resolve relative Markdown links (e.g. `[Architecture](ARCHITECTURE.md)`) to their corresponding website route URLs.
-5. **Version Indication:** When rendering documentation, the site must display the corresponding package version (`0.1.0`).
+5. **Version Indication:** When rendering documentation, the site must display the corresponding package version (`0.3.0`).
 
 ---
 

@@ -747,8 +747,153 @@ void main() {
       expect(singleResult.containsKey('sitemap.xml'), isTrue);
       final singleBytes = utf8.encode(singleResult['sitemap.xml']!).length;
       expect(singleBytes, isPositive);
-      expect(singleBytes, lessThan(SitemapGenerator.maxBytesPerSitemap));
+      expect(singleBytes, lessThan(generator.maxBytesPerSitemap));
     });
+
+    test(
+      'Configurable maxBytesPerSitemap with protocol boundary validation',
+      () {
+        expect(
+          () => SitemapGenerator(maxBytesPerSitemap: 52428801),
+          throwsA(isA<AssertionError>()),
+        );
+        expect(
+          () => SitemapGenerator(maxBytesPerSitemap: 0),
+          throwsA(isA<AssertionError>()),
+        );
+        expect(
+          () => SitemapGenerator(maxBytesPerSitemap: -1),
+          throwsA(isA<AssertionError>()),
+        );
+        expect(SitemapGenerator.protocolMaxBytes, equals(52428800));
+
+        const validSmall = SitemapGenerator(maxBytesPerSitemap: 1024);
+        expect(validSmall.maxBytesPerSitemap, equals(1024));
+      },
+    );
+
+    test('Aggregate-size splitting partitions valid entries exceeding byte limit', () {
+      // Configure generator with a 750-byte limit (header+footer is ~200 bytes, each entry is ~90 bytes)
+      const generator = SitemapGenerator(maxBytesPerSitemap: 750);
+
+      final entries = List.generate(
+        10,
+        (i) => SitemapUrlEntry(loc: 'https://example.com/item-$i'),
+      );
+
+      // Verify that 2 entries fit in a single sitemap file
+      final twoResult = generator.generateSitemapIndex(
+        entries: entries.take(2).toList(),
+        sitemapBaseUrl: 'https://example.com',
+      );
+      expect(twoResult.length, equals(1));
+      expect(twoResult.containsKey('sitemap.xml'), isTrue);
+      expect(
+        utf8.encode(twoResult['sitemap.xml']!).length,
+        lessThanOrEqualTo(750),
+      );
+
+      // 10 entries exceed 750 bytes and must automatically partition
+      final partitionedResult = generator.generateSitemapIndex(
+        entries: entries,
+        sitemapBaseUrl: 'https://example.com',
+      );
+
+      expect(partitionedResult.containsKey('sitemap_index.xml'), isTrue);
+      expect(partitionedResult.length, greaterThan(1));
+
+      final indexXml = partitionedResult['sitemap_index.xml']!;
+      expect(utf8.encode(indexXml).length, lessThanOrEqualTo(750));
+
+      final collectedUrls = <String>[];
+      for (final entry in partitionedResult.entries) {
+        if (entry.key == 'sitemap_index.xml') continue;
+
+        // Every generated sitemap file must be within the configured byte limit
+        final sitemapBytes = utf8.encode(entry.value).length;
+        expect(
+          sitemapBytes,
+          lessThanOrEqualTo(750),
+          reason: '${entry.key} exceeds 750 bytes ($sitemapBytes bytes)',
+        );
+
+        // Verify index references each file exactly once
+        expect(
+          indexXml,
+          contains('<loc>https://example.com/${entry.key}</loc>'),
+        );
+
+        // Extract URLs from sitemap XML
+        final doc = XmlDocument.parse(entry.value);
+        for (final locElement in doc.findAllElements('loc')) {
+          collectedUrls.add(locElement.innerText);
+        }
+      }
+
+      // No entries lost or duplicated
+      expect(collectedUrls.length, equals(entries.length));
+      expect(collectedUrls, equals(entries.map((e) => e.loc).toList()));
+    });
+
+    test('Rejects single entry exceeding allowed sitemap byte size', () {
+      const generator = SitemapGenerator(maxBytesPerSitemap: 500);
+      final oversizedEntry = SitemapUrlEntry(
+        loc: 'https://example.com/${'longpath/' * 50}',
+      );
+      expect(
+        () => generator.generateSitemapIndex(
+          entries: [oversizedEntry],
+          sitemapBaseUrl: 'https://example.com',
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test(
+      'Tests real Unicode characters in URLs, alternates, and image tags',
+      () {
+        const generator = SitemapGenerator(maxBytesPerSitemap: 2048);
+
+        final unicodeEntries = [
+          SitemapUrlEntry(
+            loc: 'https://example.com/products/你好世界',
+            alternates: const [
+              AlternateUrl(
+                language: 'zh-CN',
+                url: 'https://example.com/products/你好世界?lang=zh-CN',
+              ),
+              AlternateUrl(
+                language: 'ja-JP',
+                url: 'https://example.com/products/こんにちは',
+              ),
+            ],
+            images: const ['https://example.com/images/优质大米.png'],
+          ),
+          const SitemapUrlEntry(
+            loc: 'https://example.com/products/café-au-lait',
+            images: ['https://example.com/images/crème-brûlée.jpg'],
+          ),
+        ];
+
+        final result = generator.generateSitemapIndex(
+          entries: unicodeEntries,
+          sitemapBaseUrl: 'https://example.com',
+        );
+
+        expect(result.containsKey('sitemap.xml'), isTrue);
+        final xml = result['sitemap.xml']!;
+
+        // Verify that utf8.encode measures true multibyte length
+        final byteLength = utf8.encode(xml).length;
+        expect(byteLength, greaterThan(xml.length));
+        expect(byteLength, lessThanOrEqualTo(2048));
+
+        expect(xml, contains('https://example.com/products/你好世界'));
+        expect(xml, contains('https://example.com/products/こんにちは'));
+        expect(xml, contains('https://example.com/images/优质大米.png'));
+        expect(xml, contains('https://example.com/products/café-au-lait'));
+      },
+    );
   });
 
   group('JsonLd Safe Script Serialization & Deduplication', () {
@@ -871,6 +1016,96 @@ void main() {
           reason: 'Expected "$url" to be allowed by UrlPolicy',
         );
         expect(() => UrlPolicy.assertSafe(url, 'testUrl'), returnsNormally);
+      }
+    });
+
+    test('Rejects leading, trailing, and embedded raw whitespace and control characters across all serialization paths', () {
+      final malicious = [
+        '\nhttps://example.com',
+        'https://example.com\n',
+        '\thttps://example.com',
+        'https://example.com\t',
+        '\rhttps://example.com',
+        'https://example.com\r',
+        ' https://example.com',
+        'https://example.com ',
+        'https://example.com\x00path',
+        'https://example.com\x7Fpath',
+        'https://example.com\x80path',
+        'https://example.com\x9Fpath',
+        'https://example.com/path\x01evil',
+        'https://example.com/path\x1Fevil',
+        '%6a%61%76%61%73%63%72%69%70%74:alert(1)',
+        'java\x00script:alert(1)',
+        'java\x1Fscript:alert(1)',
+        'java\x7Fscript:alert(1)',
+        'java\x9Fscript:alert(1)',
+        r'https://example.com\path',
+        r'\https://example.com',
+      ];
+
+      for (final url in malicious) {
+        expect(
+          UrlPolicy.isSafe(url),
+          isFalse,
+          reason: 'Expected "$url" to be rejected by UrlPolicy.isSafe',
+        );
+        expect(
+          () => UrlPolicy.assertSafe(url, 'testUrl'),
+          throwsArgumentError,
+          reason: 'Expected UrlPolicy.assertSafe to throw for "$url"',
+        );
+
+        // HtmlSanitizer
+        expect(
+          HtmlSanitizer(allowedSchemes: {'http', 'https'}).isValidUrl(url),
+          isFalse,
+          reason: 'Expected HtmlSanitizer.isValidUrl to reject "$url"',
+        );
+
+        // ElementNode serialization
+        expect(
+          () => ElementNode('a', attributes: {'href': url}).toHtml(),
+          throwsArgumentError,
+          reason: 'Expected ElementNode.toHtml to throw for "$url"',
+        );
+
+        // HeadTag serialization
+        expect(
+          () => HeadTag(
+            key: 'link',
+            tagName: 'link',
+            attributes: {'rel': 'canonical', 'href': url},
+          ).toHtml(),
+          throwsArgumentError,
+          reason: 'Expected HeadTag.toHtml to throw for "$url"',
+        );
+
+        // HtmlDocument serialization
+        expect(
+          () => HtmlDocument(
+            metadata: const WebMetadata(title: 'Test'),
+            customHeadTags: [
+              HeadTag(
+                key: 'link',
+                tagName: 'link',
+                attributes: {'rel': 'canonical', 'href': url},
+              ),
+            ],
+          ).render(),
+          throwsArgumentError,
+          reason: 'Expected HtmlDocument.render to throw for "$url"',
+        );
+
+        // Sitemap URL validation
+        expect(
+          () => const SitemapGenerator().generateSitemapIndex(
+            entries: [SitemapUrlEntry(loc: url)],
+            sitemapBaseUrl: 'https://example.com',
+          ),
+          throwsArgumentError,
+          reason: 'Expected SitemapGenerator to throw for "$url"',
+        );
       }
     });
   });
