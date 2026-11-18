@@ -211,48 +211,76 @@ class BootstrapAdapter {
   }
 
   function createWrappedEngineInitializer(realInitializer, options) {
+    if (!realInitializer || typeof realInitializer.initializeEngine !== 'function') {
+      throw new Error('[MetaMantle] Invalid engineInitializer: missing initializeEngine()');
+    }
+
     var rawConfig = options ? options.config : null;
     var initPromise = null;
     var runAppPromise = null;
+    var activeConfig = null;
 
     return {
       _realInitializer: realInitializer,
       get initPromise() { return initPromise; },
       get runAppPromise() { return runAppPromise; },
       initializeEngine: function(consumerConfig) {
-        if (!initPromise) {
-          // Merge consumerConfig and options.config with multiViewEnabled: true
-          var merged = Object.assign({}, rawConfig || {}, consumerConfig || {}, {
-            multiViewEnabled: true
-          });
+        if (initPromise) {
+          if (consumerConfig && activeConfig) {
+            var differs = false;
+            var keys = Object.keys(consumerConfig);
+            for (var k = 0; k < keys.length; k++) {
+              if (activeConfig[keys[k]] !== consumerConfig[keys[k]]) {
+                differs = true;
+                break;
+              }
+            }
+            if (differs) {
+              console.warn('[MetaMantle] initializeEngine() already in-flight or initialized with initial configuration. Subsequent differing configuration is ignored to preserve single engine identity.');
+            }
+          }
+          return initPromise;
+        }
 
-          initPromise = Promise.resolve().then(function() {
-            return realInitializer.initializeEngine(merged);
-          }).then(function(realAppRunner) {
-            return {
-              _realAppRunner: realAppRunner,
-              runApp: function(runAppOptions) {
-                if (!runAppPromise) {
-                  runAppPromise = Promise.resolve().then(function() {
-                    return realAppRunner.runApp(runAppOptions);
-                  }).then(async function(app) {
-                    flutterApp = app;
-                    window.__mantleFlutterApp = flutterApp;
-                    await attachExpectedIslands(app);
-                    return app;
-                  }).catch(function(err) {
-                    runAppPromise = null;
-                    throw err;
-                  });
-                }
+        var merged = Object.assign({}, rawConfig || {}, consumerConfig || {}, {
+          multiViewEnabled: true
+        });
+        activeConfig = merged;
+
+        initPromise = Promise.resolve().then(function() {
+          return realInitializer.initializeEngine(merged);
+        }).then(function(realAppRunner) {
+          if (!realAppRunner || typeof realAppRunner.runApp !== 'function') {
+            throw new Error('[MetaMantle] Invalid appRunner from initializeEngine(): missing runApp()');
+          }
+          return {
+            _realAppRunner: realAppRunner,
+            runApp: function(runAppOptions) {
+              if (runAppPromise) {
                 return runAppPromise;
               }
-            };
-          }).catch(function(err) {
-            initPromise = null;
-            throw err;
-          });
-        }
+
+              runAppPromise = Promise.resolve().then(function() {
+                return realAppRunner.runApp(runAppOptions);
+              }).then(async function(app) {
+                flutterApp = app;
+                window.__mantleFlutterApp = flutterApp;
+                await attachExpectedIslands(app);
+                return app;
+              }).catch(function(err) {
+                runAppPromise = null;
+                throw err;
+              });
+
+              return runAppPromise;
+            }
+          };
+        }).catch(function(err) {
+          initPromise = null;
+          activeConfig = null;
+          throw err;
+        });
+
         return initPromise;
       }
     };
@@ -272,10 +300,10 @@ class BootstrapAdapter {
         expectedIslandElements = getIslands();
         if (!expectedIslandElements.length) {
           if (typeof userOnEntrypoint === 'function') {
-            return userOnEntrypoint(engineInitializer);
+            return await userOnEntrypoint(engineInitializer);
           }
           var defaultRunner = await engineInitializer.initializeEngine(options.config);
-          return defaultRunner.runApp();
+          return await defaultRunner.runApp();
         }
 
         // Transition islands to initializing state
@@ -294,18 +322,21 @@ class BootstrapAdapter {
           }
 
           var runner = await wrappedInitializer.initializeEngine();
-          await runner.runApp();
+          return await runner.runApp();
         } catch (engineErr) {
           console.error('[MetaMantle] Island initialization error:', engineErr);
           for (var k = 0; k < expectedIslandElements.length; k++) {
             expectedIslandElements[k].setAttribute('data-mantle-island-lifecycle', 'error');
           }
           checkGlobalReadiness();
+          throw engineErr;
         }
       };
       return origLoad.call(loader, options);
     };
   }
+
+  window.__mantleHookLoader = hookLoader;
 
   function setupIslands() {
     var islands = getIslands();
@@ -360,6 +391,7 @@ class BootstrapAdapter {
     var islands = getIslands();
     var hasDisposalError = false;
 
+    // Transition all currently non-disposed islands into 'disposing'
     for (var i = 0; i < islands.length; i++) {
       var curState = islands[i].getAttribute('data-mantle-island-lifecycle');
       if (curState !== 'disposed') {
@@ -367,12 +399,43 @@ class BootstrapAdapter {
       }
     }
 
+    var currentApp = (window.__mantleFlutterApp !== undefined && window.__mantleFlutterApp !== null)
+      ? window.__mantleFlutterApp
+      : (window.__mantleFlutterApp === null ? null : flutterApp);
     var remainingViews = [];
-    if (flutterApp && typeof flutterApp.removeView === 'function') {
+    var canRemove = currentApp && typeof currentApp.removeView === 'function';
+
+    if (!canRemove) {
+      if (activeViews.length > 0) {
+        hasDisposalError = true;
+        var errorMsg = !currentApp
+          ? 'Missing Flutter application instance'
+          : 'Flutter application missing callable removeView()';
+        console.warn('[MetaMantle] View removal impossible: ' + errorMsg);
+        for (var m = 0; m < activeViews.length; m++) {
+          remainingViews.push(activeViews[m]);
+          var errIsl = activeViews[m].island;
+          if (errIsl) {
+            errIsl.setAttribute('data-mantle-island-lifecycle', 'error');
+            errIsl.setAttribute('data-mantle-disposal-error', errorMsg);
+          }
+        }
+      }
+    } else {
       for (var j = 0; j < activeViews.length; j++) {
         var entry = activeViews[j];
+        if (typeof entry.viewId !== 'number' || entry.viewId < 0) {
+          hasDisposalError = true;
+          remainingViews.push(entry);
+          if (entry.island) {
+            entry.island.setAttribute('data-mantle-island-lifecycle', 'error');
+            entry.island.setAttribute('data-mantle-disposal-error', 'Invalid view ID: ' + entry.viewId);
+          }
+          continue;
+        }
+
         try {
-          flutterApp.removeView(entry.viewId);
+          currentApp.removeView(entry.viewId);
           if (window.__mantleActiveViews) {
             delete window.__mantleActiveViews[entry.viewId];
           }
@@ -400,7 +463,13 @@ class BootstrapAdapter {
       }
 
       if (hasActiveView) {
-        // Island had view removal failure; retain diagnostic state, do NOT restore fallback
+        // Island still has an un-removed view. Retain error & diagnostic state; DO NOT restore fallback!
+        continue;
+      }
+
+      var prevState = isl.getAttribute('data-mantle-island-lifecycle');
+      if (prevState === 'disposed') {
+        // Idempotent: already cleanly disposed
         continue;
       }
 
@@ -437,13 +506,22 @@ class BootstrapAdapter {
       document.documentElement.removeAttribute('data-mantle-islands-ready');
       window.__mantleRuntimeReady = false;
     }
+
+    return {
+      success: !hasDisposalError && activeViews.length === 0,
+      hasDisposalError: hasDisposalError,
+      remainingViewsCount: activeViews.length
+    };
   };
 
   window.__mantleRemountIslands = function() {
     if (typeof window.__mantleDisposeIslands === 'function') {
       window.__mantleDisposeIslands();
     }
-    if (!flutterApp || typeof flutterApp.addView !== 'function') {
+    var currentApp = (window.__mantleFlutterApp !== undefined && window.__mantleFlutterApp !== null)
+      ? window.__mantleFlutterApp
+      : (window.__mantleFlutterApp === null ? null : flutterApp);
+    if (!currentApp || typeof currentApp.addView !== 'function') {
       return Promise.reject(new Error('Flutter application not initialized'));
     }
 
@@ -479,7 +557,7 @@ class BootstrapAdapter {
       isl.setAttribute('data-mantle-island-lifecycle', 'initializing');
       var name = isl.getAttribute('data-mantle-island') || (isl.id.indexOf('cart') !== -1 ? 'cart' : 'counter');
       try {
-        var viewId = flutterApp.addView({ hostElement: isl });
+        var viewId = currentApp.addView({ hostElement: isl });
         if (typeof viewId === 'number' && viewId >= 0) {
           activeViews.push({ island: isl, viewId: viewId, name: name });
           window.__mantleActiveViews[viewId] = name;

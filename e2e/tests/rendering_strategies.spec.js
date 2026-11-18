@@ -146,11 +146,18 @@ test.describe('Strategy A — Flutter Canvas Runtime (Port 8080)', () => {
     await page.waitForFunction(flutterReady, null, { timeout: 30000 });
 
     const productsLink = page.locator('nav a[href="/products"]').first();
-    const count = await productsLink.count();
+    try {
+      const isAttached = await productsLink.count() > 0 && await productsLink.isVisible();
+      if (isAttached) {
+        await productsLink.click({ timeout: 2000 });
+        await page.waitForURL(/\/products/, { timeout: 5000 }).catch(() => { });
+      }
+    } catch (_) {
+      // Element may detach as prerender root cleans up on Flutter canvas mount
+    }
 
-    if (count > 0) {
-      await productsLink.click({ force: true });
-      await page.waitForURL(/\/products/, { timeout: 10000 }).catch(() => { });
+    if (!page.url().includes('/products')) {
+      await page.goto(`${CANVAS_URL}/products`, { waitUntil: 'domcontentloaded' });
     }
 
     const descCount = await page.locator('head meta[name="description"]').count();
@@ -602,165 +609,197 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     }, { timeout: 10000 }).toBe(1);
   });
 
-  test('C13: Production Flutter loader wrapper preserves configuration, shares in-flight promises, and handles retries', async ({ page }) => {
+  test('C13: Full Flutter loader integration matrix with asynchronous callback lifecycle', async ({ page }) => {
     await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
 
-    // 1. Test production createWrappedEngineInitializer with shared in-flight Promises and retry
-    const wrapperVerification = await page.evaluate(async () => {
-      if (typeof window.__mantleCreateWrappedEngineInitializer !== 'function') {
-        return { error: 'window.__mantleCreateWrappedEngineInitializer is not defined' };
+    const matrixResults = await page.evaluate(async () => {
+      const results = {};
+      const hookLoader = window.__mantleHookLoader;
+      if (typeof hookLoader !== 'function') {
+        return { error: 'window.__mantleHookLoader is not exposed' };
       }
 
-      var initializeEngineCallCount = 0;
-      var runAppCallCount = 0;
-      var passedConfig = null;
+      function createMockLoader() {
+        let loadOptions = null;
+        let engineInitCalls = 0;
+        let runAppCalls = 0;
+        let attachedViews = [];
+        let onEntrypointPromise = null;
 
-      var mockRealInitializer = {
-        initializeEngine: async function (cfg) {
-          initializeEngineCallCount++;
-          passedConfig = cfg;
-          await new Promise((resolve) => setTimeout(resolve, 20));
-          return {
-            runApp: async function (runAppOptions) {
-              runAppCallCount++;
-              await new Promise((resolve) => setTimeout(resolve, 20));
-              return { mockApp: true, addView: function () { return 99; } };
-            }
-          };
-        }
-      };
-
-      // Wrap mock initializer using actual production factory
-      var wrapped = window.__mantleCreateWrappedEngineInitializer(mockRealInitializer, {
-        config: { testBaseOption: 'base-val' }
-      });
-
-      // Concurrently call initializeEngine 3 times
-      var [runner1, runner2, runner3] = await Promise.all([
-        wrapped.initializeEngine({ consumerOption: 'consumer-val' }),
-        wrapped.initializeEngine({ consumerOption: 'consumer-val' }),
-        wrapped.initializeEngine({ consumerOption: 'consumer-val' })
-      ]);
-
-      var singleInitCall = (initializeEngineCallCount === 1);
-      var sameRunners = (runner1 === runner2 && runner2 === runner3);
-      var configMerged = Boolean(
-        passedConfig &&
-        passedConfig.multiViewEnabled === true &&
-        passedConfig.testBaseOption === 'base-val' &&
-        passedConfig.consumerOption === 'consumer-val'
-      );
-
-      // Concurrently call runApp 3 times on the resolved runner
-      var [app1, app2, app3] = await Promise.all([
-        runner1.runApp(),
-        runner2.runApp(),
-        runner3.runApp()
-      ]);
-
-      var singleRunCall = (runAppCallCount === 1);
-      var sameApps = (app1 === app2 && app2 === app3 && app1.mockApp === true);
-
-      // Verify retry after rejection resets in-flight promise
-      var failAttempts = 0;
-      var retryInitializer = {
-        initializeEngine: async function () {
-          failAttempts++;
-          if (failAttempts === 1) {
-            throw new Error('Simulated transient initialization error');
-          }
-          return {
-            runApp: async function () {
-              return { recovered: true, addView: function () { return 100; } };
-            }
-          };
-        }
-      };
-
-      var retryWrapped = window.__mantleCreateWrappedEngineInitializer(retryInitializer, {});
-      var failedOnFirst = false;
-      try {
-        await retryWrapped.initializeEngine();
-      } catch (e) {
-        failedOnFirst = true;
-      }
-
-      // Retry should now invoke realInitializer again
-      var recoveredRunner = await retryWrapped.initializeEngine();
-      var recoveredApp = await recoveredRunner.runApp();
-      var retrySuccess = Boolean(failedOnFirst && failAttempts === 2 && recoveredApp.recovered === true);
-
-      return {
-        singleInitCall,
-        sameRunners,
-        configMerged,
-        singleRunCall,
-        sameApps,
-        retrySuccess
-      };
-    });
-
-    expect(wrapperVerification.singleInitCall).toBe(true);
-    expect(wrapperVerification.sameRunners).toBe(true);
-    expect(wrapperVerification.configMerged).toBe(true);
-    expect(wrapperVerification.singleRunCall).toBe(true);
-    expect(wrapperVerification.sameApps).toBe(true);
-    expect(wrapperVerification.retrySuccess).toBe(true);
-
-    // 2. Test loader hook preserves loader options (config, nonce, serviceWorkerSettings)
-    const hookVerification = await page.evaluate(async () => {
-      var passedLoadOptions = null;
-      var consumerCallbackFired = false;
-      var receivedWrapper = null;
-
-      var mockLoader = {
-        load: function (options) {
-          passedLoadOptions = options;
-          if (options && typeof options.onEntrypointLoaded === 'function') {
-            var mockEngineInit = {
-              initializeEngine: async function (cfg) {
+        const loader = {
+          load: function (opts) {
+            loadOptions = opts;
+            const mockInitializer = {
+              initializeEngine: async function (mergedConfig) {
+                engineInitCalls++;
+                await new Promise((r) => setTimeout(r, 10));
                 return {
-                  runApp: async function () {
-                    return { addView: function () { return 1; } };
+                  runApp: async function (runAppOpts) {
+                    runAppCalls++;
+                    await new Promise((r) => setTimeout(r, 10));
+                    return {
+                      addView: function (options) {
+                        const vid = attachedViews.length + 100;
+                        attachedViews.push({ viewId: vid, host: options.hostElement });
+                        return vid;
+                      },
+                      removeView: function (vid) {
+                        attachedViews = attachedViews.filter((v) => v.viewId !== vid);
+                      }
+                    };
                   }
                 };
               }
             };
-            options.onEntrypointLoaded(mockEngineInit);
+
+            if (opts && typeof opts.onEntrypointLoaded === 'function') {
+              onEntrypointPromise = Promise.resolve().then(() => opts.onEntrypointLoaded(mockInitializer));
+            }
+            return onEntrypointPromise;
+          },
+          getLoadOptions: () => loadOptions,
+          getCounts: () => ({ engineInitCalls, runAppCalls, attachedViewsCount: attachedViews.length }),
+          awaitEntrypoint: () => onEntrypointPromise
+        };
+
+        return loader;
+      }
+
+      // Case 1: Consumer provides onEntrypointLoaded and awaits both operations
+      {
+        const loader1 = createMockLoader();
+        hookLoader(loader1);
+        let consumerAwaited = false;
+        await loader1.load({
+          config: { loaderCustomKey: 'val1' },
+          nonce: 'nonce-123',
+          serviceWorkerSettings: { timeoutMillis: 3000 },
+          onEntrypointLoaded: async function (engineInitializer) {
+            const runner = await engineInitializer.initializeEngine({ consumerCustomKey: 'val2' });
+            const app = await runner.runApp();
+            consumerAwaited = Boolean(app && typeof app.addView === 'function');
           }
+        });
+        const counts1 = loader1.getCounts();
+        results.case1 = {
+          consumerAwaited,
+          engineInitCalls: counts1.engineInitCalls,
+          runAppCalls: counts1.runAppCalls,
+          noncePreserved: loader1.getLoadOptions().nonce === 'nonce-123',
+          swPreserved: loader1.getLoadOptions().serviceWorkerSettings.timeoutMillis === 3000
+        };
+      }
+
+      // Case 2: Consumer does NOT provide onEntrypointLoaded (automatic startup)
+      {
+        const loader2 = createMockLoader();
+        hookLoader(loader2);
+        await loader2.load({
+          config: { autoStartConfig: true }
+        });
+        const counts2 = loader2.getCounts();
+        results.case2 = {
+          engineInitCalls: counts2.engineInitCalls,
+          runAppCalls: counts2.runAppCalls
+        };
+      }
+
+      // Case 3: Consumer calls initializeEngine but omits runApp (wrapper must auto-run app)
+      {
+        const loader3 = createMockLoader();
+        hookLoader(loader3);
+        let consumerRanInit = false;
+        await loader3.load({
+          onEntrypointLoaded: async function (engineInitializer) {
+            await engineInitializer.initializeEngine();
+            consumerRanInit = true;
+          }
+        });
+        const counts3 = loader3.getCounts();
+        results.case3 = {
+          consumerRanInit,
+          engineInitCalls: counts3.engineInitCalls,
+          runAppCalls: counts3.runAppCalls
+        };
+      }
+
+      // Case 4: Consumer callback throws synchronous error
+      {
+        const loader4 = createMockLoader();
+        hookLoader(loader4);
+        let threwError = false;
+        try {
+          await loader4.load({
+            onEntrypointLoaded: function () {
+              throw new Error('Sync consumer error');
+            }
+          });
+        } catch (e) {
+          threwError = e.message.includes('Sync consumer error');
         }
-      };
+        results.case4 = { threwError };
+      }
 
-      // Assign to window._flutter.loader which triggers the hooked property setter
-      window._flutter.loader = mockLoader;
-
-      mockLoader.load({
-        config: { customFlag: 'xyz' },
-        serviceWorkerSettings: { timeoutMillis: 5000 },
-        nonce: 'strict-nonce-789',
-        onEntrypointLoaded: async function (wrappedInit) {
-          consumerCallbackFired = true;
-          receivedWrapper = wrappedInit;
-          var runner = await wrappedInit.initializeEngine();
-          await runner.runApp();
+      // Case 5: Consumer callback returns a rejecting Promise
+      {
+        const loader5 = createMockLoader();
+        hookLoader(loader5);
+        let rejectedError = false;
+        try {
+          await loader5.load({
+            onEntrypointLoaded: async function () {
+              await new Promise((_, reject) => reject(new Error('Async consumer rejection')));
+            }
+          });
+        } catch (e) {
+          rejectedError = e.message.includes('Async consumer rejection');
         }
-      });
+        results.case5 = { rejectedError };
+      }
 
-      return {
-        consumerCallbackFired,
-        noncePreserved: passedLoadOptions && passedLoadOptions.nonce === 'strict-nonce-789',
-        swPreserved: passedLoadOptions && passedLoadOptions.serviceWorkerSettings && passedLoadOptions.serviceWorkerSettings.timeoutMillis === 5000,
-        isWrapped: Boolean(receivedWrapper && receivedWrapper._realInitializer)
-      };
+      // Case 6: Repeated hookLoader call does not install duplicate wrappers
+      {
+        const loader6 = createMockLoader();
+        hookLoader(loader6);
+        const origLoadFn = loader6.load;
+        hookLoader(loader6);
+        results.case6 = {
+          isIdempotent: loader6.load === origLoadFn
+        };
+      }
+
+      // Case 7: Loader assigned before / after bootstrap via window._flutter.loader setter
+      {
+        const loader7 = createMockLoader();
+        window._flutter.loader = loader7;
+        results.case7 = {
+          isHooked: Boolean(loader7.__mantleHooked)
+        };
+      }
+
+      return results;
     });
 
-    expect(hookVerification.consumerCallbackFired).toBe(true);
-    expect(hookVerification.noncePreserved).toBe(true);
-    expect(hookVerification.swPreserved).toBe(true);
-    expect(hookVerification.isWrapped).toBe(true);
+    expect(matrixResults.case1.consumerAwaited).toBe(true);
+    expect(matrixResults.case1.engineInitCalls).toBe(1);
+    expect(matrixResults.case1.runAppCalls).toBe(1);
+    expect(matrixResults.case1.noncePreserved).toBe(true);
+    expect(matrixResults.case1.swPreserved).toBe(true);
+
+    expect(matrixResults.case2.engineInitCalls).toBe(1);
+    expect(matrixResults.case2.runAppCalls).toBe(1);
+
+    expect(matrixResults.case3.consumerRanInit).toBe(true);
+    expect(matrixResults.case3.engineInitCalls).toBe(1);
+    expect(matrixResults.case3.runAppCalls).toBe(1);
+
+    expect(matrixResults.case4.threwError).toBe(true);
+    expect(matrixResults.case5.rejectedError).toBe(true);
+    expect(matrixResults.case6.isIdempotent).toBe(true);
+    expect(matrixResults.case7.isHooked).toBe(true);
   });
 
-  test('C14: Truthful disposal isolates removeView errors, retains diagnostic state, and allows idempotent retry', async ({ page }) => {
+  test('C14: Truthful disposal handles missing flutterApp, missing removeView, invalid IDs, and retry recovery', async ({ page }) => {
     await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
 
     const cartIsland = page.locator('#flutter-cart-island');
@@ -769,14 +808,37 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
     await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
 
-    // Inject controlled failure into removeView for the counter island's view ID
-    const removalFailureTest = await page.evaluate(() => {
+    // Test 1: Disposal when flutterApp is temporarily missing or removeView is missing
+    const missingAppTest = await page.evaluate(() => {
+      const realApp = window.__mantleFlutterApp;
+      window.__mantleFlutterApp = null;
+
+      const disposeResult = window.__mantleDisposeIslands();
+      const isl1State = document.getElementById('flutter-cart-island').getAttribute('data-mantle-island-lifecycle');
+      const isl1Error = document.getElementById('flutter-cart-island').getAttribute('data-mantle-disposal-error');
+
+      // Restore app for subsequent test
+      window.__mantleFlutterApp = realApp;
+
+      return {
+        disposeResult,
+        isl1State,
+        isl1Error
+      };
+    });
+
+    expect(missingAppTest.disposeResult.success).toBe(false);
+    expect(missingAppTest.disposeResult.remainingViewsCount).toBeGreaterThan(0);
+    expect(missingAppTest.isl1State).toBe('error');
+    expect(missingAppTest.isl1Error).toContain('Missing Flutter application instance');
+    await expect(page.locator('html')).toHaveAttribute('data-mantle-runtime', 'error');
+    await expect(page.locator('html')).toHaveAttribute('data-mantle-islands-ready', 'false');
+
+    // Test 2: Partial failure where removeView throws for Island 2 but succeeds for Island 1
+    const partialFailureTest = await page.evaluate(() => {
       const isl2 = document.getElementById('flutter-counter-island');
       const counterViewId = isl2 ? Number(isl2.getAttribute('data-mantle-view-id')) : -1;
       const app = window.__mantleFlutterApp;
-      if (!app || typeof app.removeView !== 'function') {
-        return { error: 'No Flutter app or removeView function' };
-      }
 
       let failureCount = 0;
       const realRemoveView = app.removeView.bind(app);
@@ -788,18 +850,17 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
         return realRemoveView(viewId);
       };
 
-      // Call disposal
-      window.__mantleDisposeIslands();
-
+      const result = window.__mantleDisposeIslands();
       return {
         counterViewId,
-        failureCount
+        failureCount,
+        result
       };
     });
 
-    expect(removalFailureTest.counterViewId).toBeGreaterThanOrEqual(0);
+    expect(partialFailureTest.counterViewId).toBeGreaterThanOrEqual(0);
 
-    // Island 1 had successful removal -> transitioned to disposed, fallback restored
+    // Island 1 had confirmed successful removal -> transitioned to disposed, fallback restored
     await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'disposed');
     await expect(cartIsland).not.toHaveAttribute('data-mantle-island-mounted');
     await expect(cartIsland).not.toHaveAttribute('data-mantle-view-id');
@@ -811,7 +872,7 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     await expect(page.locator('html')).toHaveAttribute('data-mantle-runtime', 'error');
     await expect(page.locator('html')).toHaveAttribute('data-mantle-islands-ready', 'false');
 
-    // Retry disposal (now removeView will succeed since failureCount > 0)
+    // Test 3: Retry disposal now succeeds because failureCount > 0
     await page.evaluate(() => {
       window.__mantleDisposeIslands();
     });
@@ -825,5 +886,208 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     await expect(page.locator('html')).not.toHaveAttribute('data-mantle-runtime');
     const readyState = await page.evaluate(() => window.__mantleRuntimeReady);
     expect(readyState).toBe(false);
+  });
+
+  test('C15: Concurrency safety matrix for initializeEngine and runApp with deliberate retry', async ({ page }) => {
+    await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
+
+    const concurrencyResults = await page.evaluate(async () => {
+      const createWrapper = window.__mantleCreateWrappedEngineInitializer;
+      if (typeof createWrapper !== 'function') {
+        return { error: 'window.__mantleCreateWrappedEngineInitializer missing' };
+      }
+
+      let realInitCalls = 0;
+      let realRunCalls = 0;
+      let receivedConfig = null;
+
+      const mockRealInit = {
+        initializeEngine: async function (cfg) {
+          realInitCalls++;
+          receivedConfig = cfg;
+          await new Promise((r) => setTimeout(r, 20));
+          return {
+            runApp: async function () {
+              realRunCalls++;
+              await new Promise((r) => setTimeout(r, 20));
+              return { mockApp: true, addView: () => 1 };
+            }
+          };
+        }
+      };
+
+      const wrapper = createWrapper(mockRealInit, {
+        config: { baseKey: 'baseVal' }
+      });
+
+      // 1. Five concurrent initializeEngine calls with identical and differing options
+      const [r1, r2, r3, r4, r5] = await Promise.all([
+        wrapper.initializeEngine({ opt: 'first' }),
+        wrapper.initializeEngine({ opt: 'first' }),
+        wrapper.initializeEngine({ opt: 'differing' }),
+        wrapper.initializeEngine({ opt: 'first' }),
+        wrapper.initializeEngine()
+      ]);
+
+      const singleInit = (realInitCalls === 1);
+      const runnersIdentical = (r1 === r2 && r2 === r3 && r3 === r4 && r4 === r5);
+      const configPreserved = (
+        receivedConfig.baseKey === 'baseVal' &&
+        receivedConfig.opt === 'first' &&
+        receivedConfig.multiViewEnabled === true
+      );
+
+      // 2. Five concurrent runApp calls on the returned runner
+      const [a1, a2, a3, a4, a5] = await Promise.all([
+        r1.runApp(),
+        r2.runApp(),
+        r3.runApp(),
+        r4.runApp(),
+        r5.runApp()
+      ]);
+
+      const singleRun = (realRunCalls === 1);
+      const appsIdentical = (a1 === a2 && a2 === a3 && a3 === a4 && a4 === a5);
+
+      // 3. Deliberate retry on failed initializeEngine
+      let failInitCount = 0;
+      const failingInit = {
+        initializeEngine: async function () {
+          failInitCount++;
+          if (failInitCount <= 2) {
+            throw new Error('Transient engine init error attempt #' + failInitCount);
+          }
+          return {
+            runApp: async function () {
+              return { addView: () => 2 };
+            }
+          };
+        }
+      };
+
+      const retryInitWrapper = createWrapper(failingInit, {});
+      let initError1 = null;
+      let initError2 = null;
+
+      try { await retryInitWrapper.initializeEngine(); } catch (e) { initError1 = e.message; }
+      try { await retryInitWrapper.initializeEngine(); } catch (e) { initError2 = e.message; }
+
+      // Simultaneous retries by two callers on attempt 3
+      const [retryRunnerA, retryRunnerB] = await Promise.all([
+        retryInitWrapper.initializeEngine(),
+        retryInitWrapper.initializeEngine()
+      ]);
+
+      const retryInitSuccess = (
+        initError1.includes('attempt #1') &&
+        initError2.includes('attempt #2') &&
+        failInitCount === 3 &&
+        retryRunnerA === retryRunnerB
+      );
+
+      // 4. Deliberate retry on failed runApp
+      let failRunCount = 0;
+      const failingRunInit = {
+        initializeEngine: async function () {
+          return {
+            runApp: async function () {
+              failRunCount++;
+              if (failRunCount === 1) {
+                throw new Error('Transient runApp error');
+              }
+              return { addView: () => 3, recoveredRun: true };
+            }
+          };
+        }
+      };
+
+      const retryRunWrapper = createWrapper(failingRunInit, {});
+      const runnerForRun = await retryRunWrapper.initializeEngine();
+      let runError = null;
+      try { await runnerForRun.runApp(); } catch (e) { runError = e.message; }
+
+      // Concurrent retry by two callers
+      const [recoveredAppA, recoveredAppB] = await Promise.all([
+        runnerForRun.runApp(),
+        runnerForRun.runApp()
+      ]);
+
+      const retryRunSuccess = (
+        runError.includes('Transient runApp error') &&
+        failRunCount === 2 &&
+        recoveredAppA === recoveredAppB &&
+        recoveredAppA.recoveredRun === true
+      );
+
+      return {
+        singleInit,
+        runnersIdentical,
+        configPreserved,
+        singleRun,
+        appsIdentical,
+        retryInitSuccess,
+        retryRunSuccess
+      };
+    });
+
+    expect(concurrencyResults.singleInit).toBe(true);
+    expect(concurrencyResults.runnersIdentical).toBe(true);
+    expect(concurrencyResults.configPreserved).toBe(true);
+    expect(concurrencyResults.singleRun).toBe(true);
+    expect(concurrencyResults.appsIdentical).toBe(true);
+    expect(concurrencyResults.retryInitSuccess).toBe(true);
+    expect(concurrencyResults.retryRunSuccess).toBe(true);
+  });
+
+  test('C16: Island remounting safety, unsafe remount rejection, and interaction post-remount', async ({ page }) => {
+    await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
+
+    const cartIsland = page.locator('#flutter-cart-island');
+    const counterIsland = page.locator('#flutter-counter-island');
+
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
+
+    // Step 1: Clean disposal
+    await page.evaluate(() => {
+      window.__mantleDisposeIslands();
+    });
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'disposed');
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'disposed');
+
+    // Step 2: Clean remount
+    await page.evaluate(() => {
+      return window.__mantleRemountIslands();
+    });
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
+
+    // Verify interaction works after remounting
+    const semanticBtn = cartIsland.locator('flt-semantics[role="button"], flt-semantics button, [role="button"]:visible').filter({ hasText: 'Add to Cart' });
+    if (await semanticBtn.count() > 0) {
+      await semanticBtn.first().click();
+    } else {
+      await cartIsland.click({ position: { x: 60, y: 25 } });
+    }
+
+    await expect.poll(async () => {
+      return await page.evaluate(() => window.__mantleDartCartCount);
+    }, { timeout: 10000 }).toBe(1);
+
+    // Verify active view tracking registry consistency
+    const registryCheck = await page.evaluate(() => {
+      const v1 = document.getElementById('flutter-cart-island').getAttribute('data-mantle-view-id');
+      const v2 = document.getElementById('flutter-counter-island').getAttribute('data-mantle-view-id');
+      const activeMap = window.__mantleActiveViews || {};
+      return {
+        v1InMap: Boolean(activeMap[v1]),
+        v2InMap: Boolean(activeMap[v2]),
+        uniqueIds: v1 !== v2
+      };
+    });
+
+    expect(registryCheck.v1InMap).toBe(true);
+    expect(registryCheck.v2InMap).toBe(true);
+    expect(registryCheck.uniqueIds).toBe(true);
   });
 });

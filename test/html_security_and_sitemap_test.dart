@@ -1988,7 +1988,14 @@ void main() {
     test('Provides truthful disposal and remounting functions', () {
       expect(script, contains('window.__mantleDisposeIslands = function() {'));
       expect(script, contains('window.__mantleRemountIslands = function() {'));
-      expect(script, contains('flutterApp.removeView(entry.viewId)'));
+      expect(
+        script,
+        contains(
+          'var canRemove = currentApp && typeof currentApp.removeView === \'function\';',
+        ),
+      );
+      expect(script, contains('Missing Flutter application instance'));
+      expect(script, contains('currentApp.removeView(entry.viewId)'));
       expect(script, contains('hasDisposalError = true;'));
       expect(
         script,
@@ -2003,7 +2010,8 @@ void main() {
           "isl.setAttribute('data-mantle-island-lifecycle', 'disposed')",
         ),
       );
-      expect(script, contains('flutterApp.addView({ hostElement: isl })'));
+      expect(script, contains('currentApp.addView({ hostElement: isl })'));
+      expect(script, contains('window.__mantleHookLoader = hookLoader;'));
     });
   });
 }
