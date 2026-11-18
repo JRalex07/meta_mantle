@@ -48,6 +48,7 @@ class RedirectManager {
 
   /// Registers a redirect rule.
   void add(RedirectRule rule) {
+    _validateDestination(rule.toPath);
     _rules[_normalize(rule.fromPath)] = rule;
   }
 
@@ -95,6 +96,14 @@ class RedirectManager {
   }
 
   void _validateDestination(String target) {
+    if (target.contains(r'\')) {
+      throw FormatException('Disallowed backslash in redirect target: $target');
+    }
+    if (target.startsWith('//')) {
+      throw FormatException(
+        'Protocol-relative redirect targets are disallowed to prevent open redirects: $target',
+      );
+    }
     if (target.startsWith('/')) return; // Safe relative redirect
 
     final uri = Uri.tryParse(target);

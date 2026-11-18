@@ -1,10 +1,10 @@
 # Build and Verification Status
 
-This document reflects the verified status of the `meta_mantle` package (version `0.3.0`) as of 2026-11-14.
+This document reflects the verified status of the `meta_mantle` package (version `0.3.0`) as of 2026-11-18.
 
 ## Current audit re-verification
 
-On 2026-11-14, `flutter test` passed **314 tests** across 39 test suites (100% pass rate); root and example analysis passed with **0 issues**; formatting passed with **0 files changed** across all 155 files; fixed deprecated Material imports in `go_router_observer_test.dart`; verified `--output` forwarding and asset error calculation in `FlutterWebBuildEngine`; verified real Shelf HTTP Server-Side Rendering (SSR) integration tests (`GET /`, `GET /about`, `GET /products/example`, `GET /products/nonexistent`, `GET /unknown-route`, secure 500 error sanitization, and `HEAD /`); verified `--json` machine-readable output across `doctor`, `validate`, and `report`; expanded CLI to 14 command groups (`html`, `routes`, `cache`, `preview` static Shelf server, `report` disk audit); added Image SEO subsystem (`ImageSeoAnalyzer`, alt/dimension/lazy auditing, Google Image XML sitemap); added `MetaMantleGoRouterObserver` with first-frame transition coordination; hardened memory management with listener cleanup tracking in `MantleDomRenderer` and state registry unmounted disposal; verified strict path traversal prevention; JavaScript and WebAssembly builds passed in `example/`; package validation via `dart pub publish --dry-run` succeeded with 0 warnings.
+On 2026-11-18, `flutter test` passed **451 tests** across 48 test suites (100% pass rate); root, example, and consumer analysis passed with **0 issues**; formatting passed with **0 files changed** across all 167 files; Playwright multi-browser end-to-end tests passed **84 / 84 tests** across desktop and mobile Chromium; independent external consumer tests passed **3 / 3 tests**; verified all 3 rendering strategies (`flutter-canvas`, `semantic-dom`, `dom-with-flutter-islands`); verified truthful island disposal (`__mantleDisposeIslands`) retaining active views on removal failure with diagnostic error attributes; verified concurrency-safe engine initialization with shared in-flight Promises and deliberate retry support; verified asynchronous Flutter loader integration contract; verified host validation safety against apex root domains and IPv6 bracketed hosts; verified open redirect protection in `RedirectManager` against protocol-relative (`//`) and backslash (`\`) targets; JavaScript and WebAssembly release builds passed in `example/`; package validation via `dart pub publish --dry-run` succeeded with 0 warnings.
 
 ## Verified Environment
 
@@ -14,8 +14,8 @@ On 2026-11-14, `flutter test` passed **314 tests** across 39 test suites (100% p
 - **Flutter SDK:** 3.47.5 (Channel stable)
 - **Dart SDK:** 3.13.4
 - **Material UI:** ^1.11.0 (standalone decoupled package)
-- **Browser:** Google Chrome 156.0.7118.0
-- **Architecture Target:** Universal Rendering Architecture: Portable Component IR, Multi-Target Rendering (Mode A: Flutter Web CanvasKit/Skwasm, Mode B: Browser Native DOM, Dart Server SSR), Static Head Builder, and Hybrid ISR.
+- **Browser:** Chromium (Desktop & Mobile Pixel 5 via Playwright)
+- **Architecture Target:** Universal Rendering Architecture: Portable Component IR, Multi-Target Rendering (Mode A: Flutter Web CanvasKit/Skwasm, Mode B: Browser Native DOM, Dart Server SSR, Mode C: DOM with Flutter Islands), Static Head Builder, and Hybrid ISR.
 
 ---
 
@@ -23,30 +23,20 @@ On 2026-11-14, `flutter test` passed **314 tests** across 39 test suites (100% p
 
 | Command / Check | Working Directory | Result | Notes |
 | :--- | :--- | :--- | :--- |
-| `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 155 files |
+| `dart format --output=none --set-exit-if-changed .` | `.` (Root) | **PASS** (0 changed) | Clean formatting across all 167 files |
 | `flutter pub get` | `.` (Root) | **PASS** | Dependencies resolved with standalone `material_ui: ^1.11.0` |
-| `flutter analyze` | `.` (Root) | **PASS** (0 issues) | Strict analysis enabled with 0 warnings/errors/infos |
-| `flutter test` | `.` (Root) | **PASS** (314 passing) | 39 test suites: Universal IR, Flutter renderer, Server HTML renderer, Universal routing, DOM diffing reconciler, reactive state, Web accelerator, Flutter Web Build Engine (`build-web`), Content & Commerce components, Breadcrumb, Strict Mode, Manifest execution, WAL crash recovery, sharded route store, lease renewal & heartbeat, fencing epochs, DNS rebinding, redirect SSRF, 10,000 job benchmark, Real Shelf HTTP SSR tests, Image SEO & sitemap, GoRouter observer, CLI commands |
-| `flutter pub get` | `example/` | **PASS** | Dependencies resolved with `material_ui: ^1.11.0` |
-| `flutter analyze` | `example/` | **PASS** (0 issues) | Clean analysis in example package |
-| `dart run example/bin/universal_store_example.dart` | `.` (Root) | **PASS** | End-to-end multi-target rendering demo (SSR, Widgets, SSG) |
-| `dart run example/bin/blog_publishing_example.dart` | `.` (Root) | **PASS** | RSS 2.0, Atom 1.0, Google News Sitemap |
-| `dart run example/bin/jaspr_docs_example.dart` | `.` (Root) | **PASS** | Version switcher, search index, llms.txt |
-| `dart run example/bin/jaspr_flutter_embed_example.dart` | `.` (Root) | **PASS** | Hybrid HTML shell + Flutter bootstrap embedding |
-| `dart run example/bin/saas_multitenant_example.dart` | `.` (Root) | **PASS** | Host injection protection, tenant cache partitioner |
-| `dart run example/bin/static_marketing_example.dart` | `.` (Root) | **PASS** | Static head builder generating HTML, sitemap, robots |
-| `dart run example/lib/meta_mantle_routes.dart` | `.` (Root) | **PASS** | Pure Dart execution of consumer manifest returning complete JSON bundle with rendered semantic HTML |
-| `flutter build web --release` | `example/` | **PASS** | JavaScript bundle built in `build/web` |
-| `flutter build web --release --wasm` | `example/` | **PASS** | Native WebAssembly compiled (`main.dart.wasm`) in 46.0s |
-| `dart run meta_mantle build-web --help` | `.` (Root) | **PASS** | Subcommand usage and build options displayed |
-| `dart run meta_mantle build-web --mode prerender --strict --release --verbose` | `example/` | **PASS** | End-to-end static generation of 6 routes (8 files, sitemap, robots, report, zero fallback content) |
-| `dart run meta_mantle doctor` | `example/` | **PASS** | Preflight checks passed |
-| `dart run meta_mantle inspect` | `example/` | **PASS** | 4 static routes resolved |
-| `dart run meta_mantle build` | `example/` | **PASS** | Generated static files for routes |
-| `dart run meta_mantle web analyze` | `.` (Root) | **PASS** | Flutter Web acceleration audit & Wasm readiness |
-| `dart run meta_mantle web build` | `.` (Root) | **PASS** | Wasm & COOP/COEP header recommendations |
-| `dart run meta_mantle regression --help` | `.` (Root) | **PASS** | SEO snapshot regression tester |
-| `flutter pub publish --dry-run` | `.` (Root) | **PASS** | Package validation completed successfully with zero errors |
+| `flutter analyze .` | `.` (Root) | **PASS** (0 issues) | Strict analysis enabled with 0 warnings/errors/infos |
+| `flutter test` | `.` (Root) | **PASS** (451 passing) | 48 test suites: Universal IR, Flutter renderer, Server HTML renderer, Universal routing, DOM diffing reconciler, reactive state, Web accelerator, Flutter Web Build Engine (`build-web`), Content & Commerce components, Breadcrumb, Strict Mode, Manifest execution, WAL crash recovery, sharded route store, lease renewal & heartbeat, fencing epochs, DNS rebinding, redirect SSRF, 10,000 job benchmark, Real Shelf HTTP SSR tests, Image SEO & sitemap, GoRouter observer, CLI commands, HTML sanitization, URL policy, Sitemap protocol boundaries, Islands loader contract, truthful disposal |
+| `flutter analyze example` | `example/` | **PASS** (0 issues) | Clean analysis in example package |
+| `dart analyze example/static_html_site` | `example/static_html_site` | **PASS** (0 issues) | Clean analysis in independent consumer package |
+| `dart test` | `example/static_html_site` | **PASS** (3 passing) | Independent consumer public API verification (HTML5, Sitemap, HtmlValidator) |
+| `npx playwright test` | `.` (Root) | **PASS** (84 passing) | 84 E2E browser tests across desktop-chromium and mobile-chromium for Strategy A, B, and C |
+| `flutter build web --release` | `example/` | **PASS** | JavaScript production bundle built in `build/web` |
+| `flutter build web --release --wasm` | `example/` | **PASS** | Native WebAssembly compiled (`main.dart.wasm`) in 41.4s |
+| `dart run meta_mantle:meta_mantle build-web --mode prerender --strict --release --no-compile-flutter` | `example/` | **PASS** | Strategy A (`flutter-canvas`): 6 routes, 245 components, 0 HTML errors |
+| `dart run meta_mantle:meta_mantle build-web --rendering-strategy semantic-dom --output build/web_semantic_dom --mode prerender --strict --release --no-compile-flutter` | `example/` | **PASS** | Strategy B (`semantic-dom`): 6 routes, 245 components, 0 HTML errors |
+| `dart run meta_mantle:meta_mantle build-web --rendering-strategy dom-with-flutter-islands --output build/web_islands --mode prerender --strict --release --no-compile-flutter` | `example/` | **PASS** | Strategy C (`dom-with-flutter-islands`): 6 routes, 245 components, 0 HTML errors |
+| `dart pub publish --dry-run` | `.` (Root) | **PASS** (0 warnings) | Package validation completed successfully with zero warnings |
 
 ---
 

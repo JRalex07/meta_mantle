@@ -432,5 +432,62 @@ void main() {
 
       expect(() => mgr.resolve('/cycle-a'), throwsA(isA<StateError>()));
     });
+
+    test('RedirectManager rejects protocol-relative and backslash open redirect targets', () {
+      final mgr = RedirectManager();
+      expect(
+        () => mgr.add(
+          const RedirectRule(fromPath: '/login', toPath: '//evil.com/phish'),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        () => mgr.add(
+          const RedirectRule(fromPath: '/login', toPath: r'/\evil.com/phish'),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        () => mgr.add(
+          const RedirectRule(fromPath: '/login', toPath: r'\\evil.com/phish'),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('TenantHostValidator safely handles apex root domain and IPv6 bracketed hosts', () {
+      const tenantAcme = TenantContext(
+        tenantId: 'acme',
+        name: 'Acme Corp',
+        primaryDomain: 'acme.portal.dev',
+      );
+      const validator = TenantHostValidator(
+        tenants: [tenantAcme],
+        allowedRootDomains: ['portal.dev'],
+      );
+
+      // Subdomain matches registered tenant
+      expect(validator.validate('acme.portal.dev').tenantId, equals('acme'));
+      expect(
+        validator.validate('acme.portal.dev:8080').tenantId,
+        equals('acme'),
+      );
+
+      // Apex root domain without registered tenant cleanly throws HostValidationException without RangeError
+      expect(
+        () => validator.validate('portal.dev'),
+        throwsA(isA<HostValidationException>()),
+      );
+      expect(
+        () => validator.validate('portal.dev:8080'),
+        throwsA(isA<HostValidationException>()),
+      );
+
+      // IPv6 bracketed host
+      expect(
+        () => validator.validate('[::1]:8080'),
+        throwsA(isA<HostValidationException>()),
+      );
+    });
   });
 }

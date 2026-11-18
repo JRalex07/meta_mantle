@@ -38,9 +38,19 @@ class TenantHostValidator {
   final List<String> allowedRootDomains;
 
   /// Validates [hostHeader] against registered tenants.
-  /// Returns the matched [TenantContext] if authorized, or throws [SecurityException] if invalid.
+  /// Returns the matched [TenantContext] if authorized, or throws [HostValidationException] if invalid.
   TenantContext validate(String hostHeader) {
-    final cleanHost = hostHeader.split(':').first.trim().toLowerCase();
+    final String cleanHost;
+    if (hostHeader.startsWith('[')) {
+      final closingBracket = hostHeader.indexOf(']');
+      if (closingBracket != -1) {
+        cleanHost = hostHeader.substring(0, closingBracket + 1).toLowerCase();
+      } else {
+        cleanHost = hostHeader.split(':').first.trim().toLowerCase();
+      }
+    } else {
+      cleanHost = hostHeader.split(':').first.trim().toLowerCase();
+    }
 
     // Check against tenant custom domains & primary domains
     for (final tenant in tenants) {
@@ -52,13 +62,26 @@ class TenantHostValidator {
     // Check if host matches authorized root wildcard domain (e.g. *.platform.com)
     for (final rootDomain in allowedRootDomains) {
       final cleanRoot = rootDomain.toLowerCase();
-      if (cleanHost == cleanRoot || cleanHost.endsWith('.$cleanRoot')) {
+      if (cleanHost == cleanRoot) {
+        final matched = tenants
+            .where(
+              (t) =>
+                  t.tenantId == cleanRoot ||
+                  t.primaryDomain.toLowerCase() == cleanRoot,
+            )
+            .firstOrNull;
+        if (matched != null) return matched;
+      } else if (cleanHost.endsWith('.$cleanRoot')) {
         final subdomain = cleanHost.substring(
           0,
           cleanHost.length - cleanRoot.length - 1,
         );
         final matched = tenants
-            .where((t) => t.tenantId == subdomain)
+            .where(
+              (t) =>
+                  t.tenantId == subdomain ||
+                  t.allAuthorizedHosts.contains(cleanHost),
+            )
             .firstOrNull;
         if (matched != null) return matched;
       }
