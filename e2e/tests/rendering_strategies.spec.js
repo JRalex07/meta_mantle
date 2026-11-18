@@ -545,34 +545,39 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
   });
 
   test('C12: Partial island initialization failure leaves fallback usable and prevents false global readiness', async ({ page }) => {
+    // Intercept app.addView BEFORE islands mount so adding #flutter-counter-island throws a real error
+    await page.addInitScript(() => {
+      let currentApp = null;
+      Object.defineProperty(window, '__mantleFlutterApp', {
+        configurable: true,
+        enumerable: true,
+        get: () => currentApp,
+        set: (val) => {
+          currentApp = val;
+          if (currentApp && typeof currentApp.addView === 'function' && !currentApp.__mantleIntercepted) {
+            currentApp.__mantleIntercepted = true;
+            const realAddView = currentApp.addView.bind(currentApp);
+            currentApp.addView = function(options) {
+              if (options && options.hostElement && options.hostElement.id === 'flutter-counter-island') {
+                throw new Error('Controlled addView failure for flutter-counter-island');
+              }
+              return realAddView(options);
+            };
+          }
+        }
+      });
+    });
+
     await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
 
     const cartIsland = page.locator('#flutter-cart-island');
     const counterIsland = page.locator('#flutter-counter-island');
 
+    // Healthy island (Island 1) mounts successfully
     await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
-    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
 
-    // Simulate an island failure on Island 2 and trigger readiness check
-    await page.evaluate(() => {
-      const isl2 = document.getElementById('flutter-counter-island');
-      if (isl2) {
-        isl2.setAttribute('data-mantle-island-lifecycle', 'error');
-        // Restore fallback display for failed island
-        if (isl2.__mantleFallbackHtml) {
-          isl2.innerHTML = isl2.__mantleFallbackHtml;
-        } else {
-          const fb = isl2.querySelector('.mantle-row, .mantle-island-fallback');
-          if (fb) fb.style.display = '';
-        }
-      }
-      // Re-signal view ready to trigger global readiness check with the failed island present
-      const isl1 = document.getElementById('flutter-cart-island');
-      const viewId = isl1 ? Number(isl1.getAttribute('data-mantle-view-id')) : 0;
-      if (typeof window.__mantleSignalViewReady === 'function') {
-        window.__mantleSignalViewReady(viewId);
-      }
-    });
+    // Failed island (Island 2) fails during real addView and transitions to error
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'error', { timeout: 30000 });
 
     // Verify that global runtime reports error and NOT ready
     await expect(page.locator('html')).toHaveAttribute('data-mantle-runtime', 'error');
@@ -597,78 +602,228 @@ test.describe('Strategy C — DOM with Flutter Islands (Port 8082)', () => {
     }, { timeout: 10000 }).toBe(1);
   });
 
-  test('C13: Custom Flutter loader configuration and consumer onEntrypointLoaded are preserved and executed once', async ({ page }) => {
+  test('C13: Production Flutter loader wrapper preserves configuration, shares in-flight promises, and handles retries', async ({ page }) => {
     await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
 
-    // Verify that window._flutter and loader exist with wrapped multiView contract
-    const loaderVerification = await page.evaluate(async () => {
-      if (!window._flutter || !window._flutter.loader) {
-        return { error: 'No flutter loader found' };
+    // 1. Test production createWrappedEngineInitializer with shared in-flight Promises and retry
+    const wrapperVerification = await page.evaluate(async () => {
+      if (typeof window.__mantleCreateWrappedEngineInitializer !== 'function') {
+        return { error: 'window.__mantleCreateWrappedEngineInitializer is not defined' };
       }
 
-      var customConfigPreserved = false;
-      var consumerCallbackFired = false;
-      var initializeEngineCount = 0;
-      var runAppCount = 0;
+      var initializeEngineCallCount = 0;
+      var runAppCallCount = 0;
+      var passedConfig = null;
 
-      // Create a mock engineInitializer to test wrappedEngineInitializer contract
       var mockRealInitializer = {
-        initializeEngine: async function (mergedConfig) {
-          initializeEngineCount++;
-          if (mergedConfig && mergedConfig.multiViewEnabled === true && mergedConfig.testCustomOption === 'meta-custom') {
-            customConfigPreserved = true;
+        initializeEngine: async function (cfg) {
+          initializeEngineCallCount++;
+          passedConfig = cfg;
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          return {
+            runApp: async function (runAppOptions) {
+              runAppCallCount++;
+              await new Promise((resolve) => setTimeout(resolve, 20));
+              return { mockApp: true, addView: function () { return 99; } };
+            }
+          };
+        }
+      };
+
+      // Wrap mock initializer using actual production factory
+      var wrapped = window.__mantleCreateWrappedEngineInitializer(mockRealInitializer, {
+        config: { testBaseOption: 'base-val' }
+      });
+
+      // Concurrently call initializeEngine 3 times
+      var [runner1, runner2, runner3] = await Promise.all([
+        wrapped.initializeEngine({ consumerOption: 'consumer-val' }),
+        wrapped.initializeEngine({ consumerOption: 'consumer-val' }),
+        wrapped.initializeEngine({ consumerOption: 'consumer-val' })
+      ]);
+
+      var singleInitCall = (initializeEngineCallCount === 1);
+      var sameRunners = (runner1 === runner2 && runner2 === runner3);
+      var configMerged = Boolean(
+        passedConfig &&
+        passedConfig.multiViewEnabled === true &&
+        passedConfig.testBaseOption === 'base-val' &&
+        passedConfig.consumerOption === 'consumer-val'
+      );
+
+      // Concurrently call runApp 3 times on the resolved runner
+      var [app1, app2, app3] = await Promise.all([
+        runner1.runApp(),
+        runner2.runApp(),
+        runner3.runApp()
+      ]);
+
+      var singleRunCall = (runAppCallCount === 1);
+      var sameApps = (app1 === app2 && app2 === app3 && app1.mockApp === true);
+
+      // Verify retry after rejection resets in-flight promise
+      var failAttempts = 0;
+      var retryInitializer = {
+        initializeEngine: async function () {
+          failAttempts++;
+          if (failAttempts === 1) {
+            throw new Error('Simulated transient initialization error');
           }
           return {
             runApp: async function () {
-              runAppCount++;
-              return window.__mantleFlutterApp;
+              return { recovered: true, addView: function () { return 100; } };
             }
           };
         }
       };
 
-      // Test our wrapper logic
-      var options = {
-        config: { testCustomOption: 'meta-custom' },
-        onEntrypointLoaded: async function (initializer) {
-          consumerCallbackFired = true;
-          var runner = await initializer.initializeEngine({ extraOption: 123 });
-          await runner.runApp();
-        }
-      };
+      var retryWrapped = window.__mantleCreateWrappedEngineInitializer(retryInitializer, {});
+      var failedOnFirst = false;
+      try {
+        await retryWrapped.initializeEngine();
+      } catch (e) {
+        failedOnFirst = true;
+      }
 
-      // Simulate hook execution on mock loader
-      var wrappedCalled = false;
-      var userOnEntrypoint = options.onEntrypointLoaded;
-      var engineInitialized = false;
-
-      var wrappedInitializer = {
-        initializeEngine: async function (consumerConfig) {
-          if (engineInitialized) return;
-          engineInitialized = true;
-          var merged = Object.assign({}, options.config || {}, consumerConfig || {}, { multiViewEnabled: true });
-          var realAppRunner = await mockRealInitializer.initializeEngine(merged);
-          return {
-            runApp: async function (runAppOptions) {
-              return await realAppRunner.runApp(runAppOptions);
-            }
-          };
-        }
-      };
-
-      await userOnEntrypoint(wrappedInitializer);
+      // Retry should now invoke realInitializer again
+      var recoveredRunner = await retryWrapped.initializeEngine();
+      var recoveredApp = await recoveredRunner.runApp();
+      var retrySuccess = Boolean(failedOnFirst && failAttempts === 2 && recoveredApp.recovered === true);
 
       return {
-        consumerCallbackFired: consumerCallbackFired,
-        customConfigPreserved: customConfigPreserved,
-        initializeEngineCount: initializeEngineCount,
-        runAppCount: runAppCount
+        singleInitCall,
+        sameRunners,
+        configMerged,
+        singleRunCall,
+        sameApps,
+        retrySuccess
       };
     });
 
-    expect(loaderVerification.consumerCallbackFired).toBe(true);
-    expect(loaderVerification.customConfigPreserved).toBe(true);
-    expect(loaderVerification.initializeEngineCount).toBe(1);
-    expect(loaderVerification.runAppCount).toBe(1);
+    expect(wrapperVerification.singleInitCall).toBe(true);
+    expect(wrapperVerification.sameRunners).toBe(true);
+    expect(wrapperVerification.configMerged).toBe(true);
+    expect(wrapperVerification.singleRunCall).toBe(true);
+    expect(wrapperVerification.sameApps).toBe(true);
+    expect(wrapperVerification.retrySuccess).toBe(true);
+
+    // 2. Test loader hook preserves loader options (config, nonce, serviceWorkerSettings)
+    const hookVerification = await page.evaluate(async () => {
+      var passedLoadOptions = null;
+      var consumerCallbackFired = false;
+      var receivedWrapper = null;
+
+      var mockLoader = {
+        load: function (options) {
+          passedLoadOptions = options;
+          if (options && typeof options.onEntrypointLoaded === 'function') {
+            var mockEngineInit = {
+              initializeEngine: async function (cfg) {
+                return {
+                  runApp: async function () {
+                    return { addView: function () { return 1; } };
+                  }
+                };
+              }
+            };
+            options.onEntrypointLoaded(mockEngineInit);
+          }
+        }
+      };
+
+      // Assign to window._flutter.loader which triggers the hooked property setter
+      window._flutter.loader = mockLoader;
+
+      mockLoader.load({
+        config: { customFlag: 'xyz' },
+        serviceWorkerSettings: { timeoutMillis: 5000 },
+        nonce: 'strict-nonce-789',
+        onEntrypointLoaded: async function (wrappedInit) {
+          consumerCallbackFired = true;
+          receivedWrapper = wrappedInit;
+          var runner = await wrappedInit.initializeEngine();
+          await runner.runApp();
+        }
+      });
+
+      return {
+        consumerCallbackFired,
+        noncePreserved: passedLoadOptions && passedLoadOptions.nonce === 'strict-nonce-789',
+        swPreserved: passedLoadOptions && passedLoadOptions.serviceWorkerSettings && passedLoadOptions.serviceWorkerSettings.timeoutMillis === 5000,
+        isWrapped: Boolean(receivedWrapper && receivedWrapper._realInitializer)
+      };
+    });
+
+    expect(hookVerification.consumerCallbackFired).toBe(true);
+    expect(hookVerification.noncePreserved).toBe(true);
+    expect(hookVerification.swPreserved).toBe(true);
+    expect(hookVerification.isWrapped).toBe(true);
+  });
+
+  test('C14: Truthful disposal isolates removeView errors, retains diagnostic state, and allows idempotent retry', async ({ page }) => {
+    await page.goto(`${ISLANDS_URL}/products/basmati-rice`, { waitUntil: 'domcontentloaded' });
+
+    const cartIsland = page.locator('#flutter-cart-island');
+    const counterIsland = page.locator('#flutter-counter-island');
+
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'mounted', { timeout: 30000 });
+
+    // Inject controlled failure into removeView for the counter island's view ID
+    const removalFailureTest = await page.evaluate(() => {
+      const isl2 = document.getElementById('flutter-counter-island');
+      const counterViewId = isl2 ? Number(isl2.getAttribute('data-mantle-view-id')) : -1;
+      const app = window.__mantleFlutterApp;
+      if (!app || typeof app.removeView !== 'function') {
+        return { error: 'No Flutter app or removeView function' };
+      }
+
+      let failureCount = 0;
+      const realRemoveView = app.removeView.bind(app);
+      app.removeView = function (viewId) {
+        if (viewId === counterViewId && failureCount === 0) {
+          failureCount++;
+          throw new Error('Simulated removeView exception for view ' + viewId);
+        }
+        return realRemoveView(viewId);
+      };
+
+      // Call disposal
+      window.__mantleDisposeIslands();
+
+      return {
+        counterViewId,
+        failureCount
+      };
+    });
+
+    expect(removalFailureTest.counterViewId).toBeGreaterThanOrEqual(0);
+
+    // Island 1 had successful removal -> transitioned to disposed, fallback restored
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'disposed');
+    await expect(cartIsland).not.toHaveAttribute('data-mantle-island-mounted');
+    await expect(cartIsland).not.toHaveAttribute('data-mantle-view-id');
+    await expect(cartIsland.locator('.mantle-row, .mantle-island-fallback')).toBeVisible();
+
+    // Island 2 failed removal -> transitioned to error, diagnostic info retained, fallback NOT restored
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'error');
+    await expect(counterIsland).toHaveAttribute('data-mantle-disposal-error');
+    await expect(page.locator('html')).toHaveAttribute('data-mantle-runtime', 'error');
+    await expect(page.locator('html')).toHaveAttribute('data-mantle-islands-ready', 'false');
+
+    // Retry disposal (now removeView will succeed since failureCount > 0)
+    await page.evaluate(() => {
+      window.__mantleDisposeIslands();
+    });
+
+    // Both islands now cleanly disposed
+    await expect(cartIsland).toHaveAttribute('data-mantle-island-lifecycle', 'disposed');
+    await expect(counterIsland).toHaveAttribute('data-mantle-island-lifecycle', 'disposed');
+    await expect(counterIsland).not.toHaveAttribute('data-mantle-view-id');
+    await expect(counterIsland).not.toHaveAttribute('data-mantle-disposal-error');
+    await expect(counterIsland.locator('.mantle-row, .mantle-island-fallback')).toBeVisible();
+    await expect(page.locator('html')).not.toHaveAttribute('data-mantle-runtime');
+    const readyState = await page.evaluate(() => window.__mantleRuntimeReady);
+    expect(readyState).toBe(false);
   });
 });

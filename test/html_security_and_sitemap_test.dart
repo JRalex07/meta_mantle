@@ -1918,11 +1918,19 @@ void main() {
     const adapter = BootstrapAdapter();
     final script = adapter.generateIslandBootstrapScript();
 
-    test('Emits single engine initialization wrapper', () {
-      expect(script, contains('var engineInitialized = false;'));
-      expect(script, contains('var appRunStarted = false;'));
+    test('Emits single engine initialization wrapper with shared in-flight Promises', () {
+      expect(script, contains('var initPromise = null;'));
+      expect(script, contains('var runAppPromise = null;'));
       expect(script, contains('function createWrappedEngineInitializer'));
       expect(script, contains('multiViewEnabled: true'));
+      expect(script, contains('initPromise = null;'));
+      expect(script, contains('runAppPromise = null;'));
+      expect(
+        script,
+        contains(
+          'window.__mantleCreateWrappedEngineInitializer = createWrappedEngineInitializer;',
+        ),
+      );
     });
 
     test('Preserves options.config and merges userConfig', () {
@@ -1947,7 +1955,11 @@ void main() {
         script,
         contains('var cbResult = userOnEntrypoint(wrappedInitializer);'),
       );
-      expect(script, contains('if (!engineInitialized) {'));
+      expect(
+        script,
+        contains('var runner = await wrappedInitializer.initializeEngine();'),
+      );
+      expect(script, contains('await runner.runApp();'));
     });
 
     test('Tracks expectedIslandElements separately from activeViews', () {
@@ -1973,10 +1985,24 @@ void main() {
       expect(script, contains('window.__mantleRuntimeReady = false;'));
     });
 
-    test('Provides deterministic disposal and remounting functions', () {
+    test('Provides truthful disposal and remounting functions', () {
       expect(script, contains('window.__mantleDisposeIslands = function() {'));
       expect(script, contains('window.__mantleRemountIslands = function() {'));
-      expect(script, contains('flutterApp.removeView(activeViews[j].viewId)'));
+      expect(script, contains('flutterApp.removeView(entry.viewId)'));
+      expect(script, contains('hasDisposalError = true;'));
+      expect(
+        script,
+        contains(
+          "entry.island.setAttribute('data-mantle-island-lifecycle', 'error')",
+        ),
+      );
+      expect(script, contains("data-mantle-disposal-error"));
+      expect(
+        script,
+        contains(
+          "isl.setAttribute('data-mantle-island-lifecycle', 'disposed')",
+        ),
+      );
       expect(script, contains('flutterApp.addView({ hostElement: isl })'));
     });
   });
