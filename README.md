@@ -1,5 +1,7 @@
 # MetaMantle
 
+[![pub package](https://img.shields.io/pub/v/meta_mantle.svg)](https://pub.dev/packages/meta_mantle)
+[![Publisher](https://img.shields.io/pub/publisher/meta_mantle.svg)](https://pub.dev/publishers/alex.runs-on.dev)
 [![CI](https://github.com/JRalex07/meta_mantle/actions/workflows/ci.yml/badge.svg)](https://github.com/JRalex07/meta_mantle/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Dart SDK](https://img.shields.io/badge/Dart-3.13%2B-blue.svg)](https://dart.dev)
@@ -8,8 +10,11 @@
 
 **MetaMantle** is a universal typed metadata management, native server rendering (SSR), and automated SEO infrastructure framework for Flutter Web and Dart applications.
 
+- **pub.dev Package:** [https://pub.dev/packages/meta_mantle](https://pub.dev/packages/meta_mantle)
+- **Verified Publisher:** [alex.runs-on.dev](https://pub.dev/publishers/alex.runs-on.dev)
 - **Official Repository:** [https://github.com/JRalex07/meta_mantle](https://github.com/JRalex07/meta_mantle)
 - **Official Documentation Portal:** [https://metamantle.alex.runs-on.dev](https://metamantle.alex.runs-on.dev)
+- **Issue Tracker:** [https://github.com/JRalex07/meta_mantle/issues](https://github.com/JRalex07/meta_mantle/issues)
 - **Package Version:** `0.3.0`
 
 ---
@@ -94,8 +99,22 @@ Beyond rendering, MetaMantle includes a universal database abstraction layer, tr
 
 ## 5. Installation
 
-### GitHub Git Dependency (Recommended)
-Add `meta_mantle` directly from the official GitHub repository in your `pubspec.yaml`:
+### From pub.dev (Recommended)
+Add `meta_mantle` to your Flutter project using the Flutter CLI:
+
+```bash
+flutter pub add meta_mantle
+```
+
+Or add it directly to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  meta_mantle: ^0.3.0
+```
+
+### GitHub Git Dependency
+Alternatively, pin directly to the official GitHub repository:
 
 ```yaml
 dependencies:
@@ -104,7 +123,7 @@ dependencies:
   meta_mantle:
     git:
       url: https://github.com/JRalex07/meta_mantle.git
-      ref: main # Or pin to a specific release tag such as v0.1.0
+      ref: main # Or pin to a specific release tag such as v0.3.0
 ```
 
 > **Flutter SDK Requirement**: Because `meta_mantle` declares `flutter: sdk: flutter` and `package:material_ui` in its root package manifest (`pubspec.yaml`), resolving dependencies (`flutter pub get` or `dart pub get`) requires the Flutter SDK to be installed in your environment. Pure-Dart entrypoints (`meta_mantle_core.dart` and `meta_mantle_server.dart`) contain no Flutter imports at runtime, but the package manifest requires the Flutter SDK on the host during dependency resolution.
